@@ -1,0 +1,46 @@
+blueprint:
+  name: Siegenia – Mode Button
+  description: Create a script that sends a discrete Siegenia window mode (Open/Close/Gap Vent/Close w/o lock/Stop Over/Stop) to a selected entity.
+  domain: script
+  source_url: https://github.com/EvotecIT/homeassistant-siegenia
+  input:
+    target_cover:
+      name: Siegenia cover
+      description: Select your Siegenia cover entity
+      selector:
+        entity:
+          integration: siegenia
+          domain: cover
+    mode:
+      name: Mode
+      description: Discrete operation to send
+      default: OPEN
+      selector:
+        select:
+          options:
+            - OPEN
+            - CLOSE
+            - GAP_VENT
+            - CLOSE_WO_LOCK
+            - STOP_OVER
+            - STOP
+
+mode: queued
+max: 10
+sequence:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ iif(mode == 'STOP', true, false) }}"
+        sequence:
+          - service: siegenia.set_mode
+            target:
+              entity_id: !input target_cover
+            data:
+              mode: STOP
+    default:
+      - service: siegenia.set_mode
+        target:
+          entity_id: !input target_cover
+        data:
+          mode: !input mode

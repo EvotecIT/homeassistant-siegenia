@@ -7,6 +7,7 @@ from typing import Any
 from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .api import AuthenticationError, SiegeniaClient
 from .const import (
@@ -61,6 +62,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             params = await self.client.get_device_params()
             return params
         except AuthenticationError as err:
-            raise UpdateFailed(f"Auth failed: {err}") from err
+            # Trigger reauth flow in HA
+            raise ConfigEntryAuthFailed from err
         except Exception as err:  # noqa: BLE001
             raise UpdateFailed(err) from err

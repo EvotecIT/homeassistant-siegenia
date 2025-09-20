@@ -19,3 +19,33 @@ set_mode:
             - CLOSE_WO_LOCK
             - STOP_OVER
             - STOP
+
+reboot_device:
+  name: Reboot Device
+  description: Reboot the Siegenia controller.
+  fields:
+    entity_id:
+      selector:
+        entity:
+          integration: siegenia
+          domain: cover
+
+reset_device:
+  name: Factory Reset Device
+  description: Reset the Siegenia controller to defaults (use with care).
+  fields:
+    entity_id:
+      selector:
+        entity:
+          integration: siegenia
+          domain: cover
+
+renew_cert:
+  name: Renew TLS Certificate
+  description: Renew the device TLS certificate.
+  fields:
+    entity_id:
+      selector:
+        entity:
+          integration: siegenia
+          domain: cover

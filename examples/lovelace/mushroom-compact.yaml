@@ -1,0 +1,82 @@
+# Requires HACS -> Mushroom cards installed
+# Dashboard -> Edit -> Add Card -> Manual -> paste
+type: vertical-stack
+cards:
+  - type: custom:mushroom-cover-card
+    entity: cover.siegenia_window
+    name: Living Room Window
+    show_buttons_control: true
+    show_position_control: true
+    icon: mdi:window-open-variant
+
+  - type: custom:mushroom-chips-card
+    alignment: center
+    chips:
+      - type: action
+        icon: mdi:window-open
+        name: Open
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: OPEN
+          target:
+            entity_id: cover.siegenia_window
+      - type: action
+        icon: mdi:window-closed
+        name: Close
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: CLOSE
+          target:
+            entity_id: cover.siegenia_window
+      - type: action
+        icon: mdi:arrow-expand-horizontal
+        name: Gap
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: GAP_VENT
+          target:
+            entity_id: cover.siegenia_window
+      - type: action
+        icon: mdi:lock-open-outline
+        name: No Lock
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: CLOSE_WO_LOCK
+          target:
+            entity_id: cover.siegenia_window
+      - type: action
+        icon: mdi:gesture-tap
+        name: Stop Over
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: STOP_OVER
+          target:
+            entity_id: cover.siegenia_window
+      - type: action
+        icon: mdi:stop
+        name: Stop
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: STOP
+          target:
+            entity_id: cover.siegenia_window
+
+  - type: entities
+    title: Status
+    entities:
+      - sensor.siegenia_window_state
+      - sensor.siegenia_window_open_count
+      - binary_sensor.siegenia_window_moving
+      - binary_sensor.siegenia_warning_active

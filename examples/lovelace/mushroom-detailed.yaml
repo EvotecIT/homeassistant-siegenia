@@ -1,0 +1,94 @@
+# Requires HACS -> Mushroom cards installed
+# Dashboard -> Edit -> Add Card -> Manual -> paste
+type: vertical-stack
+cards:
+  - type: horizontal-stack
+    cards:
+      - type: custom:mushroom-cover-card
+        entity: cover.siegenia_window
+        name: Living Room Window
+        show_buttons_control: true
+        show_position_control: true
+        fill_container: true
+      - type: custom:mushroom-entity-card
+        entity: sensor.siegenia_window_state
+        name: State
+        icon: mdi:window-closed-variant
+        secondary_info: none
+        tap_action:
+          action: more-info
+        fill_container: true
+
+  - type: custom:mushroom-chips-card
+    alignment: justify
+    chips:
+      - type: template
+        icon: mdi:window-open
+        content: Open
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: OPEN
+          target:
+            entity_id: cover.siegenia_window
+      - type: template
+        icon: mdi:window-closed
+        content: Close
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: CLOSE
+          target:
+            entity_id: cover.siegenia_window
+      - type: template
+        icon: mdi:arrow-expand-horizontal
+        content: Gap Vent
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: GAP_VENT
+          target:
+            entity_id: cover.siegenia_window
+      - type: template
+        icon: mdi:lock-open-outline
+        content: Close w/o Lock
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: CLOSE_WO_LOCK
+          target:
+            entity_id: cover.siegenia_window
+      - type: template
+        icon: mdi:gesture-tap
+        content: Stop Over
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: STOP_OVER
+          target:
+            entity_id: cover.siegenia_window
+      - type: template
+        icon: mdi:stop
+        content: Stop
+        tap_action:
+          action: call-service
+          service: siegenia.set_mode
+          data:
+            mode: STOP
+          target:
+            entity_id: cover.siegenia_window
+
+  - type: entities
+    title: Diagnostics
+    entities:
+      - entity: binary_sensor.siegenia_warning_active
+        name: Warning Active
+      - entity: binary_sensor.siegenia_window_moving
+        name: Moving
+      - entity: sensor.siegenia_window_open_count
+        name: Open Count

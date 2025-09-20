@@ -189,3 +189,11 @@ class SiegeniaClient:
     async def stop(self, sash: int) -> None:
         await self.set_device_params({"stop": {str(sash): True}})
 
+    async def reset_device(self) -> None:
+        await self._send_request("resetDevice")
+
+    async def reboot_device(self) -> None:
+        await self._send_request("rebootDevice")
+
+    async def renew_cert(self) -> None:
+        await self._send_request("renewCert")

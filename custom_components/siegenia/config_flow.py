@@ -84,6 +84,53 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_import(self, import_config: dict[str, Any]) -> FlowResult:  # For YAML import (not used)
         return await self.async_step_user(import_config)
 
+    async def async_step_reauth(self, data: dict[str, Any] | None = None) -> FlowResult:
+        # Store existing
+        self._reauth_entry = self.hass.config_entries.async_get_entry(self.context.get("entry_id"))
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        errors: dict[str, str] = {}
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])  # type: ignore[index]
+        assert entry is not None
+        if user_input is None:
+            schema = vol.Schema(
+                {
+                    vol.Required(CONF_USERNAME, default=entry.data.get(CONF_USERNAME)): str,
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            )
+            return self.async_show_form(step_id="reauth_confirm", data_schema=schema)
+
+        # Try new credentials
+        client = SiegeniaClient(entry.data[CONF_HOST], port=entry.data.get(CONF_PORT, DEFAULT_PORT))
+        try:
+            await client.connect()
+            await client.login(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
+        except AuthenticationError:
+            errors["base"] = "auth"
+        except Exception:
+            errors["base"] = "cannot_connect"
+        finally:
+            await client.disconnect()
+
+        if errors:
+            schema = vol.Schema(
+                {
+                    vol.Required(CONF_USERNAME, default=user_input.get(CONF_USERNAME)): str,
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            )
+            return self.async_show_form(step_id="reauth_confirm", data_schema=schema, errors=errors)
+
+        # Save back to entry
+        new_data = dict(entry.data)
+        new_data[CONF_USERNAME] = user_input[CONF_USERNAME]
+        new_data[CONF_PASSWORD] = user_input[CONF_PASSWORD]
+        self.hass.config_entries.async_update_entry(entry, data=new_data)
+        await self.hass.config_entries.async_reload(entry.entry_id)
+        return self.async_abort(reason="reauth_successful")
+
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
@@ -120,4 +167,3 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
 async def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> OptionsFlowHandler:
     return OptionsFlowHandler(config_entry)
-

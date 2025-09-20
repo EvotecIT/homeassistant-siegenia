@@ -37,6 +37,13 @@ The implementation is based on the author's prior Homebridge plugin and Siegenia
   - 100% → Open
 - Service `siegenia.set_mode` for discrete actions (`OPEN`, `CLOSE`, `GAP_VENT`, `CLOSE_WO_LOCK`, `STOP_OVER`, `STOP`)
 
+### Quick Buttons
+
+- Built-in Button entities (under the device) for: Open, Close, Gap Vent, Close w/o Lock, Stop Over, Stop.
+- Optional script blueprint: `blueprints/script/evotecit/siegenia_mode_button.yaml`.
+  - Import via Settings → Automations & Scenes → Blueprints → Import Blueprint → paste repo URL, or copy the file into your HA `blueprints/script/...` folder.
+  - Create a script from the blueprint, pick your Siegenia cover, and choose the mode. Add the script to your dashboard as a button.
+
 ## Notes
 
 - The controller uses a self-signed TLS certificate; this integration connects with certificate verification disabled for local LAN use.
@@ -45,4 +52,17 @@ The implementation is based on the author's prior Homebridge plugin and Siegenia
 ## Credits
 
 - Inspiration and protocol reference: Homebridge plugin and Siegenia.NET by the repo author.
+- Lovelace Examples
 
+  - Tile (built-in): examples/lovelace/tile-basic.yaml
+  - Mushroom (compact): examples/lovelace/mushroom-compact.yaml
+  - Mushroom (detailed): examples/lovelace/mushroom-detailed.yaml
+
+  Replace `cover.siegenia_window` and button entity ids with your actual entities (shown under the device). For Mushroom cards, install the “Mushroom” frontend via HACS and reload resources.
+
+## Development
+
+- Run tests locally:
+  - `pip install -r requirements_test.txt`
+  - `pytest`
+- CI: GitHub Actions workflow runs tests on Python 3.11 and 3.12 (`.github/workflows/ci.yml`).

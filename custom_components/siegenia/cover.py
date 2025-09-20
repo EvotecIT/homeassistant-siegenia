@@ -18,6 +18,7 @@ from .const import (
     STATE_MOVING,
     STATE_TO_POSITION,
     position_to_command,
+    DEVICE_TYPE_MAP,
 )
 
 
@@ -46,10 +47,11 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
     @property
     def device_info(self) -> DeviceInfo:
         info = (self.coordinator.device_info or {}).get("data", {})
+        model = DEVICE_TYPE_MAP.get(info.get("type"), info.get("type"))
         return DeviceInfo(
             identifiers={(DOMAIN, info.get("serialnr") or self._entry.data.get("host"))},
             manufacturer="Siegenia",
-            model=info.get("type", 6),
+            model=str(model),
             name=info.get("devicename") or "Siegenia Device",
             sw_version=info.get("softwareversion"),
             hw_version=info.get("hardwareversion"),

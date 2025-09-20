@@ -1,0 +1,58 @@
+# Dashboard -> Edit -> Add Card -> Manual -> paste
+type: vertical-stack
+cards:
+  - type: tile
+    entity: cover.siegenia_window
+    name: Living Room Window
+    features:
+      - type: cover-open-close
+      - type: cover-position
+    tap_action:
+      action: toggle
+    hold_action:
+      action: call-service
+      service: cover.stop_cover
+      target:
+        entity_id: cover.siegenia_window
+
+  - type: grid
+    title: Modes
+    columns: 3
+    square: false
+    cards:
+      - type: tile
+        entity: button.siegenia_open
+        name: Open
+        icon: mdi:window-open
+      - type: tile
+        entity: button.siegenia_close
+        name: Close
+        icon: mdi:window-closed
+      - type: tile
+        entity: button.siegenia_gap_vent
+        name: Gap Vent
+        icon: mdi:arrow-expand-horizontal
+      - type: tile
+        entity: button.siegenia_close_w_o_lock
+        name: Close w/o Lock
+        icon: mdi:lock-open-outline
+      - type: tile
+        entity: button.siegenia_stop_over
+        name: Stop Over
+        icon: mdi:gesture-tap
+      - type: tile
+        entity: button.siegenia_stop
+        name: Stop
+        icon: mdi:stop
+
+  - type: entities
+    title: Status
+    entities:
+      - entity: sensor.siegenia_window_state
+        name: Window State
+      - entity: sensor.siegenia_window_open_count
+        name: Open Count
+      - entity: binary_sensor.siegenia_window_moving
+        name: Moving
+      - entity: binary_sensor.siegenia_warning_active
+        name: Warning Active

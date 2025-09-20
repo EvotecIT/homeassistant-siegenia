@@ -18,7 +18,7 @@ CONF_ENABLE_STATE_SENSOR = "enable_state_sensor"
 CONF_DEBUG = "debug"
 CONF_INFORMATIONAL = "informational"
 
-PLATFORMS = ["cover", "sensor", "binary_sensor"]
+PLATFORMS = ["cover", "sensor", "binary_sensor", "button"]
 
 # Raw device states observed from Siegenia API
 STATE_OPEN = "OPEN"
@@ -52,4 +52,16 @@ def position_to_command(position: int) -> str | None:
     if position == 0:
         return "CLOSE"
     return None
-
+# Device type map (same as Homebridge mapping)
+DEVICE_TYPE_MAP = {
+    1: "AEROPAC",
+    2: "AEROMAT VT",
+    3: "DRIVE axxent Family",
+    4: "SENSOAIR",
+    5: "AEROVITAL",
+    6: "MHS Family",
+    7: "reserved",
+    8: "AEROTUBE",
+    9: "GENIUS B",
+    10: "Universal Module",
+}
