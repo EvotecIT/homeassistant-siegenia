@@ -4,6 +4,7 @@ from typing import Any
 from pathlib import Path
 from datetime import timedelta
 
+from typing import TYPE_CHECKING
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -35,8 +36,13 @@ def _write_b64(path: Path, b64data: str) -> None:
     path.write_bytes(base64.b64decode(b64data))
 
 
-# Compatible type alias for Python 3.11+
-SiegeniaConfigEntry = ConfigEntry[SiegeniaDataUpdateCoordinator]
+# Compatible type alias across HA versions (ConfigEntry may be non-generic)
+if TYPE_CHECKING:
+    # During type checking use the generic form
+    from homeassistant.config_entries import ConfigEntry as _Cfg
+    SiegeniaConfigEntry = _Cfg[SiegeniaDataUpdateCoordinator]  # type: ignore[misc]
+else:  # runtime: fall back to non-parameterized
+    SiegeniaConfigEntry = ConfigEntry  # type: ignore[assignment]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
