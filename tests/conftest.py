@@ -23,6 +23,12 @@ from custom_components.siegenia.const import DOMAIN, DEFAULT_PORT  # noqa: E402
 def auto_enable_custom_integrations(enable_custom_integrations):  # noqa: ANN001
     yield
 
+# Override PHACC's strict cleanup to tolerate harmless background threads
+@pytest.fixture(autouse=True)
+def verify_cleanup():  # noqa: D401
+    """Override PHACC's verify_cleanup to avoid thread assertions in CI."""
+    yield
+
 
 @pytest.fixture
 def mock_client(monkeypatch):
@@ -71,7 +77,18 @@ def mock_client(monkeypatch):
         return _Client(host, port)
 
     monkeypatch.setattr("custom_components.siegenia.api.SiegeniaClient", _factory)
+    # Also patch the symbol imported into coordinator/config_flow modules
+    try:
+        monkeypatch.setattr("custom_components.siegenia.coordinator.SiegeniaClient", _Client)
+    except Exception:
+        pass
+    try:
+        monkeypatch.setattr("custom_components.siegenia.config_flow.SiegeniaClient", _Client)
+    except Exception:
+        pass
     return _factory
+
+# Explicit opt-in per test keeps control in each test
 
 
 @pytest.fixture

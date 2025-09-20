@@ -5,8 +5,8 @@ from homeassistant.const import ATTR_ENTITY_ID
 
 async def test_cover_commands(hass, setup_integration):
     # Entity should be there
-    eid = "cover.siegenia_window"
-    assert hass.states.get(eid) is not None
+    eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
+    assert eid
 
     # Open
     await hass.services.async_call("cover", "open_cover", {ATTR_ENTITY_ID: eid}, blocking=True)
@@ -25,7 +25,7 @@ async def test_cover_commands(hass, setup_integration):
 
 
 async def test_set_position_maps_to_stop_over(hass, setup_integration):
-    eid = "cover.siegenia_window"
+    eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
     await hass.services.async_call("cover", "set_cover_position", {ATTR_ENTITY_ID: eid, "position": 50}, blocking=True)
     entry = setup_integration
     client = hass.data[entry.domain][entry.entry_id].client
@@ -33,7 +33,7 @@ async def test_set_position_maps_to_stop_over(hass, setup_integration):
 
 
 async def test_integration_services(hass, setup_integration):
-    eid = "cover.siegenia_window"
+    eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
 
     # set_mode service
     await hass.services.async_call("siegenia", "set_mode", {"entity_id": eid, "mode": "GAP_VENT"}, blocking=True)
@@ -47,4 +47,3 @@ async def test_integration_services(hass, setup_integration):
     client.reboot_device.assert_called()
     client.reset_device.assert_called()
     client.renew_cert.assert_called()
-

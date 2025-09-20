@@ -2,8 +2,8 @@ from homeassistant.const import ATTR_ENTITY_ID
 
 
 async def test_mode_select_entity(hass, setup_integration):
-    eid = "select.siegenia_mode"
-    assert hass.states.get(eid) is not None
+    eid = next(s.entity_id for s in hass.states.async_all("select") if s.entity_id.endswith("_mode"))
+    assert eid
 
     # Select GAP_VENT
     await hass.services.async_call("select", "select_option", {ATTR_ENTITY_ID: eid, "option": "gap_vent"}, blocking=True)

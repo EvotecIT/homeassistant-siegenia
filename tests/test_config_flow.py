@@ -13,7 +13,7 @@ from custom_components.siegenia.const import DOMAIN
 from custom_components.siegenia.api import AuthenticationError
 
 
-async def test_user_flow_success(hass, monkeypatch):
+async def test_user_flow_success(hass, monkeypatch, mock_client):
     # Mock client factory in conftest creates a working client
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -52,7 +52,9 @@ async def test_user_flow_auth_error(hass, monkeypatch):
 
         return _C()
 
+    # Patch both api and the symbol imported into config_flow
     monkeypatch.setattr("custom_components.siegenia.api.SiegeniaClient", _factory)
+    monkeypatch.setattr("custom_components.siegenia.config_flow.SiegeniaClient", _factory)
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
