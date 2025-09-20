@@ -1,7 +1,13 @@
 import pytest
 
 from homeassistant import config_entries
-from homeassistant.data_entry_flow import RESULT_TYPE_CREATE_ENTRY
+try:
+    # Newer HA
+    from homeassistant.data_entry_flow import FlowResultType as _FlowResultType  # type: ignore
+    _CREATE = _FlowResultType.CREATE_ENTRY
+except Exception:  # noqa: BLE001
+    _FlowResultType = None
+    _CREATE = "create_entry"
 
 from custom_components.siegenia.const import DOMAIN
 from custom_components.siegenia.api import AuthenticationError
@@ -27,7 +33,8 @@ async def test_user_flow_success(hass, monkeypatch):
 
     result2 = await hass.config_entries.flow.async_configure(result["flow_id"], user_input=user_input)
     await hass.async_block_till_done()
-    assert result2["type"] == RESULT_TYPE_CREATE_ENTRY
+    # Works on both old and new HA versions
+    assert result2["type"] == _CREATE or result2["type"] == "create_entry"
     assert result2["title"] == "Siegenia Test"
     assert result2["data"]["host"] == "192.0.2.1"
 
@@ -56,4 +63,3 @@ async def test_user_flow_auth_error(hass, monkeypatch):
     )
     assert result2["type"] == "form"
     assert result2["errors"]["base"] == "auth"
-

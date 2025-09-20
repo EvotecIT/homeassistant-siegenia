@@ -123,3 +123,24 @@ dist
 /ignore/*
 .venv
 .venv-tests
+
+# ------------- Python ------------- #
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.hypothesis/
+.tox/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+.dmypy.json
+.pyre/
+
+# Generated brand assets (created by tools/gen_brand_icons.py)
+build/brand/

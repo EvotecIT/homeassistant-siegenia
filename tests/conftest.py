@@ -1,9 +1,27 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
 import pytest
 from unittest.mock import AsyncMock
 
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
+# Ensure repository root is on sys.path so `custom_components` is importable in CI
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from custom_components.siegenia.const import DOMAIN, DEFAULT_PORT
+# Auto-load pytest plugin for HA fixtures
+pytest_plugins = "pytest_homeassistant_custom_component"
+
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME  # noqa: E402
+
+from custom_components.siegenia.const import DOMAIN, DEFAULT_PORT  # noqa: E402
+
+# Ensure HA loads custom components from this repository during tests
+@pytest.fixture(autouse=True)
+def auto_enable_custom_integrations(enable_custom_integrations):  # noqa: ANN001
+    yield
 
 
 @pytest.fixture
@@ -68,7 +86,10 @@ def config_entry_data():
 
 @pytest.fixture
 async def setup_integration(hass, mock_client, config_entry_data):  # noqa: ARG001
-    entry = hass.config_entries.async_create_entry(domain=DOMAIN, data=config_entry_data, title="Siegenia Test")
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    entry = MockConfigEntry(domain=DOMAIN, data=config_entry_data, title="Siegenia Test")
+    entry.add_to_hass(hass)
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     return entry

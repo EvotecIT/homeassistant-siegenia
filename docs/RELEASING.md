@@ -9,9 +9,6 @@ A short, repeatable checklist to cut a clean release and wrap things up nicely.
 
 ## 1) Version bump
 - Update `custom_components/siegenia/manifest.json` → `version` (semver).
-- Update `CHANGELOG.md`:
-  - Move items under `[Unreleased]` to a new `## vX.Y.Z - YYYY-MM-DD` section.
-  - Note any breaking changes (entity IDs, services), and migration notes.
 
 ## 2) Validate locally
 - Create venv and run tests:
@@ -29,11 +26,9 @@ A short, repeatable checklist to cut a clean release and wrap things up nicely.
 - After merge, consider removing the local PNG serving fallback from `__init__.py` in a future release.
 
 ## 4) Tag and Release
-- Commit the version bump + changelog.
+- Commit the version bump.
 - Create a signed tag: `git tag -a vX.Y.Z -m "Siegenia vX.Y.Z" && git push --tags`.
-- Create GitHub Release:
-  - Title: `vX.Y.Z`
-  - Notes: copy the section from `CHANGELOG.md`.
+- Create a GitHub Release and write the changelog in the release notes.
 
 ## 5) HACS
 - If not yet on the default HACS list, users can add this repo as a custom repository.
@@ -44,7 +39,7 @@ A short, repeatable checklist to cut a clean release and wrap things up nicely.
 - Check Integrations page icon appears (brands PR/CDN can take time).
 - Triage any incoming issues; label with `bug`, `enhancement`, `question`.
 
-## Migration Notes Template
+## Migration Notes Checklist (for Releases)
 - Entity IDs: If you used the built‑in “Recreate entity ID”, IDs may change to `<device>_<entity>`; update any automations.
 - Legacy `_none` IDs: Use HA’s tool or `siegenia.repair_names` (optional) to normalize.
 - Options: New Options may reset to defaults; review `Settings → Integrations → Siegenia → Configure`.
