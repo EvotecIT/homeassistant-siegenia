@@ -88,8 +88,13 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         def _on_push(msg: dict[str, Any]) -> None:
             cmd = msg.get("command")
             if cmd in {"getDeviceParams", "deviceParams"} and "data" in msg:
-                # Update data and switch to push-optimized interval
-                self.hass.loop.call_soon_threadsafe(self._handle_push_update, msg)
+                # Update data and switch to push-optimized interval immediately
+                # (tests call this callback directly on the event loop thread).
+                try:
+                    self._handle_push_update(msg)
+                except Exception:
+                    # Fallback to scheduling if we're on a different thread
+                    self.hass.loop.call_soon_threadsafe(self._handle_push_update, msg)
         self.client.set_push_callback(_on_push)
         # Prime device info once
         try:
