@@ -121,3 +121,4 @@ dist
 .vs/*
 /lib/*
 /ignore/*
+.venv
