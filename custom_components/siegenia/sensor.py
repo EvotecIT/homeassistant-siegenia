@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, resolve_model
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
@@ -28,6 +28,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     # Timer-related sensors
     entities.append(SiegeniaTimerEnabledSensor(coordinator, entry, serial))
     entities.append(SiegeniaTimerRemainingSensor(coordinator, entry, serial))
+    # Operation source (command vs manual vs idle)
+    entities.append(SiegeniaOperationSourceSensor(coordinator, entry, serial))
     if entities:
         async_add_entities(entities)
 
@@ -45,7 +47,7 @@ class _BaseSiegeniaEntity(CoordinatorEntity):
             "identifiers": {(DOMAIN, self._serial)},
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
-            "model": info.get("type", 6),
+            "model": resolve_model(info),
             "sw_version": info.get("softwareversion"),
         }
 
@@ -170,6 +172,39 @@ class SiegeniaTimerRemainingSensor(_BaseSiegeniaEntity, SensorEntity):
         if h is None or m is None:
             return None
         return f"{int(h):02d}:{int(m):02d}"
+
+
+class SiegeniaOperationSourceSensor(_BaseSiegeniaEntity, SensorEntity):
+    _attr_has_entity_name = True
+    _attr_translation_key = "operation_source"
+    _attr_icon = "mdi:account-arrow-right"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._serial}-operation-source"
+
+    @property
+    def native_value(self) -> str | None:
+        data = (self.coordinator.data or {}).get("data", {})
+        states = data.get("states") or {}
+        state = states.get("0")
+        if state == "MOVING":
+            try:
+                return "COMMAND" if self.coordinator.is_recent_cmd(0, within=5.0) else "MANUAL"
+            except Exception:
+                return "MANUAL"
+        return "IDLE"
+
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        try:
+            return {
+                "last_command": self.coordinator.get_last_cmd(0),
+                "last_stable_state": self.coordinator.get_last_stable_state(0),
+            }
+        except Exception:
+            return None
 
 
 class SiegeniaOpenCountSensor(_BaseSiegeniaEntity, RestoreEntity, SensorEntity):

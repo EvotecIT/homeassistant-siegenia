@@ -58,6 +58,27 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.warning_notifications: bool = True
         self.warning_events: bool = True
         self._motion_revert_handle = None
+        # Last command per sash (shared across entities for better UX during motion)
+        self._last_cmd_by_sash: dict[int, str | None] = {}
+        self._last_cmd_ts_by_sash: dict[int, float] = {}
+        self._last_stable_state_by_sash: dict[int, str | None] = {}
+        self._manual_active_by_sash: dict[int, bool] = {}
+
+    # Shared helpers for entities
+    def set_last_cmd(self, sash: int, cmd: str | None) -> None:
+        s = int(sash)
+        self._last_cmd_by_sash[s] = cmd
+        self._last_cmd_ts_by_sash[s] = time.monotonic()
+
+    def get_last_cmd(self, sash: int) -> str | None:
+        return self._last_cmd_by_sash.get(int(sash))
+
+    def is_recent_cmd(self, sash: int, within: float = 5.0) -> bool:
+        ts = self._last_cmd_ts_by_sash.get(int(sash))
+        return ts is not None and (time.monotonic() - ts) <= within
+
+    def get_last_stable_state(self, sash: int) -> str | None:
+        return self._last_stable_state_by_sash.get(int(sash))
 
     async def async_setup(self) -> None:
         await self.client.connect()
@@ -86,6 +107,14 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._adjust_interval(params)
             # Check warnings on polled data too
             self._handle_warnings(params)
+            # Track last stable states per sash for UX when MOVING without a recent command
+            try:
+                states = ((params or {}).get("data") or {}).get("states") or {}
+                for k, v in states.items():
+                    if v and v != "MOVING":
+                        self._last_stable_state_by_sash[int(k)] = v
+            except Exception:
+                pass
             return params
         except AuthenticationError as err:
             # Trigger reauth flow in HA
@@ -97,7 +126,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Mark push as active; slow down poller while push is flowing
         self._last_push_monotonic = time.monotonic()
         # Prefer motion interval if moving; else push interval
-        moving = any(v == "MOVING" for v in (msg.get("data") or {}).get("states", {}).values())
+        states_map = (msg.get("data") or {}).get("states", {})
+        moving = any(v == "MOVING" for v in states_map.values())
         if moving:
             self.update_interval = self._motion_interval
         else:
@@ -132,7 +162,61 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except Exception:
             merged = msg
         self.async_set_updated_data(merged)
+        # Track last stable states
+        try:
+            for k, v in states_map.items():
+                if v and v != "MOVING":
+                    self._last_stable_state_by_sash[int(k)] = v
+        except Exception:
+            pass
+        # Detect manual operation edges and emit log/event once
+        try:
+            for k, v in states_map.items():
+                sash = int(k)
+                moving = v == "MOVING"
+                recent = self.is_recent_cmd(sash, within=5.0)
+                manual = bool(moving and not recent)
+                prev = self._manual_active_by_sash.get(sash, False)
+                if manual and not prev:
+                    # Edge: manual started
+                    self._manual_active_by_sash[sash] = True
+                    self._log_manual_operation(sash)
+                elif not manual and prev:
+                    self._manual_active_by_sash[sash] = False
+        except Exception:
+            pass
         self._handle_warnings(msg)
+
+    def _log_manual_operation(self, sash: int) -> None:
+        try:
+            serial = ((self.device_info or {}).get("data", {}) or {}).get("serialnr") or self.host
+            name = f"Siegenia {serial}"
+            msg = f"Manual operation detected (sash {sash})"
+            # Best-effort logbook entry
+            try:
+                self.hass.async_create_task(
+                    self.hass.services.async_call(
+                        "logbook",
+                        "log",
+                        {"name": name, "message": msg, "domain": "siegenia"},
+                        blocking=False,
+                    )
+                )
+            except Exception:
+                pass
+            # Also fire a dedicated event for automations
+            self.hass.bus.async_fire(
+                "siegenia_operation",
+                {
+                    "host": self.host,
+                    "serial": serial,
+                    "sash": sash,
+                    "manual": True,
+                    "last_command": self.get_last_cmd(sash),
+                },
+            )
+        except Exception:
+            pass
 
     def _adjust_interval(self, payload: dict[str, Any]) -> None:
         data = (payload or {}).get("data") or {}

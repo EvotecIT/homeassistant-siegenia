@@ -117,6 +117,9 @@
     }
   },
   "entity": {
+    "cover": {
+      "window": {"name": "Okno"}
+    },
     "binary_sensor": {
       "online": {"name": "Online"},
       "moving": {"name": "Ruch"},
@@ -146,6 +149,14 @@
     "sensor": {
       "open_count": {"name": "Licznik otwarć okna"},
       "firmware_update": {"name": "Aktualizacja oprogramowania"},
+      "operation_source": {
+        "name": "Źródło operacji",
+        "state": {
+          "COMMAND": "Z polecenia",
+          "MANUAL": "Ręczna",
+          "IDLE": "Bezczynne"
+        }
+      },
       "window_state": {
         "name": "Stan okna",
         "state": {

@@ -101,27 +101,65 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         state = self._current_state()
         if state != STATE_MOVING:
             return None
-        return True if self._last_cmd in {"OPEN", "STOP_OVER", "GAP_VENT"} else None
+        last = self._last_cmd or getattr(self.coordinator, "get_last_cmd", lambda _s: None)(self._sash)
+        # Treat manual movement as unknown direction
+        try:
+            if not self.coordinator.is_recent_cmd(self._sash, within=5.0):
+                return None
+        except Exception:
+            pass
+        return True if last in {"OPEN", "STOP_OVER", "GAP_VENT"} else None
 
     @property
     def is_closing(self) -> bool | None:
         state = self._current_state()
         if state != STATE_MOVING:
             return None
-        return True if self._last_cmd in {"CLOSE", "CLOSE_WO_LOCK"} else None
+        last = self._last_cmd or getattr(self.coordinator, "get_last_cmd", lambda _s: None)(self._sash)
+        try:
+            if not self.coordinator.is_recent_cmd(self._sash, within=5.0):
+                return None
+        except Exception:
+            pass
+        return True if last in {"CLOSE", "CLOSE_WO_LOCK"} else None
+
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        try:
+            state = self._current_state()
+            moving = state == STATE_MOVING
+            recent = self.coordinator.is_recent_cmd(self._sash, within=5.0)
+            return {
+                "manual_operation": bool(moving and not recent),
+                "last_command": self.coordinator.get_last_cmd(self._sash),
+            }
+        except Exception:
+            return None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         self._last_cmd = "OPEN"
+        try:
+            self.coordinator.set_last_cmd(self._sash, self._last_cmd)
+        except Exception:
+            pass
         await self.coordinator.client.open_close(self._sash, "OPEN")
         await self.coordinator.async_request_refresh()
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         self._last_cmd = "CLOSE"
+        try:
+            self.coordinator.set_last_cmd(self._sash, self._last_cmd)
+        except Exception:
+            pass
         await self.coordinator.client.open_close(self._sash, "CLOSE")
         await self.coordinator.async_request_refresh()
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         self._last_cmd = "STOP"
+        try:
+            self.coordinator.set_last_cmd(self._sash, self._last_cmd)
+        except Exception:
+            pass
         await self.coordinator.client.stop(self._sash)
         await self.coordinator.async_request_refresh()
 
@@ -142,5 +180,9 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         if cmd is None:
             return
         self._last_cmd = cmd
+        try:
+            self.coordinator.set_last_cmd(self._sash, self._last_cmd)
+        except Exception:
+            pass
         await self.coordinator.client.open_close(self._sash, cmd)
         await self.coordinator.async_request_refresh()

@@ -64,5 +64,23 @@
         }
       }
     }
+  },
+  "entity": {
+    "cover": {
+      "window": {"name": "Window"}
+    },
+    "sensor": {
+      "operation_source": {
+        "name": "Operation Source",
+        "state": {
+          "COMMAND": "Commanded",
+          "MANUAL": "Manual",
+          "IDLE": "Idle"
+        }
+      }
+    },
+    "select": {
+      "mode": {"name": "Mode"}
+    }
   }
 }

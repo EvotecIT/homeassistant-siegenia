@@ -6,17 +6,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo
 
-from .const import DOMAIN, SELECT_OPTIONS, STATE_TO_SELECT
+from .const import DOMAIN, SELECT_OPTIONS, STATE_TO_SELECT, STATE_MOVING
 
 # Friendly labels for options (fallback English)
-LABEL_BY_VALUE = {
-    "OPEN": "Open",
-    "CLOSE": "Close",
-    "GAP_VENT": "Gap Vent",
-    "CLOSE_WO_LOCK": "Close (no lock)",
-    "STOP_OVER": "Stop Over",
-    "STOP": "Stop",
-}
+# We expose raw options (OPEN/CLOSE/…) and let HA translate via
+# translations: entity.select.mode.state.*
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
@@ -29,7 +23,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
     _attr_has_entity_name = True
-    _attr_options = list(LABEL_BY_VALUE.values())
+    # Raw options; frontend shows translated labels
+    _attr_options = SELECT_OPTIONS
     _attr_translation_key = "mode"
 
     def __init__(self, coordinator, entry: ConfigEntry, sash: int) -> None:
@@ -46,17 +41,53 @@ class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
         data = params.get("data") or {}
         state = (data.get("states") or {}).get(str(self._sash))
         raw = STATE_TO_SELECT.get(state)
-        return LABEL_BY_VALUE.get(raw)
+        # If device reports MOVING or an unmapped state, keep last commanded option
+        if raw is None or state == STATE_MOVING:
+            try:
+                # Prefer a recent command; otherwise fallback to last stable state mapping
+                if self.coordinator.is_recent_cmd(self._sash, within=5.0):
+                    last = self.coordinator.get_last_cmd(self._sash)
+                    if last in self._attr_options:
+                        return last
+                stable = self.coordinator.get_last_stable_state(self._sash)
+                fallback = STATE_TO_SELECT.get(stable)
+                if fallback in self._attr_options:
+                    return fallback
+            except Exception:
+                pass
+        return raw
 
     async def async_select_option(self, option: str) -> None:
-        # Dispatch to device (map label back to raw)
-        value_by_label = {v: k for k, v in LABEL_BY_VALUE.items()}
-        raw = value_by_label.get(option, option)
-        if raw == "STOP":
+        # Option is already a raw value (OPEN/CLOSE/…)
+        if option == "STOP":
             await self.coordinator.client.stop(self._sash)
         else:
-            await self.coordinator.client.open_close(self._sash, raw)
+            await self.coordinator.client.open_close(self._sash, option)
+        # Remember last command for motion inference across entities
+        try:
+            self.coordinator.set_last_cmd(self._sash, option)
+        except Exception:
+            pass
         await self.coordinator.async_request_refresh()
+
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        try:
+            params = self.coordinator.data or {}
+            data = params.get("data") or {}
+            state = (data.get("states") or {}).get(str(self._sash))
+            moving = state == STATE_MOVING
+            recent = self.coordinator.is_recent_cmd(self._sash, within=5.0)
+            manual = bool(moving and not recent)
+            stable = self.coordinator.get_last_stable_state(self._sash)
+            return {
+                "moving": moving,
+                "manual_operation": manual,
+                "last_command": self.coordinator.get_last_cmd(self._sash),
+                "last_stable_state": stable,
+            }
+        except Exception:
+            return None
 
     @property
     def device_info(self) -> DeviceInfo:

@@ -98,8 +98,11 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
 ## Branding
 
 - Vector sources are in `assets/brand` and `assets/icons`.
-- Optional PNGs for brands: `python tools/gen_brand_icons.py` → writes `build/brand/icon.png` and `logo.png`.
-- The integration serves its brand art automatically at the HA brand URLs; a hard refresh may be needed on first load.
+- Generate PNGs for the Home Assistant brands repo:
+  - `.venv/bin/python tools/gen_brand_icons.py`
+  - Outputs: `build/brand/icon.png` (256×256), `logo.png` (512×256), plus `icon@2x.png` and `logo@2x.png`.
+- The integration serves any files in `build/brand/` at `/static/icons/brands/siegenia/` so your local instance shows the logo immediately after a restart.
+- Full PR checklist and steps: `docs/brands-pr/README.md`.
 
 ### Use the custom icons in dashboards
 
@@ -155,3 +158,27 @@ Optional clean‑ups (rarely needed)
 - Developer Tools → Statistics: clear/fix any lingering compiled statistics for removed sensors.
 - Browser cache: hard‑refresh (Ctrl/Cmd+Shift+R) to ensure the latest logo/strings load.
 - Advanced (only if the UI removal failed): while HA is stopped, remove the old entry from `.storage/core.config_entries` (JSON). Use with care.
+
+### Fix legacy "_none" entity_ids using built‑in tools
+
+Home Assistant can regenerate entity_ids for you based on the current (translated) names:
+
+- Settings → Devices & Services → Entities → filter Integration = Siegenia.
+- If any entity shows a customized/blank name, open it and click “Restore name”.
+- Select the entities you want to fix → overflow menu → “Recreate entity ID”.
+
+This uses our defaults (`has_entity_name` + `translation_key`) so ids become `cover.<device>_window`, `select.<device>_mode`, etc. If you prefer automation, we also provide a service `siegenia.repair_names` that can clear bad names and (optionally) rename ids. You can choose a scheme:
+
+- `device_entity` (default): `<device>_<entity>` → e.g., `okno_salon_window`.
+- `brand_type_place` (optional): `siegenia_<entity>_<device>` → e.g., `siegenia_window_okno_salon`.
+
+Example service data:
+
+```
+service: siegenia.repair_names
+data:
+  rename_entity_ids: true
+  dry_run: false
+  only_suffix_none: false
+  scheme: brand_type_place
+```

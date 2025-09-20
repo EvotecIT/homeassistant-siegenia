@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, STATE_MOVING
+from .const import DOMAIN, STATE_MOVING, resolve_model
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
@@ -49,6 +49,7 @@ class SiegeniaOnlineBinary(CoordinatorEntity, BinarySensorEntity):
             "identifiers": {(DOMAIN, self._serial)},
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
+            "model": resolve_model(info),
             "configuration_url": f"https://{self._entry.data.get('host')}:{getattr(self.coordinator, 'port', 443)}",
         }
 
@@ -78,6 +79,7 @@ class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
             "identifiers": {(DOMAIN, self._serial)},
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
+            "model": resolve_model(info),
             "configuration_url": f"https://{self._entry.data.get('host')}:{getattr(self.coordinator, 'port', 443)}",
         }
 
@@ -108,5 +110,6 @@ class SiegeniaWarningBinary(CoordinatorEntity, BinarySensorEntity):
             "identifiers": {(DOMAIN, self._serial)},
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
+            "model": resolve_model(info),
         }
 from homeassistant.helpers.entity import EntityCategory

@@ -142,6 +142,9 @@
     }
   },
   "entity": {
+    "cover": {
+      "window": {"name": "Window"}
+    },
     "binary_sensor": {
       "online": {"name": "Online"},
       "moving": {"name": "Moving"},
@@ -171,6 +174,14 @@
     "sensor": {
       "open_count": {"name": "Window Open Count"},
       "firmware_update": {"name": "Firmware Update"},
+      "operation_source": {
+        "name": "Operation Source",
+        "state": {
+          "COMMAND": "Commanded",
+          "MANUAL": "Manual",
+          "IDLE": "Idle"
+        }
+      },
       "window_state": {
         "name": "Window State",
         "state": {
