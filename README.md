@@ -92,7 +92,7 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
 - Run tests locally:
   - `pip install -r requirements_test.txt`
   - `pytest`
-- CI: `.github/workflows/ci.yml` (Python 3.11/3.12/3.13; HA 2025.8/2025.9)
+- CI: `.github/workflows/ci.yml` (Python 3.11/3.12; Home Assistant installed via pytest-homeassistant-custom-component)
 - Validation: `.github/workflows/hassfest.yml`, `.github/workflows/validate-hacs.yml`
 
 ## Branding

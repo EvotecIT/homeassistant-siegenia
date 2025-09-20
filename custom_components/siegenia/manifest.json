@@ -1,7 +1,7 @@
 {
   "domain": "siegenia",
   "name": "Siegenia",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "documentation": "https://github.com/EvotecIT/homeassistant-siegenia",
   "codeowners": ["@EvotecIT", "@PrzemyslawKlys"],
   "issue_tracker": "https://github.com/EvotecIT/homeassistant-siegenia/issues",
