@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Siegenia",
+        "description": "Enter connection details for your Siegenia window controller.",
+        "data": {
+          "host": "Host/IP",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "ws_protocol": "WS Protocol",
+          "poll_interval": "Poll interval (s)",
+          "heartbeat_interval": "Heartbeat interval (s)"
+        }
+      }
+    },
+    "error": {
+      "auth": "Authentication failed. Check username/password.",
+      "cannot_connect": "Failed to connect to the device."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Siegenia Options",
+        "data": {
+          "poll_interval": "Poll interval (s)",
+          "heartbeat_interval": "Heartbeat interval (s)",
+          "enable_position_slider": "Enable slider (maps to discrete positions)",
+          "enable_open_count": "Expose open count sensor",
+          "enable_state_sensor": "Expose raw state sensor",
+          "debug": "Enable debug logs",
+          "informational": "Log window state periodically"
+        }
+      }
+    }
+  }
+}
+

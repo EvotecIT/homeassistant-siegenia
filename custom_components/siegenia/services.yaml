@@ -1,0 +1,21 @@
+set_mode:
+  name: Set Window Mode
+  description: Send a discrete mode command to the Siegenia window.
+  fields:
+    entity_id:
+      selector:
+        entity:
+          integration: siegenia
+          domain: cover
+    mode:
+      required: true
+      example: OPEN
+      selector:
+        select:
+          options:
+            - OPEN
+            - CLOSE
+            - GAP_VENT
+            - CLOSE_WO_LOCK
+            - STOP_OVER
+            - STOP
