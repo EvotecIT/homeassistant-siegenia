@@ -185,6 +185,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     self._manual_active_by_sash[sash] = False
         except Exception:
             pass
+        # Handle warnings immediately; in tests the listener is set up before push
+        # and a subsequent sleep(0) will process this event.
         self._handle_warnings(msg)
 
     def _log_manual_operation(self, sash: int) -> None:
@@ -252,7 +254,12 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if warnings:
             if self.warning_notifications:
                 try:
-                    self.hass.components.persistent_notification.async_create(
+                    from homeassistant.components.persistent_notification import (
+                        async_create as pn_create,
+                    )
+
+                    pn_create(
+                        self.hass,
                         key or "Warning reported",
                         title="Siegenia Warning",
                         notification_id=notif_id,
@@ -267,7 +274,11 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             if self.warning_notifications:
                 try:
-                    self.hass.components.persistent_notification.async_dismiss(notif_id)
+                    from homeassistant.components.persistent_notification import (
+                        async_dismiss as pn_dismiss,
+                    )
+
+                    pn_dismiss(self.hass, notif_id)
                 except Exception:
                     pass
             if self.warning_events:
