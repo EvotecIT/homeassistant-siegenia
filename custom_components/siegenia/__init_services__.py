@@ -148,7 +148,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             sash_suffix = ""
             if "-sash-" in uid:
                 try:
-                    sash_suffix = f"_sash_{int(uid.split("-sash-")[-1])}"
+                    sash_suffix = f"_sash_{int(uid.split('-sash-')[-1])}"
                 except Exception:
                     sash_suffix = ""
             if dom == "cover":
