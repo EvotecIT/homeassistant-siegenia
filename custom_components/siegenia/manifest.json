@@ -8,7 +8,7 @@
   "config_flow": true,
   "iot_class": "local_polling",
   "integration_type": "hub",
-  "icon": "mdi:window-open-variant",
+  "dependencies": ["http"],
   "loggers": ["custom_components.siegenia"],
   "requirements": []
 }

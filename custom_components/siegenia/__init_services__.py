@@ -12,7 +12,7 @@ from .const import DOMAIN
 async def async_setup_services(hass: HomeAssistant) -> None:
     async def _handle_set_mode(call: ServiceCall) -> None:
         entity_id: str = call.data["entity_id"]
-        mode: str = call.data["mode"]
+        mode: str = str(call.data["mode"]).strip().upper()
         # Resolve entity to platform entity
         entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
         if entity is None:

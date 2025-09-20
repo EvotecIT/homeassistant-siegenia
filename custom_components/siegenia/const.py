@@ -80,24 +80,48 @@ def state_to_position(state: str, *, stop_over_display: int = DEFAULT_STOP_OVER_
         return int(stop_over_display)
     return STATE_TO_POSITION_DEFAULT.get(state, 0)
 
-# Select options for mode selector
+# Select options for mode selector (lowercase for translations)
 SELECT_OPTIONS = [
-    "OPEN",
-    "CLOSE",
-    "GAP_VENT",
-    "CLOSE_WO_LOCK",
-    "STOP_OVER",
-    "STOP",
+    "open",
+    "close",
+    "gap_vent",
+    "close_wo_lock",
+    "stop_over",
+    "stop",
 ]
 
-# Map raw state -> select option label
+# Map raw state -> select option key (lowercase)
 STATE_TO_SELECT = {
-    STATE_OPEN: "OPEN",
-    STATE_CLOSED: "CLOSE",
-    STATE_GAP_VENT: "GAP_VENT",
-    STATE_CLOSED_WO_LOCK: "CLOSE_WO_LOCK",
-    STATE_STOP_OVER: "STOP_OVER",
-    STATE_STOPPED: "STOP",
+    STATE_OPEN: "open",
+    STATE_CLOSED: "close",
+    STATE_GAP_VENT: "gap_vent",
+    STATE_CLOSED_WO_LOCK: "close_wo_lock",
+    STATE_STOP_OVER: "stop_over",
+    STATE_STOPPED: "stop",
+}
+
+# Map select option key -> device command (uppercase)
+OPTION_TO_CMD = {
+    "open": STATE_OPEN,
+    "close": "CLOSE",
+    "gap_vent": STATE_GAP_VENT,
+    "close_wo_lock": STATE_CLOSED_WO_LOCK,
+    "stop_over": STATE_STOP_OVER,
+    "stop": "STOP",
+}
+
+# Reverse mapping command/state (uppercase) -> option key (lowercase)
+CMD_TO_OPTION = {v: k for k, v in OPTION_TO_CMD.items()}
+
+# Lowercase mapping for sensor state translations
+STATE_TO_LOWER = {
+    STATE_OPEN: "open",
+    STATE_CLOSED: "closed",
+    STATE_GAP_VENT: "gap_vent",
+    STATE_CLOSED_WO_LOCK: "closed_wo_lock",
+    STATE_STOP_OVER: "stop_over",
+    STATE_STOPPED: "stopped",
+    STATE_MOVING: "moving",
 }
 
 # Device type map (same as Homebridge mapping)

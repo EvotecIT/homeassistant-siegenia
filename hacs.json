@@ -1,8 +1,6 @@
 {
   "name": "Siegenia",
   "render_readme": true,
-  "domains": ["siegenia"],
   "homeassistant": "2024.8.0",
   "content_in_root": false
 }
-

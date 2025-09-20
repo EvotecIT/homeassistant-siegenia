@@ -6,7 +6,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo
 
-from .const import DOMAIN, SELECT_OPTIONS, STATE_TO_SELECT, STATE_MOVING
+from .const import (
+    DOMAIN,
+    SELECT_OPTIONS,
+    STATE_TO_SELECT,
+    STATE_MOVING,
+    OPTION_TO_CMD,
+    CMD_TO_OPTION,
+)
 
 # Friendly labels for options (fallback English)
 # We expose raw options (OPEN/CLOSE/…) and let HA translate via
@@ -46,9 +53,11 @@ class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
             try:
                 # Prefer a recent command; otherwise fallback to last stable state mapping
                 if self.coordinator.is_recent_cmd(self._sash, within=5.0):
-                    last = self.coordinator.get_last_cmd(self._sash)
-                    if last in self._attr_options:
-                        return last
+                    last_cmd = self.coordinator.get_last_cmd(self._sash)
+                    if last_cmd:
+                        last_opt = CMD_TO_OPTION.get(last_cmd)
+                        if last_opt in self._attr_options:
+                            return last_opt
                 stable = self.coordinator.get_last_stable_state(self._sash)
                 fallback = STATE_TO_SELECT.get(stable)
                 if fallback in self._attr_options:
@@ -58,14 +67,14 @@ class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
         return raw
 
     async def async_select_option(self, option: str) -> None:
-        # Option is already a raw value (OPEN/CLOSE/…)
-        if option == "STOP":
+        # Option is lower-case; map to device command
+        if option == "stop":
             await self.coordinator.client.stop(self._sash)
         else:
-            await self.coordinator.client.open_close(self._sash, option)
+            await self.coordinator.client.open_close(self._sash, OPTION_TO_CMD.get(option, option.upper()))
         # Remember last command for motion inference across entities
         try:
-            self.coordinator.set_last_cmd(self._sash, option)
+            self.coordinator.set_last_cmd(self._sash, OPTION_TO_CMD.get(option, option.upper()))
         except Exception:
             pass
         await self.coordinator.async_request_refresh()

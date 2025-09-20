@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, resolve_model
+from .const import DOMAIN, resolve_model, STATE_TO_LOWER
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
@@ -66,7 +66,8 @@ class SiegeniaStateSensor(_BaseSiegeniaEntity, SensorEntity):
         params = self.coordinator.data or {}
         data = params.get("data") or {}
         states = data.get("states") or {}
-        return states.get("0")
+        raw = states.get("0")
+        return STATE_TO_LOWER.get(raw, None)
 
 
 class SiegeniaWarningsCountSensor(_BaseSiegeniaEntity, SensorEntity):
@@ -191,10 +192,10 @@ class SiegeniaOperationSourceSensor(_BaseSiegeniaEntity, SensorEntity):
         state = states.get("0")
         if state == "MOVING":
             try:
-                return "COMMAND" if self.coordinator.is_recent_cmd(0, within=5.0) else "MANUAL"
+                return "command" if self.coordinator.is_recent_cmd(0, within=5.0) else "manual"
             except Exception:
-                return "MANUAL"
-        return "IDLE"
+                return "manual"
+        return "idle"
 
     @property
     def extra_state_attributes(self) -> dict | None:

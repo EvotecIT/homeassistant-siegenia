@@ -21,14 +21,6 @@
     }
   },
   "options": {
-    "menu": {
-      "title": "Siegenia Options",
-      "description": "Choose what to configure.",
-      "options": {
-        "general": "General",
-        "connection": "Connection"
-      }
-    },
     "error": {
       "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."
     },
@@ -73,14 +65,69 @@
       "operation_source": {
         "name": "Operation Source",
         "state": {
-          "COMMAND": "Commanded",
-          "MANUAL": "Manual",
-          "IDLE": "Idle"
+          "command": "Commanded",
+          "manual": "Manual",
+          "idle": "Idle"
         }
       }
     },
     "select": {
       "mode": {"name": "Mode"}
+    }
+  }
+  ,
+  "services": {
+    "set_mode": {
+      "name": "Set Window Mode",
+      "description": "Send a discrete mode command to the Siegenia window.",
+      "fields": {
+        "entity_id": {"name": "Entity", "description": "Cover entity to control."},
+        "mode": {"name": "Mode", "description": "Mode to send (open/close/gap_vent/close_wo_lock/stop_over/stop)."}
+      }
+    },
+    "reboot_device": {
+      "name": "Reboot Device",
+      "description": "Reboot the Siegenia controller.",
+      "fields": {"entity_id": {"name": "Entity", "description": "Any entity from the device."}}
+    },
+    "reset_device": {
+      "name": "Factory Reset Device",
+      "description": "Factory reset the controller (use with caution).",
+      "fields": {"entity_id": {"name": "Entity", "description": "Any entity from the device."}}
+    },
+    "renew_cert": {
+      "name": "Renew TLS Certificate",
+      "description": "Renew the device TLS certificate.",
+      "fields": {"entity_id": {"name": "Entity", "description": "Any entity from the device."}}
+    },
+    "sync_clock": {
+      "name": "Sync Device Clock",
+      "description": "Set the device clock to Home Assistant's current time.",
+      "fields": {
+        "entity_id": {"name": "Entity", "description": "Any entity from the device."},
+        "timezone": {"name": "Timezone", "description": "Optional TZ string, e.g. CET-1CEST,M3.5.0,M10.5.0/3."}
+      }
+    },
+    "timer_start": {
+      "name": "Start Timer",
+      "description": "Start the device timer for a duration.",
+      "fields": {
+        "entity_id": {"name": "Entity", "description": "Any entity from the device."},
+        "duration": {"name": "Duration", "description": "Minutes (e.g. 30) or HH:MM (e.g. 1:15)."}
+      }
+    },
+    "timer_stop": {
+      "name": "Stop Timer",
+      "description": "Stop the device timer.",
+      "fields": {"entity_id": {"name": "Entity", "description": "Any entity from the device."}}
+    },
+    "timer_set_duration": {
+      "name": "Set Timer Duration",
+      "description": "Set the default device timer duration.",
+      "fields": {
+        "entity_id": {"name": "Entity", "description": "Any entity from the device."},
+        "duration": {"name": "Duration", "description": "Minutes (e.g. 30) or HH:MM (e.g. 1:15)."}
+      }
     }
   }
 }

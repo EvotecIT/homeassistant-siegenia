@@ -74,103 +74,186 @@
       "name": "Ustaw tryb okna",
       "description": "Wyślij polecenie trybu do okna Siegenia.",
       "fields": {
-        "entity_id": { "name": "Encja" },
-        "mode": { "name": "Tryb" }
+        "entity_id": {
+          "name": "Encja",
+          "description": "Encja cover do sterowania."
+        },
+        "mode": {
+          "name": "Tryb",
+          "description": "Tryb (open/close/gap_vent/close_wo_lock/stop_over/stop)."
+        }
       }
     },
     "reboot_device": {
       "name": "Uruchom ponownie urządzenie",
-      "fields": { "entity_id": { "name": "Encja" } }
+      "fields": {
+        "entity_id": {
+          "name": "Encja",
+          "description": "Dowolna encja z urządzenia."
+        }
+      },
+      "description": "Uruchom ponownie sterownik Siegenia."
     },
     "reset_device": {
       "name": "Przywróć ustawienia fabryczne",
-      "fields": { "entity_id": { "name": "Encja" } }
+      "fields": {
+        "entity_id": {
+          "name": "Encja",
+          "description": "Dowolna encja z urządzenia."
+        }
+      },
+      "description": "Przywróć ustawienia fabryczne (ostrożnie)."
     },
     "renew_cert": {
       "name": "Odnów certyfikat TLS",
-      "fields": { "entity_id": { "name": "Encja" } }
+      "fields": {
+        "entity_id": {
+          "name": "Encja",
+          "description": "Dowolna encja z urządzenia."
+        }
+      },
+      "description": "Odnów certyfikat TLS urządzenia."
     },
     "sync_clock": {
       "name": "Synchronizuj zegar urządzenia",
       "fields": {
-        "entity_id": { "name": "Encja" },
-        "timezone": { "name": "Strefa czasowa" }
-      }
+        "entity_id": {
+          "name": "Encja",
+          "description": "Dowolna encja z urządzenia."
+        },
+        "timezone": {
+          "name": "Strefa czasowa",
+          "description": "Opcjonalny string TZ, np. CET-1CEST,M3.5.0,M10.5.0/3."
+        }
+      },
+      "description": "Ustaw zegar urządzenia na czas z Home Assistant."
     },
     "timer_start": {
       "name": "Uruchom timer",
       "fields": {
-        "entity_id": { "name": "Encja" },
-        "duration": { "name": "Czas trwania" }
-      }
+        "entity_id": {
+          "name": "Encja",
+          "description": "Dowolna encja z urządzenia."
+        },
+        "duration": {
+          "name": "Czas trwania",
+          "description": "Minuty (np. 30) lub HH:MM (np. 1:15)."
+        }
+      },
+      "description": "Uruchom timer urządzenia na czas."
     },
     "timer_stop": {
       "name": "Zatrzymaj timer",
-      "fields": { "entity_id": { "name": "Encja" } }
+      "fields": {
+        "entity_id": {
+          "name": "Encja",
+          "description": "Dowolna encja z urządzenia."
+        }
+      },
+      "description": "Zatrzymaj timer urządzenia."
     },
     "timer_set_duration": {
       "name": "Ustaw czas trwania timera",
       "fields": {
-        "entity_id": { "name": "Encja" },
-        "duration": { "name": "Czas trwania" }
-      }
+        "entity_id": {
+          "name": "Encja",
+          "description": "Dowolna encja z urządzenia."
+        },
+        "duration": {
+          "name": "Czas trwania",
+          "description": "Minuty (np. 30) lub HH:MM (np. 1:15)."
+        }
+      },
+      "description": "Ustaw domyślny czas trwania timera."
     }
   },
   "entity": {
     "cover": {
-      "window": {"name": "Okno"}
+      "window": {
+        "name": "Okno"
+      }
     },
     "binary_sensor": {
-      "online": {"name": "Online"},
-      "moving": {"name": "Ruch"},
-      "warning_active": {"name": "Ostrzeżenie aktywne"}
+      "online": {
+        "name": "Online"
+      },
+      "moving": {
+        "name": "Ruch"
+      },
+      "warning_active": {
+        "name": "Ostrzeżenie aktywne"
+      }
     },
     "button": {
-      "open": {"name": "Otwórz"},
-      "close": {"name": "Zamknij"},
-      "gap_vent": {"name": "Wietrzenie (szczelina)"},
-      "close_wo_lock": {"name": "Zamknij (bez blokady)"},
-      "stop_over": {"name": "Stop over"},
-      "stop": {"name": "Stop"}
+      "open": {
+        "name": "Otwórz"
+      },
+      "close": {
+        "name": "Zamknij"
+      },
+      "gap_vent": {
+        "name": "Wietrzenie (szczelina)"
+      },
+      "close_wo_lock": {
+        "name": "Zamknij (bez blokady)"
+      },
+      "stop_over": {
+        "name": "Stop over"
+      },
+      "stop": {
+        "name": "Stop"
+      }
     },
     "select": {
       "mode": {
         "name": "Tryb",
         "state": {
-          "OPEN": "Otwórz",
-          "CLOSE": "Zamknij",
-          "GAP_VENT": "Wietrzenie (szczelina)",
-          "CLOSE_WO_LOCK": "Zamknij (bez blokady)",
-          "STOP_OVER": "Stop over",
-          "STOP": "Stop"
+          "open": "Otwórz",
+          "close": "Zamknij",
+          "gap_vent": "Wietrzenie (szczelina)",
+          "close_wo_lock": "Zamknij (bez blokady)",
+          "stop_over": "Stop over",
+          "stop": "Stop"
         }
       }
     },
     "sensor": {
-      "open_count": {"name": "Licznik otwarć okna"},
-      "firmware_update": {"name": "Aktualizacja oprogramowania"},
+      "open_count": {
+        "name": "Licznik otwarć okna"
+      },
+      "firmware_update": {
+        "name": "Aktualizacja oprogramowania"
+      },
       "operation_source": {
         "name": "Źródło operacji",
         "state": {
-          "COMMAND": "Z polecenia",
-          "MANUAL": "Ręczna",
-          "IDLE": "Bezczynne"
+          "command": "Z polecenia",
+          "manual": "Ręczna",
+          "idle": "Bezczynne"
         }
       },
       "window_state": {
         "name": "Stan okna",
         "state": {
-          "OPEN": "Otwarte",
-          "CLOSED": "Zamknięte",
-          "GAP_VENT": "Wietrzenie (szczelina)",
-          "CLOSED_WO_LOCK": "Zamknięte (bez blokady)",
-          "STOP_OVER": "Stop over",
-          "STOPPED": "Zatrzymane",
-          "MOVING": "Ruch"
+          "open": "Otwarte",
+          "closed": "Zamknięte",
+          "gap_vent": "Wietrzenie (szczelina)",
+          "closed_wo_lock": "Zamknięte (bez blokady)",
+          "stop_over": "Stop over",
+          "stopped": "Zatrzymane",
+          "moving": "Ruch"
         }
       }
     },
-    "number": {"stopover_distance": {"name": "Odległość Stop Over"}},
-    "update": {"firmware": {"name": "Oprogramowanie"}}
+    "number": {
+      "stopover_distance": {
+        "name": "Odległość Stop Over"
+      }
+    },
+    "update": {
+      "firmware": {
+        "name": "Oprogramowanie"
+      }
+    }
   }
 }

@@ -21,12 +21,9 @@
     }
   },
   "options": {
-    "menu": {
-      "title": "Siegenia Options",
-      "description": "Choose what to configure.",
-      "options": {"general": "General", "connection": "Connection"}
+    "error": {
+      "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."
     },
-    "error": {"invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."},
     "step": {
       "general": {
         "title": "Siegenia Options",
@@ -88,122 +85,197 @@
       "description": "Send a discrete mode command to the Siegenia window.",
       "fields": {
         "entity_id": {
-          "name": "Entity"
+          "name": "Entity",
+          "description": "Cover entity to control."
         },
         "mode": {
-          "name": "Mode"
+          "name": "Mode",
+          "description": "Mode to send (open/close/gap_vent/close_wo_lock/stop_over/stop)."
         }
       }
     },
     "reboot_device": {
       "name": "Reboot Device",
+      "description": "Reboot the Siegenia controller.",
       "fields": {
-        "entity_id": { "name": "Entity" }
+        "entity_id": {
+          "name": "Entity",
+          "description": "Any entity from the device."
+        }
       }
     },
     "reset_device": {
       "name": "Factory Reset Device",
+      "description": "Factory reset the controller (use with caution).",
       "fields": {
-        "entity_id": { "name": "Entity" }
+        "entity_id": {
+          "name": "Entity",
+          "description": "Any entity from the device."
+        }
       }
     },
     "renew_cert": {
       "name": "Renew TLS Certificate",
+      "description": "Renew the device TLS certificate.",
       "fields": {
-        "entity_id": { "name": "Entity" }
+        "entity_id": {
+          "name": "Entity",
+          "description": "Any entity from the device."
+        }
       }
     },
     "sync_clock": {
       "name": "Sync Device Clock",
+      "description": "Set the device clock to Home Assistant's current time.",
       "fields": {
-        "entity_id": { "name": "Entity" },
-        "timezone": { "name": "Timezone" }
+        "entity_id": {
+          "name": "Entity",
+          "description": "Any entity from the device."
+        },
+        "timezone": {
+          "name": "Timezone",
+          "description": "Optional TZ string, e.g. CET-1CEST,M3.5.0,M10.5.0/3."
+        }
       }
     },
     "timer_start": {
       "name": "Start Timer",
+      "description": "Start the device timer for a duration.",
       "fields": {
-        "entity_id": { "name": "Entity" },
-        "duration": { "name": "Duration" }
+        "entity_id": {
+          "name": "Entity",
+          "description": "Any entity from the device."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Minutes (e.g. 30) or HH:MM (e.g. 1:15)."
+        }
       }
     },
     "timer_stop": {
       "name": "Stop Timer",
+      "description": "Stop the device timer.",
       "fields": {
-        "entity_id": { "name": "Entity" }
+        "entity_id": {
+          "name": "Entity",
+          "description": "Any entity from the device."
+        }
       }
     },
     "timer_set_duration": {
       "name": "Set Timer Duration",
+      "description": "Set the default device timer duration.",
       "fields": {
-        "entity_id": { "name": "Entity" },
-        "duration": { "name": "Duration" }
+        "entity_id": {
+          "name": "Entity",
+          "description": "Any entity from the device."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Minutes (e.g. 30) or HH:MM (e.g. 1:15)."
+        }
       }
     }
   },
   "entity": {
     "cover": {
-      "window": {"name": "Window"}
+      "window": {
+        "name": "Window"
+      }
     },
     "binary_sensor": {
-      "online": {"name": "Online"},
-      "moving": {"name": "Moving"},
-      "warning_active": {"name": "Warning Active"}
+      "online": {
+        "name": "Online"
+      },
+      "moving": {
+        "name": "Moving"
+      },
+      "warning_active": {
+        "name": "Warning Active"
+      }
     },
     "button": {
-      "open": {"name": "Open"},
-      "close": {"name": "Close"},
-      "gap_vent": {"name": "Gap Vent"},
-      "close_wo_lock": {"name": "Close (no lock)"},
-      "stop_over": {"name": "Stop Over"},
-      "stop": {"name": "Stop"}
+      "open": {
+        "name": "Open"
+      },
+      "close": {
+        "name": "Close"
+      },
+      "gap_vent": {
+        "name": "Gap Vent"
+      },
+      "close_wo_lock": {
+        "name": "Close (no lock)"
+      },
+      "stop_over": {
+        "name": "Stop Over"
+      },
+      "stop": {
+        "name": "Stop"
+      }
     },
     "select": {
       "mode": {
         "name": "Mode",
         "state": {
-          "OPEN": "Open",
-          "CLOSE": "Close",
-          "GAP_VENT": "Gap vent",
-          "CLOSE_WO_LOCK": "Close (no lock)",
-          "STOP_OVER": "Stop over",
-          "STOP": "Stop"
+          "open": "Open",
+          "close": "Close",
+          "gap_vent": "Gap vent",
+          "close_wo_lock": "Close (no lock)",
+          "stop_over": "Stop over",
+          "stop": "Stop"
         }
       }
     },
     "sensor": {
-      "open_count": {"name": "Window Open Count"},
-      "firmware_update": {"name": "Firmware Update"},
+      "open_count": {
+        "name": "Window Open Count"
+      },
+      "firmware_update": {
+        "name": "Firmware Update"
+      },
       "operation_source": {
         "name": "Operation Source",
         "state": {
-          "COMMAND": "Commanded",
-          "MANUAL": "Manual",
-          "IDLE": "Idle"
+          "command": "Commanded",
+          "manual": "Manual",
+          "idle": "Idle"
         }
       },
       "window_state": {
         "name": "Window State",
         "state": {
-          "OPEN": "Open",
-          "CLOSED": "Closed",
-          "GAP_VENT": "Gap vent",
-          "CLOSED_WO_LOCK": "Closed (no lock)",
-          "STOP_OVER": "Stop over",
-          "STOPPED": "Stopped",
-          "MOVING": "Moving"
+          "open": "Open",
+          "closed": "Closed",
+          "gap_vent": "Gap vent",
+          "closed_wo_lock": "Close (no lock)",
+          "stop_over": "Stop over",
+          "stopped": "Stopped",
+          "moving": "Moving"
         }
       },
-      "warnings": {"name": "Siegenia Warnings"},
-      "warnings_count": {"name": "Siegenia Warnings Count"},
-      "timer_enabled": {"name": "Siegenia Timer Enabled"},
-      "timer_remaining": {"name": "Siegenia Timer Remaining"}
+      "warnings": {
+        "name": "Siegenia Warnings"
+      },
+      "warnings_count": {
+        "name": "Siegenia Warnings Count"
+      },
+      "timer_enabled": {
+        "name": "Siegenia Timer Enabled"
+      },
+      "timer_remaining": {
+        "name": "Siegenia Timer Remaining"
+      }
     },
     "number": {
-      "stopover_distance": {"name": "Stopover Distance"}
+      "stopover_distance": {
+        "name": "Stopover Distance"
+      }
     },
     "update": {
-      "firmware": {"name": "Firmware"}
+      "firmware": {
+        "name": "Firmware"
+      }
     }
   }
 }
