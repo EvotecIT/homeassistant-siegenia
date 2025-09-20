@@ -1,14 +1,14 @@
 {
   "domain": "siegenia",
   "name": "Siegenia",
-  "version": "1.0.0",
-  "documentation": "https://github.com/EvotecIT/homeassistant-siegenia",
   "codeowners": ["@EvotecIT", "@PrzemyslawKlys"],
-  "issue_tracker": "https://github.com/EvotecIT/homeassistant-siegenia/issues",
   "config_flow": true,
-  "iot_class": "local_polling",
-  "integration_type": "hub",
   "dependencies": ["http"],
+  "documentation": "https://github.com/EvotecIT/homeassistant-siegenia",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/EvotecIT/homeassistant-siegenia/issues",
   "loggers": ["custom_components.siegenia"],
-  "requirements": []
+  "requirements": [],
+  "version": "1.0.0"
 }

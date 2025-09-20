@@ -127,7 +127,7 @@ class SiegeniaClient:
             payload["params"] = params
 
         assert self._ws is not None
-        self._logger(f"SEND: {json.dumps(payload, separators=(",", ":"))}")
+        self._logger(f"SEND: {json.dumps(payload, separators=(',', ':'))}")
         await self._ws.send_str(json.dumps(payload))
 
         fut: asyncio.Future = asyncio.get_running_loop().create_future()
