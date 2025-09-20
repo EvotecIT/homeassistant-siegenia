@@ -56,8 +56,9 @@ class SiegeniaClient:
             self._session = ClientSession()
             self._own_session = True
 
-        # Accept self-signed cert on device
-        ssl_ctx = ssl.create_default_context()
+        # Accept self-signed cert on device without loading default certs
+        # Avoid ssl.create_default_context() to prevent blocking certificate path loads in the event loop
+        ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ssl_ctx.check_hostname = False
         ssl_ctx.verify_mode = ssl.CERT_NONE
 

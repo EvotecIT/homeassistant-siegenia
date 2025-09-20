@@ -17,6 +17,14 @@ The implementation is based on prior Homebridge plugin and Siegenia.NET proof-of
 - Restart Home Assistant.
 - Settings → Devices & Services → Add Integration → search for “Siegenia”.
 
+### Install via HACS (recommended)
+
+- HACS → Integrations → 3‑dot menu → Custom repositories →
+  - Repository: this repo URL
+  - Category: Integration
+- Add “Siegenia” from HACS, then restart Home Assistant.
+- Go to Settings → Devices & Services → Add Integration → “Siegenia”.
+
 ## Configuration
 
 - Host/IP: IP of your Siegenia controller
@@ -66,3 +74,5 @@ The implementation is based on prior Homebridge plugin and Siegenia.NET proof-of
   - `pip install -r requirements_test.txt`
   - `pytest`
 - CI: GitHub Actions workflow runs tests on Python 3.11 and 3.12 (`.github/workflows/ci.yml`).
+- HACS validation: `.github/workflows/validate-hacs.yml` (brands check ignored until brand assets are contributed).
+- Hassfest validation: `.github/workflows/hassfest.yml`.

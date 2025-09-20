@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -62,7 +62,8 @@ class SiegeniaOpenCountSensor(_BaseSiegeniaEntity, RestoreEntity, SensorEntity):
     _attr_name = "Siegenia Window Open Count"
     _attr_icon = "mdi:counter"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
-    _attr_device_class = SensorDeviceClass.ENUM  # Count, but keep as number-like
+    # Use a plain numeric counter: no device_class; provide a unit for statistics
+    _attr_native_unit_of_measurement = "count"
 
     def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
         super().__init__(coordinator, entry, serial)

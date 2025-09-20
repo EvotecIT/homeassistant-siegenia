@@ -7,7 +7,7 @@
   "issue_tracker": "https://github.com/EvotecIT/homeassistant-siegenia/issues",
   "config_flow": true,
   "iot_class": "local_polling",
+  "integration_type": "hub",
   "loggers": ["custom_components.siegenia"],
   "requirements": []
 }
-
