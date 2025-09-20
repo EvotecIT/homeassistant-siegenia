@@ -47,3 +47,29 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, "reboot_device", _reboot)
     hass.services.async_register(DOMAIN, "reset_device", _reset)
     hass.services.async_register(DOMAIN, "renew_cert", _renew)
+
+    async def _sync_clock(call: ServiceCall) -> None:
+        from homeassistant.util import dt as dt_util  # local import to avoid startup overhead
+
+        entity_id: str = call.data["entity_id"]
+        tz: str | None = call.data.get("timezone")
+        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
+        if entity is None:
+            return
+        coordinator = entity.coordinator  # type: ignore[attr-defined]
+        now = dt_util.now()
+        payload = {
+            "clock": {
+                "year": now.year,
+                "month": now.month,
+                "day": now.day,
+                "hour": now.hour,
+                "minute": now.minute,
+            }
+        }
+        if tz:
+            payload["timezone"] = tz
+        await coordinator.client.set_device_params(payload)
+        await coordinator.async_request_refresh()
+
+    hass.services.async_register(DOMAIN, "sync_clock", _sync_clock)

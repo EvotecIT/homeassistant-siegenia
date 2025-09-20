@@ -1,0 +1,39 @@
+blueprint:
+  name: Siegenia – Nightly Clock Sync
+  description: Sync the Siegenia device clock with Home Assistant nightly at a chosen time.
+  domain: automation
+  source_url: https://github.com/EvotecIT/homeassistant-siegenia
+  input:
+    target_cover:
+      name: Siegenia cover
+      selector:
+        entity:
+          integration: siegenia
+          domain: cover
+    run_time:
+      name: Time
+      description: When to run daily
+      default: '03:15:00'
+      selector:
+        time:
+    timezone:
+      name: Timezone (optional)
+      description: POSIX/TZ string (e.g., CET-1CEST,M3.5.0,M10.5.0/3). Leave empty to only set clock.
+      default: ''
+      selector:
+        text:
+
+trigger:
+  - platform: time
+    at: !input run_time
+
+condition: []
+
+action:
+  - service: siegenia.sync_clock
+    target:
+      entity_id: !input target_cover
+    data:
+      timezone: "{{ iif(timezone|length > 0, timezone, none) }}"
+
+mode: single

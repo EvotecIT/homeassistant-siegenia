@@ -20,6 +20,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         entities.append(SiegeniaStateSensor(coordinator, entry, serial))
     if entry.options.get("enable_open_count", True):
         entities.append(SiegeniaOpenCountSensor(coordinator, entry, serial))
+    # Always expose warnings count/text and firmware update if present
+    entities.append(SiegeniaWarningsCountSensor(coordinator, entry, serial))
+    entities.append(SiegeniaWarningsTextSensor(coordinator, entry, serial))
+    entities.append(SiegeniaFirmwareUpdateSensor(coordinator, entry, serial))
     if entities:
         async_add_entities(entities)
 
@@ -56,6 +60,63 @@ class SiegeniaStateSensor(_BaseSiegeniaEntity, SensorEntity):
         data = params.get("data") or {}
         states = data.get("states") or {}
         return states.get("0")
+
+
+class SiegeniaWarningsCountSensor(_BaseSiegeniaEntity, SensorEntity):
+    _attr_name = "Siegenia Warnings Count"
+    _attr_icon = "mdi:alert"
+
+    @property
+    def unique_id(self) -> str:  # noqa: D401
+        return f"{self._serial}-warnings-count"
+
+    @property
+    def native_value(self) -> int:
+        params = self.coordinator.data or {}
+        data = params.get("data") or {}
+        warnings = data.get("warnings") or []
+        return len(warnings)
+
+
+class SiegeniaWarningsTextSensor(_BaseSiegeniaEntity, SensorEntity):
+    _attr_name = "Siegenia Warnings"
+    _attr_icon = "mdi:alert-octagon"
+
+    @property
+    def unique_id(self) -> str:  # noqa: D401
+        return f"{self._serial}-warnings-text"
+
+    @property
+    def native_value(self) -> str | None:
+        params = self.coordinator.data or {}
+        data = params.get("data") or {}
+        warnings = data.get("warnings") or []
+        if not warnings:
+            return "none"
+        # warnings entries may be strings or dicts; stringify safely
+        return "; ".join(map(lambda w: w if isinstance(w, str) else str(w), warnings))
+
+
+class SiegeniaFirmwareUpdateSensor(_BaseSiegeniaEntity, SensorEntity):
+    _attr_name = "Siegenia Firmware Update"
+    _attr_icon = "mdi:update"
+
+    @property
+    def unique_id(self) -> str:  # noqa: D401
+        return f"{self._serial}-firmware-update"
+
+    @property
+    def native_value(self) -> str | None:
+        params = self.coordinator.data or {}
+        data = params.get("data") or {}
+        val = data.get("firmware_update")
+        if val is None:
+            # try getDevice payload
+            info = (self.coordinator.device_info or {}).get("data", {})
+            val = info.get("firmware_update")
+        if val is None:
+            return None
+        return "available" if int(val) != 0 else "none"
 
 
 class SiegeniaOpenCountSensor(_BaseSiegeniaEntity, RestoreEntity, SensorEntity):

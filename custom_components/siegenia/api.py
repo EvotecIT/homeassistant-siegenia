@@ -43,6 +43,7 @@ class SiegeniaClient:
         self._awaiting: dict[int, asyncio.Future] = {}
         self._hb_task: asyncio.Task | None = None
         self._connected_evt = asyncio.Event()
+        self._on_push: Callable[[dict[str, Any]], None] | None = None
 
     @property
     def connected(self) -> bool:
@@ -95,6 +96,11 @@ class SiegeniaClient:
                     fut = self._awaiting.pop(int(req_id), None) if req_id is not None else None
                     if fut and not fut.done():
                         fut.set_result(data)
+                    elif self._on_push is not None:
+                        try:
+                            self._on_push(data)
+                        except Exception as exc:  # noqa: BLE001
+                            self._logger(f"Push handler error: {exc}")
                 elif msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSED, WSMsgType.ERROR):
                     break
         finally:
@@ -198,3 +204,10 @@ class SiegeniaClient:
 
     async def renew_cert(self) -> None:
         await self._send_request("renewCert")
+
+    def set_push_callback(self, cb: Callable[[dict[str, Any]], None] | None) -> None:
+        """Register a callback for unsolicited device messages.
+
+        Called with the raw message dictionary from the device.
+        """
+        self._on_push = cb

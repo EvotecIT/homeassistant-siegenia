@@ -22,6 +22,12 @@ cards:
   - type: custom:mushroom-chips-card
     alignment: justify
     chips:
+      - type: entity
+        entity: binary_sensor.siegenia_online
+        icon: mdi:lan-connect
+        content_info: state
+        tap_action:
+          action: more-info
       - type: template
         icon: mdi:window-open
         content: Open

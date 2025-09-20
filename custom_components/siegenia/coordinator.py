@@ -47,6 +47,13 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         await self.client.connect()
         await self.client.login(self.username, self.password)
         await self.client.start_heartbeat(self.heartbeat_interval)
+        # Push updates from device (no id) – update coordinator data immediately
+        def _on_push(msg: dict[str, Any]) -> None:
+            cmd = msg.get("command")
+            if cmd in {"getDeviceParams", "deviceParams"} and "data" in msg:
+                # Update data in HA thread-safe context
+                self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, msg)
+        self.client.set_push_callback(_on_push)
         # Prime device info once
         try:
             self.device_info = await self.client.get_device()

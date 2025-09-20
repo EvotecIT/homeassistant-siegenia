@@ -12,6 +12,12 @@ cards:
   - type: custom:mushroom-chips-card
     alignment: center
     chips:
+      - type: entity
+        entity: binary_sensor.siegenia_online
+        icon: mdi:lan-connect
+        content_info: state
+        tap_action:
+          action: more-info
       - type: action
         icon: mdi:window-open
         name: Open

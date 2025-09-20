@@ -8,7 +8,7 @@ from custom_components.siegenia.const import DOMAIN, DEFAULT_PORT
 
 @pytest.fixture
 def mock_client(monkeypatch):
-    class _Client:
+        class _Client:
         def __init__(self, host, port=DEFAULT_PORT, session=None, logger=None):  # noqa: ARG002
             self.host = host
             self.port = port
@@ -32,6 +32,9 @@ def mock_client(monkeypatch):
                 "data": {
                     "states": {"0": "CLOSED"},
                     "warnings": [],
+                    "stopover": 3,
+                    "max_stopover": 13,
+                    "firmware_update": 0,
                 }
             })
             self.open_close = AsyncMock()
@@ -39,7 +42,9 @@ def mock_client(monkeypatch):
             self.reboot_device = AsyncMock()
             self.reset_device = AsyncMock()
             self.renew_cert = AsyncMock()
+            self.set_device_params = AsyncMock()
             self.connected = True
+            self.set_push_callback = lambda cb: None
 
     def _factory(host, port=DEFAULT_PORT, **_):
         return _Client(host, port)
@@ -64,4 +69,3 @@ async def setup_integration(hass, mock_client, config_entry_data):  # noqa: ARG0
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     return entry
-

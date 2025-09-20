@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <style>
+      .frame{fill:none;stroke:#1e88e5;stroke-width:14;stroke-linecap:round;stroke-linejoin:round}
+      .leaf{fill:#1e88e5}
+    </style>
+  </defs>
+  <!-- Window frame -->
+  <rect x="20" y="20" width="216" height="216" rx="18" class="frame"/>
+  <!-- Sash split -->
+  <line x1="128" y1="28" x2="128" y2="228" class="frame"/>
+  <!-- Left sash (slightly open angle) -->
+  <path class="leaf" d="M34,40 h82 v176 h-82 z"/>
+  <polygon class="leaf" points="34,40 116,40 96,60 34,60" opacity=".25"/>
+  <!-- Right sash hint (open/air arrows) -->
+  <path class="frame" d="M152 96 h60"/>
+  <path class="frame" d="M152 128 h72"/>
+  <path class="frame" d="M152 160 h48"/>
+</svg>
+

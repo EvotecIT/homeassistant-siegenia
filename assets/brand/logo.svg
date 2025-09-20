@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 256">
+  <defs>
+    <style>
+      .blue{fill:#1e88e5}
+      .dark{fill:#0d47a1}
+      .text{font: 700 64px/1.2 'Inter', 'Segoe UI', Arial, sans-serif; fill:#1e88e5}
+      .thin{fill:none;stroke:#1e88e5;stroke-width:14;stroke-linecap:round;stroke-linejoin:round}
+    </style>
+  </defs>
+  <!-- Symbol (same language as icon.svg) -->
+  <g transform="translate(16,16)">
+    <rect x="0" y="0" width="224" height="224" rx="18" class="thin"/>
+    <line x1="112" y1="8" x2="112" y2="216" class="thin"/>
+    <path d="M12,20 h96 v160 h-96 z" class="blue"/>
+    <path d="M140 80 h68" class="thin"/>
+    <path d="M140 116 h80" class="thin"/>
+    <path d="M140 152 h56" class="thin"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="270" y="110" class="text">Siegenia</text>
+  <text x="270" y="170" class="text" style="font-weight:500;font-size:40px">Home Assistant</text>
+</svg>
+

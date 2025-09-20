@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -44,6 +45,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if not hass.data.get(marker):
         await async_setup_services(hass)
         hass.data[marker] = True
+
+    # Serve bundled static icons so users can reference them without copying to /local
+    static_marker = f"{DOMAIN}_static_paths"
+    if not hass.data.get(static_marker):
+        try:
+            icons_path = Path(__file__).parent / "assets" / "icons"
+            if icons_path.exists():
+                hass.http.register_static_path("/siegenia-static/icons", str(icons_path), cache_headers=True)  # type: ignore[attr-defined]
+                hass.data[static_marker] = True
+        except Exception:  # noqa: BLE001
+            # If HTTP component is not ready or API changed, skip silently; users can still copy to /local
+            pass
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

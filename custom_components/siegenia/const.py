@@ -18,7 +18,7 @@ CONF_ENABLE_STATE_SENSOR = "enable_state_sensor"
 CONF_DEBUG = "debug"
 CONF_INFORMATIONAL = "informational"
 
-PLATFORMS = ["cover", "sensor", "binary_sensor", "button"]
+PLATFORMS = ["cover", "sensor", "binary_sensor", "button", "number", "update"]
 
 # Raw device states observed from Siegenia API
 STATE_OPEN = "OPEN"
@@ -65,3 +65,22 @@ DEVICE_TYPE_MAP = {
     9: "GENIUS B",
     10: "Universal Module",
 }
+
+# Known model variant names for MHS Family (type=6)
+# Tuple key: (variant, subvariant)
+MHS_MODEL_MAP = {
+    (1, 0): "MHS400 Schema A",
+}
+
+def resolve_model(device_info: dict) -> str:
+    """Resolve a friendly model string from device info."""
+    t = device_info.get("type")
+    base = DEVICE_TYPE_MAP.get(t, t)
+    if t == 6:  # MHS Family
+        v = device_info.get("variant")
+        sv = device_info.get("subvariant")
+        if v is not None and sv is not None:
+            name = MHS_MODEL_MAP.get((int(v), int(sv)))
+            if name:
+                return name
+    return str(base)

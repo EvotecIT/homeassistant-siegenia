@@ -18,13 +18,16 @@ from .const import (
     STATE_MOVING,
     STATE_TO_POSITION,
     position_to_command,
-    DEVICE_TYPE_MAP,
+    resolve_model,
 )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([SiegeniaWindowCover(coordinator, entry)])
+    data = coordinator.data or {}
+    states = (data.get("data") or {}).get("states") or {"0": None}
+    entities = [SiegeniaWindowCover(coordinator, entry, int(sash)) for sash in sorted(map(int, states.keys()))]
+    async_add_entities(entities)
 
 
 class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
@@ -33,10 +36,10 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
     _base_features = CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
     _with_slider = _base_features | CoverEntityFeature.SET_POSITION
 
-    def __init__(self, coordinator, entry: SiegeniaConfigEntry) -> None:
+    def __init__(self, coordinator, entry: SiegeniaConfigEntry, sash: int = 0) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._sash = 0
+        self._sash = sash
         # Use serial number if available
         serial = (coordinator.device_info or {}).get("data", {}).get("serialnr") if coordinator.device_info else None
         self._attr_unique_id = f"{serial or entry.data.get('host')}-sash-{self._sash}"
@@ -47,7 +50,8 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
     @property
     def device_info(self) -> DeviceInfo:
         info = (self.coordinator.device_info or {}).get("data", {})
-        model = DEVICE_TYPE_MAP.get(info.get("type"), info.get("type"))
+        model = resolve_model(info)
+        suggested = info.get("devicelocation") or info.get("devicefloor")
         return DeviceInfo(
             identifiers={(DOMAIN, info.get("serialnr") or self._entry.data.get("host"))},
             manufacturer="Siegenia",
@@ -55,6 +59,8 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
             name=info.get("devicename") or "Siegenia Device",
             sw_version=info.get("softwareversion"),
             hw_version=info.get("hardwareversion"),
+            configuration_url=f"https://{self._entry.data.get('host')}:{self.coordinator.port}" if hasattr(self.coordinator, 'port') else None,
+            suggested_area=suggested,
         )
 
     @property
