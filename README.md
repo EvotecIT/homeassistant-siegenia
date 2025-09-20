@@ -9,7 +9,7 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
 - Options: poll interval, heartbeat interval, toggle extra sensors and slider
 - Diagnostics: redacted snapshot of config and last device params
 
-The implementation is based on the author's prior Homebridge plugin and Siegenia.NET proof-of-concept.
+The implementation is based on prior Homebridge plugin and Siegenia.NET proof-of-concept.
 
 ## Install
 
