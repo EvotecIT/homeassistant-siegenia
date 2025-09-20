@@ -21,11 +21,14 @@
     }
   },
   "options": {
-    "error": {
-      "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."
+    "menu": {
+      "title": "Siegenia Options",
+      "description": "Choose what to configure.",
+      "options": {"general": "General", "connection": "Connection"}
     },
+    "error": {"invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."},
     "step": {
-      "init": {
+      "general": {
         "title": "Siegenia Options",
         "data": {
           "poll_interval": "Poll interval (s)",
@@ -43,6 +46,16 @@
           "slider_gap_max": "Slider: Gap Vent max % (e.g., 19)",
           "slider_cwol_max": "Slider: Close w/o lock max % (e.g., 40)",
           "slider_stop_over_display": "Slider: display % for Stop Over (e.g., 30/40/90)"
+        }
+      },
+      "connection": {
+        "title": "Siegenia Connection",
+        "data": {
+          "host": "Host/IP",
+          "port": "Port",
+          "ws_protocol": "WS Protocol",
+          "username": "Username",
+          "password": "Password"
         }
       }
     }
@@ -129,6 +142,11 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "online": {"name": "Online"},
+      "moving": {"name": "Moving"},
+      "warning_active": {"name": "Warning Active"}
+    },
     "button": {
       "open": {"name": "Open"},
       "close": {"name": "Close"},
@@ -169,6 +187,12 @@
       "warnings_count": {"name": "Siegenia Warnings Count"},
       "timer_enabled": {"name": "Siegenia Timer Enabled"},
       "timer_remaining": {"name": "Siegenia Timer Remaining"}
+    },
+    "number": {
+      "stopover_distance": {"name": "Stopover Distance"}
+    },
+    "update": {
+      "firmware": {"name": "Firmware"}
     }
   }
 }

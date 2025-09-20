@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 from pathlib import Path
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -80,7 +81,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             brand_build = Path(__file__).parent / ".." / ".." / "build" / "brand"
             brand_build = brand_build.resolve()
             brand_build.mkdir(parents=True, exist_ok=True)
-            # Write embedded PNGs if missing
+            # Write embedded PNGs if missing (done in threadpool to avoid blocking loop)
+            try:
+                icon_png = brand_build / "icon.png"
+                logo_png = brand_build / "logo.png"
+                if not icon_png.exists():
+                    await hass.async_add_executor_job(_write_b64, icon_png, ICON_PNG_B64)
+                if not logo_png.exists():
+                    await hass.async_add_executor_job(_write_b64, logo_png, LOGO_PNG_B64)
+            except Exception:
+                pass
+
             # Always provide SVG-backed views (crisp branding) and also register static path for PNGs
             assets_brand = Path(__file__).parent / ".." / ".." / "assets" / "brand"
             assets_brand = assets_brand.resolve()

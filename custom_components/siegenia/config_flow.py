@@ -150,6 +150,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Show a simple menu to pick what to configure
+        if user_input is None:
+            return self.async_show_menu(
+                step_id="init",
+                menu_options=["general", "connection"],
+            )
+        # Fallback
+        return await self.async_step_general()
+
+    async def async_step_general(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
@@ -197,10 +207,40 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             cwol = user_input[CONF_SLIDER_CWOL_MAX]
             if not (0 < gap < cwol < 100):
                 errors["base"] = "invalid_thresholds"
-                return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+                return self.async_show_form(step_id="general", data_schema=schema, errors=errors)
             return self.async_create_entry(title="", data=user_input)
 
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="general", data_schema=schema)
+
+    async def async_step_connection(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Allow changing connection params + credentials
+        d = self.config_entry.data
+        if user_input is None:
+            schema = vol.Schema(
+                {
+                    vol.Required(CONF_HOST, default=d.get(CONF_HOST)): str,
+                    vol.Required(CONF_PORT, default=d.get(CONF_PORT, DEFAULT_PORT)): int,
+                    vol.Required(CONF_WS_PROTOCOL, default=d.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL)): vol.In(["wss", "ws"]),
+                    vol.Required(CONF_USERNAME, default=d.get(CONF_USERNAME)): str,
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            )
+            return self.async_show_form(step_id="connection", data_schema=schema)
+
+        # Update entry.data and reload
+        new_data = dict(self.config_entry.data)
+        new_data.update(
+            {
+                CONF_HOST: user_input[CONF_HOST],
+                CONF_PORT: user_input[CONF_PORT],
+                CONF_WS_PROTOCOL: user_input[CONF_WS_PROTOCOL],
+                CONF_USERNAME: user_input[CONF_USERNAME],
+                CONF_PASSWORD: user_input[CONF_PASSWORD],
+            }
+        )
+        self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
+        await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+        return self.async_abort(reason="reconfigured")
 
 
 async def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> OptionsFlowHandler:

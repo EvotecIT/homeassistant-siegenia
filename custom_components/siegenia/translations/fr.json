@@ -5,7 +5,10 @@
   "services": {"set_mode": {"name": "Définir le mode de la fenêtre","description": "Envoyer un mode discret à la fenêtre Siegenia.","fields": {"entity_id": {"name": "Entité"},"mode": {"name": "Mode"}}},"reboot_device": {"name": "Redémarrer l'appareil","fields": {"entity_id": {"name": "Entité"}}},"reset_device": {"name": "Réinitialiser l'appareil","fields": {"entity_id": {"name": "Entité"}}},"renew_cert": {"name": "Renouveler le certificat TLS","fields": {"entity_id": {"name": "Entité"}}},"sync_clock": {"name": "Synchroniser l'horloge","fields": {"entity_id": {"name": "Entité"},"timezone": {"name": "Fuseau horaire"}}},"timer_start": {"name": "Démarrer le minuteur","fields": {"entity_id": {"name": "Entité"},"duration": {"name": "Durée"}}},"timer_stop": {"name": "Arrêter le minuteur","fields": {"entity_id": {"name": "Entité"}}},"timer_set_duration": {"name": "Définir la durée du minuteur","fields": {"entity_id": {"name": "Entité"},"duration": {"name": "Durée"}}}}
   ,
   "entity": {"select": {"mode": {"name": "Mode","state": {"OPEN": "Ouvrir","CLOSE": "Fermer","GAP_VENT": "Aération (entrebâillement)","CLOSE_WO_LOCK": "Fermer (sans verrou)","STOP_OVER": "Stop over","STOP": "Stop"}}},
+    "binary_sensor": {"online": {"name": "En ligne"},"moving": {"name": "En mouvement"},"warning_active": {"name": "Alerte active"}},
     "sensor": {"open_count": {"name": "Compteur d'ouvertures"},"firmware_update": {"name": "Mise à jour du firmware"},"window_state": {"name": "État de la fenêtre","state": {"OPEN": "Ouverte","CLOSED": "Fermée","GAP_VENT": "Aération (entrebâillement)","CLOSED_WO_LOCK": "Fermée (sans verrou)","STOP_OVER": "Stop over","STOPPED": "Arrêtée","MOVING": "En mouvement"}}},
+    "number": {"stopover_distance": {"name": "Distance Stop Over"}},
+    "update": {"firmware": {"name": "Micrologiciel"}},
     "button": {"open": {"name": "Ouvrir"},"close": {"name": "Fermer"},"gap_vent": {"name": "Aération (entrebâillement)"},"close_wo_lock": {"name": "Fermer (sans verrou)"},"stop_over": {"name": "Stop over"},"stop": {"name": "Stop"}}
   }
 }

@@ -42,7 +42,6 @@ class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
         self._mode = mode
         self._attr_has_entity_name = True
         self._attr_translation_key = key
-        self._attr_name = key.replace("_", " ").title()
         self._attr_unique_id = f"{serial}-button-{key}"
 
     @property

@@ -21,11 +21,19 @@
     }
   },
   "options": {
+    "menu": {
+      "title": "Siegenia Options",
+      "description": "Choose what to configure.",
+      "options": {
+        "general": "General",
+        "connection": "Connection"
+      }
+    },
     "error": {
       "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."
     },
     "step": {
-      "init": {
+      "general": {
         "title": "Siegenia Options",
         "data": {
           "poll_interval": "Poll interval (s)",
@@ -37,10 +45,22 @@
           "informational": "Log window state periodically",
           "warning_notifications": "Create persistent notifications on warnings",
           "warning_events": "Fire events on warnings (siegenia_warning)",
-          "enable_buttons": "Create discrete action buttons (Open/Close/Gap/…)"
+          "enable_buttons": "Create discrete action buttons (Open/Close/Gap/…)",
+          "motion_interval": "Motion poll interval (s)",
+          "idle_interval": "Idle poll interval (s)",
           "slider_gap_max": "Slider: Gap Vent max % (e.g., 19)",
           "slider_cwol_max": "Slider: Close w/o lock max % (e.g., 40)",
           "slider_stop_over_display": "Slider: display % for Stop Over (e.g., 30/40/90)"
+        }
+      },
+      "connection": {
+        "title": "Siegenia Connection",
+        "data": {
+          "host": "Host/IP",
+          "port": "Port",
+          "ws_protocol": "WS Protocol",
+          "username": "Username",
+          "password": "Password"
         }
       }
     }

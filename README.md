@@ -140,3 +140,18 @@ chips:
       target:
         entity_id: cover.siegenia_window
 ```
+
+## Reset / Start Over
+
+If you want to wipe configuration and go through setup and Options from scratch:
+
+1) Remove the integration instance
+   - Settings → Devices & Services → Integrations → Siegenia → 3‑dot menu → Delete.
+   - When prompted, choose “Also delete devices” to remove all entities.
+2) Restart Home Assistant (recommended).
+3) Add the integration again (Settings → Devices & Services → Add Integration → “Siegenia”).
+
+Optional clean‑ups (rarely needed)
+- Developer Tools → Statistics: clear/fix any lingering compiled statistics for removed sensors.
+- Browser cache: hard‑refresh (Ctrl/Cmd+Shift+R) to ensure the latest logo/strings load.
+- Advanced (only if the UI removal failed): while HA is stopped, remove the old entry from `.storage/core.config_entries` (JSON). Use with care.
