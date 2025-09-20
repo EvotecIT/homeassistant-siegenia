@@ -4,12 +4,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, STATE_TO_POSITION
+from .const import DOMAIN
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
@@ -24,6 +25,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entities.append(SiegeniaWarningsCountSensor(coordinator, entry, serial))
     entities.append(SiegeniaWarningsTextSensor(coordinator, entry, serial))
     entities.append(SiegeniaFirmwareUpdateSensor(coordinator, entry, serial))
+    # Timer-related sensors
+    entities.append(SiegeniaTimerEnabledSensor(coordinator, entry, serial))
+    entities.append(SiegeniaTimerRemainingSensor(coordinator, entry, serial))
     if entities:
         async_add_entities(entities)
 
@@ -47,8 +51,9 @@ class _BaseSiegeniaEntity(CoordinatorEntity):
 
 
 class SiegeniaStateSensor(_BaseSiegeniaEntity, SensorEntity):
-    _attr_name = "Siegenia Window State"
+    _attr_has_entity_name = True
     _attr_icon = "mdi:window-closed-variant"
+    _attr_translation_key = "window_state"
 
     @property
     def unique_id(self) -> str:  # noqa: D401
@@ -63,8 +68,10 @@ class SiegeniaStateSensor(_BaseSiegeniaEntity, SensorEntity):
 
 
 class SiegeniaWarningsCountSensor(_BaseSiegeniaEntity, SensorEntity):
-    _attr_name = "Siegenia Warnings Count"
+    _attr_has_entity_name = True
+    _attr_translation_key = "warnings_count"
     _attr_icon = "mdi:alert"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def unique_id(self) -> str:  # noqa: D401
@@ -79,8 +86,10 @@ class SiegeniaWarningsCountSensor(_BaseSiegeniaEntity, SensorEntity):
 
 
 class SiegeniaWarningsTextSensor(_BaseSiegeniaEntity, SensorEntity):
-    _attr_name = "Siegenia Warnings"
+    _attr_has_entity_name = True
+    _attr_translation_key = "warnings"
     _attr_icon = "mdi:alert-octagon"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def unique_id(self) -> str:  # noqa: D401
@@ -92,14 +101,16 @@ class SiegeniaWarningsTextSensor(_BaseSiegeniaEntity, SensorEntity):
         data = params.get("data") or {}
         warnings = data.get("warnings") or []
         if not warnings:
-            return "none"
+            return "None"
         # warnings entries may be strings or dicts; stringify safely
         return "; ".join(map(lambda w: w if isinstance(w, str) else str(w), warnings))
 
 
 class SiegeniaFirmwareUpdateSensor(_BaseSiegeniaEntity, SensorEntity):
-    _attr_name = "Siegenia Firmware Update"
+    _attr_has_entity_name = True
+    _attr_translation_key = "firmware_update"
     _attr_icon = "mdi:update"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def unique_id(self) -> str:  # noqa: D401
@@ -114,17 +125,59 @@ class SiegeniaFirmwareUpdateSensor(_BaseSiegeniaEntity, SensorEntity):
             # try getDevice payload
             info = (self.coordinator.device_info or {}).get("data", {})
             val = info.get("firmware_update")
-        if val is None:
+        if not val:
+            return "None"
+        return "Available"
+
+
+class SiegeniaTimerEnabledSensor(_BaseSiegeniaEntity, SensorEntity):
+    _attr_has_entity_name = True
+    _attr_translation_key = "timer_enabled"
+    _attr_icon = "mdi:timer"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._serial}-timer-enabled"
+
+    @property
+    def native_value(self) -> str | None:
+        data = (self.coordinator.data or {}).get("data", {})
+        timer = data.get("timer") or {}
+        enabled = timer.get("enabled")
+        if enabled is None:
             return None
-        return "available" if int(val) != 0 else "none"
+        return "on" if enabled else "off"
+
+
+class SiegeniaTimerRemainingSensor(_BaseSiegeniaEntity, SensorEntity):
+    _attr_has_entity_name = True
+    _attr_translation_key = "timer_remaining"
+    _attr_icon = "mdi:timer-sand"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._serial}-timer-remaining"
+
+    @property
+    def native_value(self) -> str | None:
+        data = (self.coordinator.data or {}).get("data", {})
+        timer = data.get("timer") or {}
+        remaining = timer.get("remainingtime") or {}
+        h = remaining.get("hour")
+        m = remaining.get("minute")
+        if h is None or m is None:
+            return None
+        return f"{int(h):02d}:{int(m):02d}"
 
 
 class SiegeniaOpenCountSensor(_BaseSiegeniaEntity, RestoreEntity, SensorEntity):
-    _attr_name = "Siegenia Window Open Count"
+    _attr_has_entity_name = True
+    _attr_translation_key = "open_count"
     _attr_icon = "mdi:counter"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
-    # Use a plain numeric counter: no device_class; provide a unit for statistics
-    _attr_native_unit_of_measurement = "count"
+    # Keep unit None for LTS compatibility
 
     def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
         super().__init__(coordinator, entry, serial)

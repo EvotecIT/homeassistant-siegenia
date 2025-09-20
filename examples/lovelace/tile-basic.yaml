@@ -21,6 +21,11 @@ cards:
     square: false
     cards:
       - type: tile
+        entity: select.siegenia_mode
+        name: Mode
+        features:
+          - type: select-options
+      - type: tile
         entity: button.siegenia_open
         name: Open
         icon: mdi:window-open

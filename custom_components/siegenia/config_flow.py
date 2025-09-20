@@ -27,6 +27,19 @@ from .const import (
     CONF_ENABLE_STATE_SENSOR,
     CONF_DEBUG,
     CONF_INFORMATIONAL,
+    CONF_WARNING_NOTIFICATIONS,
+    CONF_WARNING_EVENTS,
+    CONF_SLIDER_GAP_MAX,
+    CONF_SLIDER_CWOL_MAX,
+    CONF_SLIDER_STOP_OVER_DISPLAY,
+    DEFAULT_GAP_MAX,
+    DEFAULT_CWOL_MAX,
+    DEFAULT_STOP_OVER_DISPLAY,
+    CONF_ENABLE_BUTTONS,
+    CONF_MOTION_INTERVAL,
+    CONF_IDLE_INTERVAL,
+    DEFAULT_MOTION_INTERVAL,
+    DEFAULT_IDLE_INTERVAL,
 )
 
 
@@ -148,6 +161,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             CONF_ENABLE_STATE_SENSOR: self.config_entry.options.get(CONF_ENABLE_STATE_SENSOR, True),
             CONF_DEBUG: self.config_entry.options.get(CONF_DEBUG, False),
             CONF_INFORMATIONAL: self.config_entry.options.get(CONF_INFORMATIONAL, False),
+            CONF_WARNING_NOTIFICATIONS: self.config_entry.options.get(CONF_WARNING_NOTIFICATIONS, True),
+            CONF_WARNING_EVENTS: self.config_entry.options.get(CONF_WARNING_EVENTS, True),
+            CONF_ENABLE_BUTTONS: self.config_entry.options.get(CONF_ENABLE_BUTTONS, False),
+            CONF_MOTION_INTERVAL: self.config_entry.options.get(CONF_MOTION_INTERVAL, DEFAULT_MOTION_INTERVAL),
+            CONF_IDLE_INTERVAL: self.config_entry.options.get(CONF_IDLE_INTERVAL, DEFAULT_IDLE_INTERVAL),
+            CONF_SLIDER_GAP_MAX: self.config_entry.options.get(CONF_SLIDER_GAP_MAX, DEFAULT_GAP_MAX),
+            CONF_SLIDER_CWOL_MAX: self.config_entry.options.get(CONF_SLIDER_CWOL_MAX, DEFAULT_CWOL_MAX),
+            CONF_SLIDER_STOP_OVER_DISPLAY: self.config_entry.options.get(CONF_SLIDER_STOP_OVER_DISPLAY, DEFAULT_STOP_OVER_DISPLAY),
         }
 
         schema = vol.Schema(
@@ -159,8 +180,25 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(CONF_ENABLE_STATE_SENSOR, default=data[CONF_ENABLE_STATE_SENSOR]): bool,
                 vol.Required(CONF_DEBUG, default=data[CONF_DEBUG]): bool,
                 vol.Required(CONF_INFORMATIONAL, default=data[CONF_INFORMATIONAL]): bool,
+                vol.Required(CONF_WARNING_NOTIFICATIONS, default=data[CONF_WARNING_NOTIFICATIONS]): bool,
+                vol.Required(CONF_WARNING_EVENTS, default=data[CONF_WARNING_EVENTS]): bool,
+                vol.Required(CONF_ENABLE_BUTTONS, default=data[CONF_ENABLE_BUTTONS]): bool,
+                vol.Required(CONF_MOTION_INTERVAL, default=data[CONF_MOTION_INTERVAL]): vol.All(int, vol.Range(min=1, max=10)),
+                vol.Required(CONF_IDLE_INTERVAL, default=data[CONF_IDLE_INTERVAL]): vol.All(int, vol.Range(min=10, max=600)),
+                vol.Required(CONF_SLIDER_GAP_MAX, default=data[CONF_SLIDER_GAP_MAX]): vol.All(int, vol.Range(min=1, max=99)),
+                vol.Required(CONF_SLIDER_CWOL_MAX, default=data[CONF_SLIDER_CWOL_MAX]): vol.All(int, vol.Range(min=1, max=99)),
+                vol.Required(CONF_SLIDER_STOP_OVER_DISPLAY, default=data[CONF_SLIDER_STOP_OVER_DISPLAY]): vol.All(int, vol.Range(min=1, max=99)),
             }
         )
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            gap = user_input[CONF_SLIDER_GAP_MAX]
+            cwol = user_input[CONF_SLIDER_CWOL_MAX]
+            if not (0 < gap < cwol < 100):
+                errors["base"] = "invalid_thresholds"
+                return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+            return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(step_id="init", data_schema=schema)
 

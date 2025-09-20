@@ -4,6 +4,7 @@ from homeassistant.components.update import UpdateEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, resolve_model
@@ -15,7 +16,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 class SiegeniaFirmwareUpdate(CoordinatorEntity, UpdateEntity):
-    _attr_name = "Siegenia Firmware"
+    _attr_has_entity_name = True
+    _attr_translation_key = "firmware"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
@@ -30,12 +33,13 @@ class SiegeniaFirmwareUpdate(CoordinatorEntity, UpdateEntity):
     @property
     def installed_version(self) -> str | None:
         info = (self.coordinator.device_info or {}).get("data", {})
-        return info.get("softwareversion")
+        return info.get("softwareversion") or "unknown"
 
     @property
     def latest_version(self) -> str | None:
-        # Unknown from local API; using installed until we have a source
-        return None
+        # The device does not report the target firmware version via local API.
+        # Return installed version to avoid an "unknown" UI state when up-to-date.
+        return self.installed_version
 
     @property
     def release_url(self) -> str | None:  # noqa: D401

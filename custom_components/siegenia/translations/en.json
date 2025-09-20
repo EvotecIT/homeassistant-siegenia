@@ -21,6 +21,9 @@
     }
   },
   "options": {
+    "error": {
+      "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."
+    },
     "step": {
       "init": {
         "title": "Siegenia Options",
@@ -31,10 +34,141 @@
           "enable_open_count": "Expose open count sensor",
           "enable_state_sensor": "Expose raw state sensor",
           "debug": "Enable debug logs",
-          "informational": "Log window state periodically"
+          "informational": "Log window state periodically",
+          "warning_notifications": "Create persistent notifications on warnings",
+          "warning_events": "Fire events on warnings (siegenia_warning)",
+          "enable_buttons": "Create discrete action buttons (Open/Close/Gap/…)",
+          "motion_interval": "Motion poll interval (s)",
+          "idle_interval": "Idle poll interval (s)",
+          "slider_gap_max": "Slider: Gap Vent max % (e.g., 19)",
+          "slider_cwol_max": "Slider: Close w/o lock max % (e.g., 40)",
+          "slider_stop_over_display": "Slider: display % for Stop Over (e.g., 30/40/90)"
         }
       }
     }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "opened": "Window opened",
+      "closed": "Window closed",
+      "gap_vent": "Gap vent",
+      "closed_wo_lock": "Closed without lock",
+      "stop_over": "Stop over",
+      "moving_started": "Moving started",
+      "moving_stopped": "Moving stopped",
+      "warning_active": "Warning active",
+      "warning_cleared": "Warning cleared"
+    },
+    "condition_type": {
+      "is_open": "Is open",
+      "is_closed": "Is closed",
+      "is_gap_vent": "Is gap vent",
+      "is_closed_wo_lock": "Is closed without lock",
+      "is_stop_over": "Is stop over",
+      "is_moving": "Is moving",
+      "warning_active": "Warning active"
+    }
+  },
+  "services": {
+    "set_mode": {
+      "name": "Set Window Mode",
+      "description": "Send a discrete mode command to the Siegenia window.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity"
+        },
+        "mode": {
+          "name": "Mode"
+        }
+      }
+    },
+    "reboot_device": {
+      "name": "Reboot Device",
+      "fields": {
+        "entity_id": { "name": "Entity" }
+      }
+    },
+    "reset_device": {
+      "name": "Factory Reset Device",
+      "fields": {
+        "entity_id": { "name": "Entity" }
+      }
+    },
+    "renew_cert": {
+      "name": "Renew TLS Certificate",
+      "fields": {
+        "entity_id": { "name": "Entity" }
+      }
+    },
+    "sync_clock": {
+      "name": "Sync Device Clock",
+      "fields": {
+        "entity_id": { "name": "Entity" },
+        "timezone": { "name": "Timezone" }
+      }
+    },
+    "timer_start": {
+      "name": "Start Timer",
+      "fields": {
+        "entity_id": { "name": "Entity" },
+        "duration": { "name": "Duration" }
+      }
+    },
+    "timer_stop": {
+      "name": "Stop Timer",
+      "fields": {
+        "entity_id": { "name": "Entity" }
+      }
+    },
+    "timer_set_duration": {
+      "name": "Set Timer Duration",
+      "fields": {
+        "entity_id": { "name": "Entity" },
+        "duration": { "name": "Duration" }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "open": {"name": "Open"},
+      "close": {"name": "Close"},
+      "gap_vent": {"name": "Gap Vent"},
+      "close_wo_lock": {"name": "Close (no lock)"},
+      "stop_over": {"name": "Stop Over"},
+      "stop": {"name": "Stop"}
+    },
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "OPEN": "Open",
+          "CLOSE": "Close",
+          "GAP_VENT": "Gap vent",
+          "CLOSE_WO_LOCK": "Close (no lock)",
+          "STOP_OVER": "Stop over",
+          "STOP": "Stop"
+        }
+      }
+    },
+    "sensor": {
+      "open_count": {"name": "Window Open Count"},
+      "firmware_update": {"name": "Firmware Update"},
+      "window_state": {
+        "name": "Window State",
+        "state": {
+          "OPEN": "Open",
+          "CLOSED": "Closed",
+          "GAP_VENT": "Gap vent",
+          "CLOSED_WO_LOCK": "Closed (no lock)",
+          "STOP_OVER": "Stop over",
+          "STOPPED": "Stopped",
+          "MOVING": "Moving"
+        }
+      },
+      "warnings": {"name": "Siegenia Warnings"},
+      "warnings_count": {"name": "Siegenia Warnings Count"},
+      "timer_enabled": {"name": "Siegenia Timer Enabled"},
+      "timer_remaining": {"name": "Siegenia Timer Remaining"}
+    }
   }
 }
-

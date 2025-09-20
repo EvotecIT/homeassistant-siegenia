@@ -16,9 +16,15 @@ from . import SiegeniaConfigEntry
 from .const import (
     DOMAIN,
     STATE_MOVING,
-    STATE_TO_POSITION,
+    state_to_position,
     position_to_command,
     resolve_model,
+    CONF_SLIDER_GAP_MAX,
+    CONF_SLIDER_CWOL_MAX,
+    CONF_SLIDER_STOP_OVER_DISPLAY,
+    DEFAULT_GAP_MAX,
+    DEFAULT_CWOL_MAX,
+    DEFAULT_STOP_OVER_DISPLAY,
 )
 
 
@@ -31,7 +37,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
-    _attr_name = "Siegenia Window"
+    _attr_has_entity_name = True
+    _attr_translation_key = "window"
     _attr_device_class = "window"
     _base_features = CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
     _with_slider = _base_features | CoverEntityFeature.SET_POSITION
@@ -40,6 +47,7 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         super().__init__(coordinator)
         self._entry = entry
         self._sash = sash
+        self._last_cmd: str | None = None
         # Use serial number if available
         serial = (coordinator.device_info or {}).get("data", {}).get("serialnr") if coordinator.device_info else None
         self._attr_unique_id = f"{serial or entry.data.get('host')}-sash-{self._sash}"
@@ -78,39 +86,61 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         state = self._current_state()
         if state is None:
             return None
-        return STATE_TO_POSITION.get(state, 0) == 0
+        return state_to_position(state) == 0
 
     @property
     def current_cover_position(self) -> int | None:
         state = self._current_state()
         if state is None:
             return None
-        return STATE_TO_POSITION.get(state, 0)
+        display = self._entry.options.get(CONF_SLIDER_STOP_OVER_DISPLAY, DEFAULT_STOP_OVER_DISPLAY)
+        return state_to_position(state, stop_over_display=display)
 
     @property
     def is_opening(self) -> bool | None:
-        return self._current_state() == STATE_MOVING  # Best-effort; device doesn't expose direction
+        state = self._current_state()
+        if state != STATE_MOVING:
+            return None
+        return True if self._last_cmd in {"OPEN", "STOP_OVER", "GAP_VENT"} else None
 
     @property
     def is_closing(self) -> bool | None:
-        return False  # Not distinguishable with current API; HA will show opening/closing from commands
+        state = self._current_state()
+        if state != STATE_MOVING:
+            return None
+        return True if self._last_cmd in {"CLOSE", "CLOSE_WO_LOCK"} else None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
+        self._last_cmd = "OPEN"
         await self.coordinator.client.open_close(self._sash, "OPEN")
         await self.coordinator.async_request_refresh()
 
     async def async_close_cover(self, **kwargs: Any) -> None:
+        self._last_cmd = "CLOSE"
         await self.coordinator.client.open_close(self._sash, "CLOSE")
         await self.coordinator.async_request_refresh()
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
+        self._last_cmd = "STOP"
         await self.coordinator.client.stop(self._sash)
         await self.coordinator.async_request_refresh()
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         position = int(kwargs.get(ATTR_POSITION, 0))
-        cmd = position_to_command(position)
+        gap_max = self._entry.options.get(CONF_SLIDER_GAP_MAX, DEFAULT_GAP_MAX)
+        cwol_max = self._entry.options.get(CONF_SLIDER_CWOL_MAX, DEFAULT_CWOL_MAX)
+        # ensure sane ordering
+        try:
+            gap_max = int(gap_max)
+            cwol_max = int(cwol_max)
+        except Exception:
+            gap_max, cwol_max = DEFAULT_GAP_MAX, DEFAULT_CWOL_MAX
+        if not (0 < gap_max < cwol_max < 100):
+            gap_max, cwol_max = DEFAULT_GAP_MAX, DEFAULT_CWOL_MAX
+
+        cmd = position_to_command(position, gap_max=gap_max, cwol_max=cwol_max)
         if cmd is None:
             return
+        self._last_cmd = cmd
         await self.coordinator.client.open_close(self._sash, cmd)
         await self.coordinator.async_request_refresh()

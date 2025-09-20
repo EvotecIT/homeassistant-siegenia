@@ -14,7 +14,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
-    _attr_name = "Siegenia Stopover Distance"
+    _attr_has_entity_name = True
+    _attr_translation_key = "stopover_distance"
     _attr_mode = "slider"
     _attr_native_unit_of_measurement = "dm"
 
@@ -49,4 +50,3 @@ class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
         # Device expects integer decimeters
         await self.coordinator.client.set_device_params({"stopover": int(value)})
         await self.coordinator.async_request_refresh()
-

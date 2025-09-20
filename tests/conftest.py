@@ -8,7 +8,7 @@ from custom_components.siegenia.const import DOMAIN, DEFAULT_PORT
 
 @pytest.fixture
 def mock_client(monkeypatch):
-        class _Client:
+    class _Client:
         def __init__(self, host, port=DEFAULT_PORT, session=None, logger=None):  # noqa: ARG002
             self.host = host
             self.port = port
@@ -44,7 +44,10 @@ def mock_client(monkeypatch):
             self.renew_cert = AsyncMock()
             self.set_device_params = AsyncMock()
             self.connected = True
-            self.set_push_callback = lambda cb: None
+            self.push_cb = None
+            def _set_cb(cb):
+                self.push_cb = cb
+            self.set_push_callback = _set_cb
 
     def _factory(host, port=DEFAULT_PORT, **_):
         return _Client(host, port)

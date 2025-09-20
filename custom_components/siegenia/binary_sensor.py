@@ -20,7 +20,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 class SiegeniaOnlineBinary(CoordinatorEntity, BinarySensorEntity):
-    _attr_name = "Siegenia Online"
+    _attr_has_entity_name = True
+    _attr_translation_key = "online"
     _attr_icon = "mdi:lan-connect"
 
     def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
@@ -52,7 +53,8 @@ class SiegeniaOnlineBinary(CoordinatorEntity, BinarySensorEntity):
 
 
 class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
-    _attr_name = "Siegenia Window Moving"
+    _attr_has_entity_name = True
+    _attr_translation_key = "moving"
     _attr_icon = "mdi:motion"
 
     def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
@@ -80,8 +82,10 @@ class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
 
 
 class SiegeniaWarningBinary(CoordinatorEntity, BinarySensorEntity):
-    _attr_name = "Siegenia Warning Active"
+    _attr_has_entity_name = True
+    _attr_translation_key = "warning_active"
     _attr_icon = "mdi:alert"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
@@ -104,3 +108,4 @@ class SiegeniaWarningBinary(CoordinatorEntity, BinarySensorEntity):
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
         }
+from homeassistant.helpers.entity import EntityCategory

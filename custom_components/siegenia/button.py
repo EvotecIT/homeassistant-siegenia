@@ -8,37 +8,42 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, DEVICE_TYPE_MAP
+from .const import DOMAIN, DEVICE_TYPE_MAP, CONF_ENABLE_BUTTONS
 
 _ACTIONS = [
-    ("Open", "OPEN"),
-    ("Close", "CLOSE"),
-    ("Gap Vent", "GAP_VENT"),
-    ("Close w/o Lock", "CLOSE_WO_LOCK"),
-    ("Stop Over", "STOP_OVER"),
-    ("Stop", "STOP"),
+    ("open", "OPEN"),
+    ("close", "CLOSE"),
+    ("gap_vent", "GAP_VENT"),
+    ("close_wo_lock", "CLOSE_WO_LOCK"),
+    ("stop_over", "STOP_OVER"),
+    ("stop", "STOP"),
 ]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+    # Respect option: buttons disabled by default
+    if not entry.options.get(CONF_ENABLE_BUTTONS, False):
+        return
     coordinator = hass.data[DOMAIN][entry.entry_id]
     info = (coordinator.device_info or {}).get("data", {})
     serial = info.get("serialnr") or entry.data.get("host")
     entities: list[ButtonEntity] = []
-    for label, mode in _ACTIONS:
-        entities.append(SiegeniaModeButton(coordinator, entry, serial, label, mode))
+    for key, mode in _ACTIONS:
+        entities.append(SiegeniaModeButton(coordinator, entry, serial, key, mode))
     async_add_entities(entities)
 
 
 class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str, label: str, mode: str) -> None:
+    def __init__(self, coordinator, entry: ConfigEntry, serial: str, key: str, mode: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial
-        self._label = label
+        self._label = key
         self._mode = mode
-        self._attr_name = f"Siegenia: {label}"
-        self._attr_unique_id = f"{serial}-button-{mode.lower()}"
+        self._attr_has_entity_name = True
+        self._attr_translation_key = key
+        self._attr_name = key.replace("_", " ").title()
+        self._attr_unique_id = f"{serial}-button-{key}"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -58,4 +63,3 @@ class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
         else:
             await self.coordinator.client.open_close(sash, self._mode)
         await self.coordinator.async_request_refresh()
-

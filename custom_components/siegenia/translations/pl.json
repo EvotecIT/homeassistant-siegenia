@@ -1,0 +1,158 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Połącz z Siegenia",
+        "description": "Podaj dane połączenia do sterownika okna Siegenia.",
+        "data": {
+          "host": "Host/IP",
+          "port": "Port",
+          "username": "Użytkownik",
+          "password": "Hasło",
+          "ws_protocol": "Protokół WS",
+          "poll_interval": "Interwał odświeżania (s)",
+          "heartbeat_interval": "Interwał podtrzymania (s)"
+        }
+      }
+    },
+    "error": {
+      "auth": "Błąd uwierzytelnienia. Sprawdź nazwę użytkownika/hasło.",
+      "cannot_connect": "Nie udało się połączyć z urządzeniem."
+    }
+  },
+  "options": {
+    "error": {
+      "invalid_thresholds": "Nieprawidłowe progi: upewnij się, że Maks. szczelina < Maks. zamknięcie bez blokady < 100."
+    },
+    "step": {
+      "init": {
+        "title": "Opcje Siegenia",
+        "data": {
+          "poll_interval": "Interwał odświeżania (s)",
+          "heartbeat_interval": "Interwał podtrzymania (s)",
+          "enable_position_slider": "Włącz suwak (mapuje na tryby)",
+          "enable_open_count": "Udostępnij licznik otwarć",
+          "enable_state_sensor": "Udostępnij sensor stanu",
+          "debug": "Włącz logi debug",
+          "informational": "Okresowo loguj stan okna",
+          "warning_notifications": "Twórz powiadomienia przy ostrzeżeniach",
+          "warning_events": "Wysyłaj zdarzenia przy ostrzeżeniach (siegenia_warning)",
+          "enable_buttons": "Utwórz przyciski akcji (Otwórz/Zamknij/Wietrzenie/…)",
+          "motion_interval": "Interwał odświeżania podczas ruchu (s)",
+          "idle_interval": "Interwał odświeżania w spoczynku (s)",
+          "slider_gap_max": "Suwak: maks. % dla wietrzenia (np. 19)",
+          "slider_cwol_max": "Suwak: maks. % dla zamknięcia bez blokady (np. 40)",
+          "slider_stop_over_display": "Suwak: % wyświetlania dla Stop Over (np. 30/40/90)"
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "opened": "Okno otwarte",
+      "closed": "Okno zamknięte",
+      "gap_vent": "Wietrzenie (szczelina)",
+      "closed_wo_lock": "Zamknięte bez blokady",
+      "stop_over": "Stop over",
+      "moving_started": "Ruch rozpoczęty",
+      "moving_stopped": "Ruch zatrzymany",
+      "warning_active": "Ostrzeżenie aktywne",
+      "warning_cleared": "Ostrzeżenie wyczyszczone"
+    },
+    "condition_type": {
+      "is_open": "Jest otwarte",
+      "is_closed": "Jest zamknięte",
+      "is_gap_vent": "Jest wietrzenie (szczelina)",
+      "is_closed_wo_lock": "Jest zamknięte bez blokady",
+      "is_stop_over": "Jest Stop over",
+      "is_moving": "Jest w ruchu",
+      "warning_active": "Ostrzeżenie aktywne"
+    }
+  },
+  "services": {
+    "set_mode": {
+      "name": "Ustaw tryb okna",
+      "description": "Wyślij polecenie trybu do okna Siegenia.",
+      "fields": {
+        "entity_id": { "name": "Encja" },
+        "mode": { "name": "Tryb" }
+      }
+    },
+    "reboot_device": {
+      "name": "Uruchom ponownie urządzenie",
+      "fields": { "entity_id": { "name": "Encja" } }
+    },
+    "reset_device": {
+      "name": "Przywróć ustawienia fabryczne",
+      "fields": { "entity_id": { "name": "Encja" } }
+    },
+    "renew_cert": {
+      "name": "Odnów certyfikat TLS",
+      "fields": { "entity_id": { "name": "Encja" } }
+    },
+    "sync_clock": {
+      "name": "Synchronizuj zegar urządzenia",
+      "fields": {
+        "entity_id": { "name": "Encja" },
+        "timezone": { "name": "Strefa czasowa" }
+      }
+    },
+    "timer_start": {
+      "name": "Uruchom timer",
+      "fields": {
+        "entity_id": { "name": "Encja" },
+        "duration": { "name": "Czas trwania" }
+      }
+    },
+    "timer_stop": {
+      "name": "Zatrzymaj timer",
+      "fields": { "entity_id": { "name": "Encja" } }
+    },
+    "timer_set_duration": {
+      "name": "Ustaw czas trwania timera",
+      "fields": {
+        "entity_id": { "name": "Encja" },
+        "duration": { "name": "Czas trwania" }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "open": {"name": "Otwórz"},
+      "close": {"name": "Zamknij"},
+      "gap_vent": {"name": "Wietrzenie (szczelina)"},
+      "close_wo_lock": {"name": "Zamknij (bez blokady)"},
+      "stop_over": {"name": "Stop over"},
+      "stop": {"name": "Stop"}
+    },
+    "select": {
+      "mode": {
+        "name": "Tryb",
+        "state": {
+          "OPEN": "Otwórz",
+          "CLOSE": "Zamknij",
+          "GAP_VENT": "Wietrzenie (szczelina)",
+          "CLOSE_WO_LOCK": "Zamknij (bez blokady)",
+          "STOP_OVER": "Stop over",
+          "STOP": "Stop"
+        }
+      }
+    },
+    "sensor": {
+      "open_count": {"name": "Licznik otwarć okna"},
+      "firmware_update": {"name": "Aktualizacja oprogramowania"},
+      "window_state": {
+        "name": "Stan okna",
+        "state": {
+          "OPEN": "Otwarte",
+          "CLOSED": "Zamknięte",
+          "GAP_VENT": "Wietrzenie (szczelina)",
+          "CLOSED_WO_LOCK": "Zamknięte (bez blokady)",
+          "STOP_OVER": "Stop over",
+          "STOPPED": "Zatrzymane",
+          "MOVING": "Ruch"
+        }
+      }
+    }
+  }
+}

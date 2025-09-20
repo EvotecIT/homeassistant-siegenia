@@ -64,3 +64,47 @@ sync_clock:
       example: CET-1CEST,M3.5.0,M10.5.0/3
       selector:
         text:
+
+timer_start:
+  name: Start Timer
+  description: Start the device timer with a duration.
+  fields:
+    entity_id:
+      selector:
+        entity:
+          integration: siegenia
+          domain: cover
+    duration:
+      name: Duration
+      description: Duration in minutes or HH:MM format.
+      example: 10
+      required: true
+      selector:
+        text:
+
+timer_stop:
+  name: Stop Timer
+  description: Stop/disable the device timer.
+  fields:
+    entity_id:
+      selector:
+        entity:
+          integration: siegenia
+          domain: cover
+
+timer_set_duration:
+  name: Set Timer Duration
+  description: Set the device timer duration without changing enabled state.
+  fields:
+    entity_id:
+      selector:
+        entity:
+          integration: siegenia
+          domain: cover
+    duration:
+      name: Duration
+      description: Duration in minutes or HH:MM format.
+      example: 10
+      required: true
+      selector:
+        text:

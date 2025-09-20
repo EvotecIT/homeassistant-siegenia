@@ -2,25 +2,22 @@
   <img src="assets/brand/logo.svg" alt="Siegenia Home Assistant" width="520"/>
 </p>
 
-# Home Assistant – Siegenia (MHS Family) Integration
+# Siegenia for Home Assistant (MHS Family)
 
 This custom integration connects Siegenia window controllers (MHS family) to Home Assistant using the device's local WebSocket API.
 
-- Entity: `cover` with device class `window` (open/close/stop/position slider mapped to discrete modes)
-- Sensors: raw window state, open count (persistent)
-- Binary sensors: moving, warning active; sensors for warnings count/text and firmware update status
-- Online sensor: shows device reachability/active state
-- Config Flow: UI-based setup (host, username, password)
-- Options: poll interval, heartbeat interval, toggle extra sensors and slider
-- Diagnostics: redacted snapshot of config and last device params
+- Local, fast, and private (LAN only, no cloud)
+- Device page with Controls, Sensors, and Diagnostics
+- GUI setup, multi‑sash support, and responsive push updates
+- Thoughtful extras: mode selector, timers, warnings, and blueprints
 
-The implementation is based on prior Homebridge plugin and Siegenia.NET proof-of-concept.
+## Quick Start
 
-## Install
-
-- Copy `custom_components/siegenia` into your Home Assistant `config/custom_components` folder.
-- Restart Home Assistant.
-- Settings → Devices & Services → Add Integration → search for “Siegenia”.
+1) Copy `custom_components/siegenia` into your HA `config/custom_components` folder (or add the repo in HACS as a custom integration).
+2) Restart Home Assistant.
+3) Settings → Devices & Services → Add Integration → “Siegenia”.
+4) Enter Host/IP, Username, Password (Port 443, `wss`).
+5) Done. A device called “Siegenia” (or your device name) will appear.
 
 ### Install via HACS (recommended)
 
@@ -44,14 +41,22 @@ The implementation is based on prior Homebridge plugin and Siegenia.NET proof-of
 - Open/Close/Stop via `cover` entity
 - Slider maps to common modes:
   - 0% → Close
-  - 1–19% → Gap vent
-  - 20–40% → Close without lock
-  - 41–99% → Stop over
+  - 1–X% → Gap vent (X configurable in Options)
+  - (X+1)–Y% → Close without lock (Y configurable in Options)
+  - (Y+1)–99% → Stop over (display % configurable in Options)
   - 100% → Open
 - Service `siegenia.set_mode` for discrete actions (`OPEN`, `CLOSE`, `GAP_VENT`, `CLOSE_WO_LOCK`, `STOP_OVER`, `STOP`)
 - Number entity: Stopover distance (dm) with live min/max from the device
 - Update entity: "Siegenia Firmware" (read-only availability signal from device)
 - Service `siegenia.sync_clock` to set device clock to HA's current local time; optional `timezone` parameter (POSIX/TZ string like `CET-1CEST,M3.5.0,M10.5.0/3`).
+- Select entity: `select.siegenia_mode` with options (Open/Close/Gap Vent/Close w/o Lock/Stop Over/Stop)
+- Timer services: `siegenia.timer_start` (minutes or HH:MM), `siegenia.timer_stop`, `siegenia.timer_set_duration`.
+- Device automations: triggers (opened/closed/gap vent/close w/o lock/stop over, moving started/stopped, warning active/cleared) and conditions (is_open/is_closed/is_gap_vent/is_closed_wo_lock/is_stop_over/moving/warning_active).
+- Warning routing: options to enable persistent notifications and/or HA events (`siegenia_warning`).
+ - Slider threshold options (Options → Integration):
+   - Gap Vent max % (default 19)
+   - Close w/o lock max % (default 40)
+   - Stop Over display % (default 40; use 30/40/90 to match your preference)
 
 ### Quick Buttons
 
@@ -68,9 +73,8 @@ The implementation is based on prior Homebridge plugin and Siegenia.NET proof-of
 
 ## Notes
 
-- The controller uses a self-signed TLS certificate; this integration connects with certificate verification disabled for local LAN use.
-- Only a single sash (index 0) is exposed currently. Multi-sash support can be added if needed.
-- Multi-sash: If your device exposes multiple sashes (states 0/1), entities are created per sash automatically.
+- The controller uses a self‑signed TLS certificate; this integration connects with verification disabled for local LAN use.
+- Multi‑sash: If your device exposes multiple sashes (states 0/1), entities are created per sash automatically.
 
 ## Credits
 
@@ -88,19 +92,14 @@ The implementation is based on prior Homebridge plugin and Siegenia.NET proof-of
 - Run tests locally:
   - `pip install -r requirements_test.txt`
   - `pytest`
-- CI: GitHub Actions workflow runs tests on Python 3.11 and 3.12 (`.github/workflows/ci.yml`).
-- HACS validation: `.github/workflows/validate-hacs.yml` (brands check ignored until brand assets are contributed).
-- Hassfest validation: `.github/workflows/hassfest.yml`.
+- CI: `.github/workflows/ci.yml` (Python 3.11/3.12/3.13; HA 2025.8/2025.9)
+- Validation: `.github/workflows/hassfest.yml`, `.github/workflows/validate-hacs.yml`
 
 ## Branding
 
 - Vector sources are in `assets/brand` and `assets/icons`.
-- Generate PNGs for Home Assistant brands submission:
-  - `pip install cairosvg`
-  - `python tools/gen_brand_icons.py`
-  - Outputs in `build/brand/` (`icon.png` 256×256, `logo.png` 512×256)
-- To display the icon/logo in the Integrations UI globally, submit a PR to the official `home-assistant/brands` repo adding these files under `brands/siegenia/` with names `icon.png` and `logo.png`.
-- Until then, HACS will render the README (with images); devices/entities still work normally.
+- Optional PNGs for brands: `python tools/gen_brand_icons.py` → writes `build/brand/icon.png` and `logo.png`.
+- The integration serves its brand art automatically at the HA brand URLs; a hard refresh may be needed on first load.
 
 ### Use the custom icons in dashboards
 

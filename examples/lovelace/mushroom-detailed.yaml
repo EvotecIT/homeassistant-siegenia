@@ -28,6 +28,11 @@ cards:
         content_info: state
         tap_action:
           action: more-info
+      - type: entity
+        entity: select.siegenia_mode
+        name: Mode
+        tap_action:
+          action: more-info
       - type: template
         icon: mdi:window-open
         content: Open

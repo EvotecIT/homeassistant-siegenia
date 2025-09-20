@@ -21,6 +21,9 @@
     }
   },
   "options": {
+    "error": {
+      "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."
+    },
     "step": {
       "init": {
         "title": "Siegenia Options",
@@ -31,10 +34,15 @@
           "enable_open_count": "Expose open count sensor",
           "enable_state_sensor": "Expose raw state sensor",
           "debug": "Enable debug logs",
-          "informational": "Log window state periodically"
+          "informational": "Log window state periodically",
+          "warning_notifications": "Create persistent notifications on warnings",
+          "warning_events": "Fire events on warnings (siegenia_warning)",
+          "enable_buttons": "Create discrete action buttons (Open/Close/Gap/…)"
+          "slider_gap_max": "Slider: Gap Vent max % (e.g., 19)",
+          "slider_cwol_max": "Slider: Close w/o lock max % (e.g., 40)",
+          "slider_stop_over_display": "Slider: display % for Stop Over (e.g., 30/40/90)"
         }
       }
     }
   }
 }
-
