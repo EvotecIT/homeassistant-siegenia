@@ -7,6 +7,9 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+import asyncio
+from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .const import (
     DOMAIN,
@@ -16,6 +19,14 @@ from .const import (
     CONF_PORT,
     CONF_USERNAME,
     CONF_HOST,
+    CONF_AUTO_DISCOVER,
+    CONF_EXTENDED_DISCOVERY,
+    CONF_WS_PROTOCOL,
+    DEFAULT_WS_PROTOCOL,
+    DEFAULT_AUTO_DISCOVER,
+    DEFAULT_EXTENDED_DISCOVERY,
+    CONF_SERIAL,
+    MIGRATION_DEVICES_V2,
     PLATFORMS,
     CONF_WARNING_NOTIFICATIONS,
     CONF_WARNING_EVENTS,
@@ -51,10 +62,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = SiegeniaDataUpdateCoordinator(
         hass,
+        entry=entry,
         host=data[CONF_HOST],
         port=data[CONF_PORT],
         username=data[CONF_USERNAME],
         password=data[CONF_PASSWORD],
+        ws_protocol=data.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL),
+        auto_discover=data.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER),
+        extended_discovery=data.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY),
         poll_interval=data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
         heartbeat_interval=data.get(CONF_HEARTBEAT_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL),
     )
@@ -67,8 +82,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator._motion_interval = timedelta(seconds=motion_s)  # type: ignore[attr-defined]
     coordinator._idle_interval = timedelta(seconds=idle_s)      # type: ignore[attr-defined]
 
-    await coordinator.async_setup()
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_setup()
+        await coordinator.async_config_entry_first_refresh()
+    except ConfigEntryAuthFailed:
+        # Wrong credentials should still trigger HA's reauth flow
+        raise
+    except Exception as exc:  # noqa: BLE001
+        # Allow setup to continue so options/services stay available; coordinator will retry in background
+        coordinator.logger.warning("Initial connection failed; will retry in background: %s", exc)
+
+    # Merge duplicate devices once per entry
+    _lock_key = f"{DOMAIN}_migration_lock_{entry.entry_id}"
+    if _lock_key not in hass.data:
+        hass.data[_lock_key] = asyncio.Lock()
+    async with hass.data[_lock_key]:
+        if not entry.data.get(MIGRATION_DEVICES_V2):
+            # Set flag optimistically to avoid reruns if HA crashes mid-migration
+            hass.config_entries.async_update_entry(entry, data={**entry.data, MIGRATION_DEVICES_V2: True})
+            try:
+                await _async_migrate_devices(hass, entry)
+            except Exception as exc:  # noqa: BLE001
+                coordinator.logger.debug("Device migration skipped: %s", exc)
 
     hass.data.setdefault(entry.domain, {})[entry.entry_id] = coordinator
 
@@ -151,3 +186,39 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator: SiegeniaDataUpdateCoordinator = hass.data[entry.domain].pop(entry.entry_id)
     await coordinator.client.disconnect()
     return unload_ok
+
+
+async def _async_migrate_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    dev_reg = dr.async_get(hass)
+    ent_reg = er.async_get(hass)
+
+    serial = entry.data.get(CONF_SERIAL) or entry.unique_id
+    host = entry.data.get(CONF_HOST)
+    # Collect devices that belong to THIS config entry only
+    devices = [d for d in dev_reg.devices.values() if entry.entry_id in d.config_entries]
+    if not devices:
+        return
+
+    # Pick primary: prefer serial match, else most identifiers
+    primary = None
+    if serial:
+        primary = next((d for d in devices if (DOMAIN, serial) in d.identifiers), None)
+    if primary is None:
+        primary = max(devices, key=lambda d: len(d.identifiers))
+
+    # Ensure primary carries current host identifier too
+    if host and (DOMAIN, host) not in primary.identifiers:
+        dev_reg.async_update_device(primary.id, new_identifiers=set(primary.identifiers) | {(DOMAIN, host)})
+
+    for dev in devices:
+        if dev.id == primary.id:
+            continue
+        # Move entities from this device to primary
+        for ent in list(ent_reg.entities.values()):
+            if ent.device_id == dev.id:
+                ent_reg.async_update_entity(ent.entity_id, device_id=primary.id)
+        # Remove the now-empty device
+        try:
+            dev_reg.async_remove_device(dev.id)
+        except Exception:
+            pass

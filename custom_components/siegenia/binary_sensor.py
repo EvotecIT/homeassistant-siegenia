@@ -11,7 +11,7 @@ from .const import DOMAIN, STATE_MOVING, resolve_model
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    serial = (coordinator.device_info or {}).get("data", {}).get("serialnr") or entry.data.get("host")
+    serial = getattr(coordinator, "serial", None) or (coordinator.device_info or {}).get("data", {}).get("serialnr") or entry.unique_id or entry.data.get("host")
     entities = [
         SiegeniaOnlineBinary(coordinator, entry, serial),
         SiegeniaMovingBinary(coordinator, entry, serial),
@@ -45,8 +45,9 @@ class SiegeniaOnlineBinary(CoordinatorEntity, BinarySensorEntity):
     @property
     def device_info(self):
         info = (self.coordinator.device_info or {}).get("data", {})
+        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or self._serial
         return {
-            "identifiers": {(DOMAIN, self._serial)},
+            "identifiers": {(DOMAIN, ident)},
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
             "model": resolve_model(info),
@@ -75,8 +76,9 @@ class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
     @property
     def device_info(self):
         info = (self.coordinator.device_info or {}).get("data", {})
+        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or self._serial
         return {
-            "identifiers": {(DOMAIN, self._serial)},
+            "identifiers": {(DOMAIN, ident)},
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
             "model": resolve_model(info),
@@ -106,8 +108,9 @@ class SiegeniaWarningBinary(CoordinatorEntity, BinarySensorEntity):
     @property
     def device_info(self):
         info = (self.coordinator.device_info or {}).get("data", {})
+        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or self._serial
         return {
-            "identifiers": {(DOMAIN, self._serial)},
+            "identifiers": {(DOMAIN, ident)},
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
             "model": resolve_model(info),

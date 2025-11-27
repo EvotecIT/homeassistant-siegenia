@@ -3,10 +3,19 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er, device_registry as dr
 from homeassistant.util import slugify as _slug
 
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    CONF_HOST,
+    CONF_PORT,
+    CONF_WS_PROTOCOL,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    CONF_SERIAL,
+)
 
 
 async def async_setup_services(hass: HomeAssistant) -> None:
@@ -29,6 +38,35 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             pass
         await coordinator.async_request_refresh()
 
+    async def _handle_set_connection(call: ServiceCall) -> None:
+        entity_id: str = call.data["entity_id"]
+        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
+        if entity is None:
+            raise ServiceValidationError(f"Entity {entity_id} not found for siegenia.set_connection")
+        coordinator = getattr(entity, "coordinator", None)
+        entry = getattr(coordinator, "entry", None) if coordinator else None
+        if entry is None:
+            raise ServiceValidationError("Coordinator missing on entity for siegenia.set_connection")
+
+        new_data = dict(entry.data)
+        if CONF_HOST in call.data:
+            new_data[CONF_HOST] = call.data[CONF_HOST]
+        if call.data.get(CONF_PORT) is not None:
+            new_data[CONF_PORT] = call.data[CONF_PORT]
+        if call.data.get(CONF_WS_PROTOCOL):
+            new_data[CONF_WS_PROTOCOL] = call.data[CONF_WS_PROTOCOL]
+        if call.data.get(CONF_USERNAME):
+            new_data[CONF_USERNAME] = call.data[CONF_USERNAME]
+        if call.data.get(CONF_PASSWORD):
+            new_data[CONF_PASSWORD] = call.data[CONF_PASSWORD]
+        # Preserve cached serial so device registry identifiers stay stable
+        if entry.unique_id and CONF_SERIAL not in new_data:
+            new_data[CONF_SERIAL] = entry.unique_id
+
+        hass.config_entries.async_update_entry(entry, data=new_data)
+        # Reload to apply new connection details cleanly
+        await hass.config_entries.async_reload(entry.entry_id)
+
     async def _wrap_entity(call: ServiceCall, coro_name: str):
         entity_id: str = call.data["entity_id"]
         entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
@@ -40,6 +78,46 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         await coordinator.async_request_refresh()
 
     hass.services.async_register(DOMAIN, "set_mode", _handle_set_mode)
+    hass.services.async_register(DOMAIN, "set_connection", _handle_set_connection)
+
+    async def _cleanup_devices(call: ServiceCall) -> None:
+        """Merge duplicate devices for a specific entry and remove empty leftovers.
+
+        Accepts optional entity_id to scope; otherwise uses the first Siegenia entry.
+        """
+        dev_reg = dr.async_get(hass)
+        ent_reg = er.async_get(hass)
+
+        target_entry_id: str | None = None
+        entity_id = call.data.get("entity_id")
+        if entity_id:
+            ent = ent_reg.async_get(entity_id)
+            if ent and ent.config_entry_id:
+                target_entry_id = ent.config_entry_id
+        if not target_entry_id:
+            entries = hass.config_entries.async_entries(DOMAIN)
+            if not entries:
+                raise ServiceValidationError("No Siegenia entries found for cleanup")
+            target_entry_id = entries[0].entry_id
+
+        devices = dev_reg.async_entries_for_config_entry(target_entry_id) if hasattr(dev_reg, "async_entries_for_config_entry") else [d for d in dev_reg.devices.values() if target_entry_id in d.config_entries]
+        if not devices:
+            raise ServiceValidationError("No devices found for this Siegenia entry")
+
+        primary = max(devices, key=lambda d: len(d.identifiers))
+
+        for dev in devices:
+            if dev.id == primary.id:
+                continue
+            ents = ent_reg.async_entries_for_device(dev.id) if hasattr(ent_reg, "async_entries_for_device") else [e for e in ent_reg.entities.values() if e.device_id == dev.id]
+            for ent in ents:
+                ent_reg.async_update_entity(ent.entity_id, device_id=primary.id)
+            try:
+                dev_reg.async_remove_device(dev.id)
+            except Exception:
+                pass
+
+    hass.services.async_register(DOMAIN, "cleanup_devices", _cleanup_devices)
 
     async def _reboot(call):
         await _wrap_entity(call, "reboot_device")

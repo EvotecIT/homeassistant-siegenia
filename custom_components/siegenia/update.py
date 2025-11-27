@@ -23,8 +23,9 @@ class SiegeniaFirmwareUpdate(CoordinatorEntity, UpdateEntity):
     def __init__(self, coordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        serial = (coordinator.device_info or {}).get("data", {}).get("serialnr") or entry.data.get("host")
+        serial = getattr(coordinator, "serial", None) or (coordinator.device_info or {}).get("data", {}).get("serialnr") or entry.unique_id or entry.data.get("host")
         self._attr_unique_id = f"{serial}-firmware-update"
+        self._serial = serial
 
     @property
     def available(self) -> bool:
@@ -50,8 +51,9 @@ class SiegeniaFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         info = (self.coordinator.device_info or {}).get("data", {})
         model = resolve_model(info)
         suggested = info.get("devicelocation") or info.get("devicefloor")
+        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or info.get("serialnr") or self._serial
         return DeviceInfo(
-            identifiers={(DOMAIN, info.get("serialnr") or self._entry.data.get("host"))},
+            identifiers={(DOMAIN, ident)},
             manufacturer="Siegenia",
             model=str(model),
             name=info.get("devicename") or "Siegenia Device",

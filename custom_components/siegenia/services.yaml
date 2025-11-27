@@ -20,6 +20,44 @@ set_mode:
             - STOP_OVER
             - STOP
 
+set_connection:
+  name: Update Connection
+  description: "Change host/port/protocol or credentials if the device IP changed. Note: passwords in service calls are stored in HA history; prefer the UI when possible."
+  fields:
+    entity_id:
+      selector:
+        entity:
+          integration: siegenia
+    host:
+      required: true
+      example: 192.168.1.50
+      selector:
+        text:
+    port:
+      required: false
+      default: 443
+      selector:
+        number:
+          min: 1
+          max: 65535
+          mode: box
+    ws_protocol:
+      required: false
+      selector:
+        select:
+          options:
+            - wss
+            - ws
+    username:
+      required: false
+      selector:
+        text:
+    password:
+      required: false
+      selector:
+        text:
+          type: password
+
 reboot_device:
   name: Reboot Device
   description: Reboot the Siegenia controller.
@@ -108,3 +146,13 @@ timer_set_duration:
       required: true
       selector:
         text:
+
+cleanup_devices:
+  name: Cleanup Devices
+  description: Merge duplicate Siegenia devices (scoped to an entry) and remove empty legacy ones.
+  fields:
+    entity_id:
+      required: false
+      selector:
+        entity:
+          integration: siegenia

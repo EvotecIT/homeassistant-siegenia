@@ -20,6 +20,9 @@ CONF_INFORMATIONAL = "informational"
 CONF_WARNING_NOTIFICATIONS = "warning_notifications"
 CONF_WARNING_EVENTS = "warning_events"
 CONF_ENABLE_BUTTONS = "enable_buttons"
+CONF_AUTO_DISCOVER = "auto_discover"
+CONF_SERIAL = "serial"
+CONF_EXTENDED_DISCOVERY = "extended_discovery"
 
 # Advanced timing options
 CONF_MOTION_INTERVAL = "motion_interval"  # seconds while moving
@@ -27,6 +30,21 @@ CONF_IDLE_INTERVAL = "idle_interval"      # seconds when idle (no push)
 
 DEFAULT_MOTION_INTERVAL = 2
 DEFAULT_IDLE_INTERVAL = 60
+DEFAULT_AUTO_DISCOVER = False  # opt-in to avoid surprise scans
+DEFAULT_EXTENDED_DISCOVERY = False  # broader scan of common home subnets
+
+# Repairs / issue ids
+ISSUE_UNREACHABLE = "cannot_connect"
+MIGRATION_DEVICES_V2 = "migration_devices_v2"
+
+# Rediscovery tuning
+REDISCOVER_COOLDOWN_SECONDS = 900  # base backoff
+REDISCOVER_BACKOFF_MAX = 7200      # cap backoff at 2h
+REDISCOVER_MAX_SUBNETS = 5
+REDISCOVER_MAX_PER_SUBNET = 64
+REDISCOVER_MAX_HOSTS = 192
+REDISCOVER_CONCURRENCY = 8
+PROBE_TIMEOUT = 3.0
 
 # Slider threshold options
 CONF_SLIDER_GAP_MAX = "slider_gap_max"            # 0 < x < 100; 1..x -> GAP_VENT
