@@ -15,6 +15,7 @@ from .const import (
     CONF_PASSWORD,
     CONF_POLL_INTERVAL,
     CONF_PORT,
+    CONF_AUTO_DISCOVER,
     CONF_USERNAME,
     DEFAULT_HEARTBEAT_INTERVAL,
     DEFAULT_POLL_INTERVAL,
@@ -40,6 +41,8 @@ from .const import (
     CONF_IDLE_INTERVAL,
     DEFAULT_MOTION_INTERVAL,
     DEFAULT_IDLE_INTERVAL,
+    DEFAULT_AUTO_DISCOVER,
+    CONF_SERIAL,
 )
 
 
@@ -91,8 +94,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(serial)
         self._abort_if_unique_id_configured()
 
+        data = dict(user_input)
+        data.setdefault(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)
+        data.setdefault(CONF_SERIAL, serial)
+
         title = (info.get("data") or {}).get("devicename") or f"Siegenia {host}"
-        return self.async_create_entry(title=title, data=user_input)
+        return self.async_create_entry(title=title, data=data)
 
     async def async_step_import(self, import_config: dict[str, Any]) -> FlowResult:  # For YAML import (not used)
         return await self.async_step_user(import_config)
@@ -223,6 +230,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Required(CONF_WS_PROTOCOL, default=d.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL)): vol.In(["wss", "ws"]),
                     vol.Required(CONF_USERNAME, default=d.get(CONF_USERNAME)): str,
                     vol.Required(CONF_PASSWORD): str,
+                    vol.Required(CONF_AUTO_DISCOVER, default=d.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)): bool,
                 }
             )
             return self.async_show_form(step_id="connection", data_schema=schema)
@@ -236,6 +244,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_WS_PROTOCOL: user_input[CONF_WS_PROTOCOL],
                 CONF_USERNAME: user_input[CONF_USERNAME],
                 CONF_PASSWORD: user_input[CONF_PASSWORD],
+                CONF_AUTO_DISCOVER: user_input.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER),
             }
         )
         self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)

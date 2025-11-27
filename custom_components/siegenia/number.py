@@ -22,8 +22,9 @@ class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
     def __init__(self, coordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        serial = (coordinator.device_info or {}).get("data", {}).get("serialnr") or entry.data.get("host")
+        serial = getattr(coordinator, "serial", None) or (coordinator.device_info or {}).get("data", {}).get("serialnr") or entry.unique_id or entry.data.get("host")
         self._attr_unique_id = f"{serial}-stopover"
+        self._serial = serial
 
     @property
     def native_min_value(self) -> float:
@@ -50,3 +51,14 @@ class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
         # Device expects integer decimeters
         await self.coordinator.client.set_device_params({"stopover": int(value)})
         await self.coordinator.async_request_refresh()
+
+    @property
+    def device_info(self):
+        info = (self.coordinator.device_info or {}).get("data", {})
+        ident = self._entry.unique_id or getattr(self.coordinator, "serial", None) or self._serial
+        return {
+            "identifiers": {(DOMAIN, ident)},
+            "manufacturer": "Siegenia",
+            "name": info.get("devicename") or "Siegenia Device",
+            "model": info.get("type"),
+        }

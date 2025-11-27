@@ -20,6 +20,8 @@ CONF_INFORMATIONAL = "informational"
 CONF_WARNING_NOTIFICATIONS = "warning_notifications"
 CONF_WARNING_EVENTS = "warning_events"
 CONF_ENABLE_BUTTONS = "enable_buttons"
+CONF_AUTO_DISCOVER = "auto_discover"
+CONF_SERIAL = "serial"
 
 # Advanced timing options
 CONF_MOTION_INTERVAL = "motion_interval"  # seconds while moving
@@ -27,6 +29,7 @@ CONF_IDLE_INTERVAL = "idle_interval"      # seconds when idle (no push)
 
 DEFAULT_MOTION_INTERVAL = 2
 DEFAULT_IDLE_INTERVAL = 60
+DEFAULT_AUTO_DISCOVER = True
 
 # Slider threshold options
 CONF_SLIDER_GAP_MAX = "slider_gap_max"            # 0 < x < 100; 1..x -> GAP_VENT

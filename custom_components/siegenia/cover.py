@@ -49,8 +49,8 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         self._sash = sash
         self._last_cmd: str | None = None
         # Use serial number if available
-        serial = (coordinator.device_info or {}).get("data", {}).get("serialnr") if coordinator.device_info else None
-        self._attr_unique_id = f"{serial or entry.data.get('host')}-sash-{self._sash}"
+        serial = getattr(coordinator, "serial", None) or (coordinator.device_info or {}).get("data", {}).get("serialnr") if coordinator.device_info else None
+        self._attr_unique_id = f"{serial or entry.unique_id or entry.data.get('host')}-sash-{self._sash}"
         # Options: enable/disable slider
         enable_slider = entry.options.get("enable_position_slider", True)
         self._attr_supported_features = self._with_slider if enable_slider else self._base_features
@@ -60,8 +60,9 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         info = (self.coordinator.device_info or {}).get("data", {})
         model = resolve_model(info)
         suggested = info.get("devicelocation") or info.get("devicefloor")
+        ident = self._entry.unique_id or getattr(self.coordinator, "serial", None) or self._entry.data.get("host")
         return DeviceInfo(
-            identifiers={(DOMAIN, info.get("serialnr") or self._entry.data.get("host"))},
+            identifiers={(DOMAIN, ident)},
             manufacturer="Siegenia",
             model=str(model),
             name=info.get("devicename") or "Siegenia Device",

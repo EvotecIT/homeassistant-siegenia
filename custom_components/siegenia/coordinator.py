@@ -3,9 +3,12 @@ from __future__ import annotations
 from datetime import timedelta
 import logging
 import time
+import asyncio
+import ipaddress
 from typing import Any
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientConnectorError, WSServerHandshakeError
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.event import async_call_later
@@ -15,6 +18,15 @@ from .api import AuthenticationError, SiegeniaClient
 from .const import (
     DEFAULT_HEARTBEAT_INTERVAL,
     DEFAULT_POLL_INTERVAL,
+    DEFAULT_WS_PROTOCOL,
+    CONF_HOST,
+    CONF_PORT,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    CONF_WS_PROTOCOL,
+    CONF_AUTO_DISCOVER,
+    CONF_SERIAL,
+    DEFAULT_AUTO_DISCOVER,
 )
 
 
@@ -23,10 +35,13 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self,
         hass: HomeAssistant,
         *,
+        entry: ConfigEntry,
         host: str,
         port: int,
         username: str,
         password: str,
+        ws_protocol: str = DEFAULT_WS_PROTOCOL,
+        auto_discover: bool = DEFAULT_AUTO_DISCOVER,
         poll_interval: int = DEFAULT_POLL_INTERVAL,
         heartbeat_interval: int = DEFAULT_HEARTBEAT_INTERVAL,
         session: ClientSession | None = None,
@@ -37,12 +52,17 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             name=f"Siegenia {host}",
             update_interval=timedelta(seconds=poll_interval),
         )
+        self.entry = entry
         self.host = host
         self.port = port
         self.username = username
         self.password = password
+        self.ws_protocol = ws_protocol or DEFAULT_WS_PROTOCOL
+        self.auto_discover = bool(auto_discover)
+        # Keep a stable serial/identifier across IP changes
+        self.serial: str | None = entry.data.get(CONF_SERIAL) or entry.unique_id
         self.heartbeat_interval = heartbeat_interval
-        self.client = SiegeniaClient(host, port=port, session=session, logger=self.logger.debug)
+        self.client = SiegeniaClient(host, port=port, ws_protocol=self.ws_protocol, session=session, logger=self.logger.debug)
         self.device_info: dict[str, Any] | None = None
         # Push/poll strategy
         self._default_interval = timedelta(seconds=poll_interval)
@@ -63,6 +83,24 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_cmd_ts_by_sash: dict[int, float] = {}
         self._last_stable_state_by_sash: dict[int, str | None] = {}
         self._manual_active_by_sash: dict[int, bool] = {}
+        self._last_rediscovery: float | None = None
+        # Push updates from device (no id) – update coordinator data immediately
+        def _on_push(msg: dict[str, Any]) -> None:
+            cmd = msg.get("command")
+            if cmd in {"getDeviceParams", "deviceParams"} and "data" in msg:
+                # Update data and switch to push-optimized interval immediately
+                # (tests call this callback directly on the event loop thread).
+                try:
+                    self._handle_push_update(msg)
+                except Exception:
+                    # Fallback to scheduling if we're on a different thread
+                    self.hass.loop.call_soon_threadsafe(self._handle_push_update, msg)
+
+        self._push_callback = _on_push
+        try:
+            self.client.set_push_callback(self._push_callback)
+        except Exception:
+            pass
 
     # Shared helpers for entities
     def set_last_cmd(self, sash: int, cmd: str | None) -> None:
@@ -80,34 +118,199 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def get_last_stable_state(self, sash: int) -> str | None:
         return self._last_stable_state_by_sash.get(int(sash))
 
+    async def _ensure_connected(self) -> None:
+        if self.client.connected:
+            return
+        await self.client.connect()
+        await self.client.login(self.username, self.password)
+        await self.client.start_heartbeat(self.heartbeat_interval)
+
+    async def _handle_connection_error(self, err: Exception) -> bool:
+        """Try to recover from connection errors by rediscovering the host.
+
+        Returns True if a new host was found and set, signalling the caller to retry
+        the data update immediately.
+        """
+        # Auth errors are handled elsewhere
+        if not self.auto_discover:
+            return False
+        # Require a known serial/unique_id to avoid hijacking a different device
+        if not self.serial:
+            return False
+        # Avoid tight rediscovery loops
+        now = time.monotonic()
+        if self._last_rediscovery and (now - self._last_rediscovery) < 900:
+            return False
+
+        self._last_rediscovery = now
+        try:
+            new_host = await self._rediscover_host()
+        except Exception as exc:  # noqa: BLE001
+            self.logger.debug("Rediscovery failed: %s", exc)
+            return False
+
+        if not new_host or new_host == self.host:
+            return False
+
+        await self._switch_host(new_host)
+        return True
+
+    def _update_serial(self, serial: str | None) -> None:
+        if not serial:
+            return
+        if serial == self.serial:
+            return
+        self.serial = serial
+        data = dict(self.entry.data)
+        data[CONF_SERIAL] = serial
+        self.hass.config_entries.async_update_entry(self.entry, data=data)
+
+    async def _rediscover_host(self) -> str | None:
+        """Scan the previous subnet for the device.
+
+        We limit to the /24 that contained the last known host and stop at the
+        first match that successfully authenticates (and, if known, matches the
+        stored serial number).
+        """
+        try:
+            current_ip = ipaddress.ip_address(self.host)
+        except ValueError:
+            return None
+
+        if current_ip.version != 4:
+            return None
+
+        # Build a small set of subnets to probe: previous /24 plus common home nets
+        nets: list[ipaddress.IPv4Network] = [ipaddress.ip_network(f"{self.host}/24", strict=False)]
+        common = ["192.168.0.0/24", "192.168.1.0/24", "10.0.0.0/24", "172.16.0.0/24"]
+        for n in common:
+            net = ipaddress.ip_network(n)
+            if net not in nets:
+                nets.append(net)
+
+        candidates: list[ipaddress.IPv4Address] = []
+        for net in nets:
+            hosts = list(net.hosts())
+            if net.supernet_of(ipaddress.ip_network(f"{self.host}/32")):
+                # prioritize addresses closest to old IP
+                center = int(current_ip)
+                hosts = sorted(hosts, key=lambda ip: abs(int(ip) - center))
+            # limit per subnet to keep scan bounded
+            candidates.extend(hosts[:64])
+
+        # Deduplicate while preserving order
+        seen = set()
+        deduped: list[ipaddress.IPv4Address] = []
+        for ip in candidates:
+            if ip not in seen:
+                seen.add(ip)
+                deduped.append(ip)
+        candidates = deduped[:192]
+
+        semaphore = asyncio.Semaphore(8)
+
+        async def _runner(ip_obj: ipaddress.IPv4Address):
+            async with semaphore:
+                return await self._probe_host(str(ip_obj))
+
+        tasks = [asyncio.create_task(_runner(ip)) for ip in candidates]
+        for task in asyncio.as_completed(tasks):
+            host = await task
+            if host:
+                # Cancel any remaining probes
+                for t in tasks:
+                    if not t.done():
+                        t.cancel()
+                try:
+                    await asyncio.gather(*tasks, return_exceptions=True)
+                except Exception:
+                    pass
+                return host
+        return None
+
+    async def _probe_host(self, host: str) -> str | None:
+        client = SiegeniaClient(
+            host,
+            port=self.port,
+            ws_protocol=self.ws_protocol,
+            response_timeout=3.0,
+            logger=self.logger.debug,
+        )
+        try:
+            await client.connect()
+            await client.login(self.username, self.password)
+            info = await client.get_device()
+            serial = ((info or {}).get("data") or {}).get("serialnr")
+            if not serial or (self.serial and serial != self.serial):
+                return None
+            # Update cached info if this looks like our device
+            self.device_info = info or self.device_info
+            self._update_serial(serial)
+            return host
+        except AuthenticationError:
+            # Wrong device or creds; skip
+            return None
+        except (ClientConnectorError, TimeoutError, asyncio.TimeoutError, WSServerHandshakeError, OSError):
+            return None
+        except Exception as exc:  # noqa: BLE001
+            self.logger.debug("Probe %s failed: %s", host, exc)
+            return None
+        finally:
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+
+    async def _switch_host(self, new_host: str) -> None:
+        self.logger.info("Detected Siegenia IP change: %s -> %s", self.host, new_host)
+        try:
+            await self.client.disconnect()
+        except Exception:
+            pass
+        self.host = new_host
+        self.name = f"Siegenia {new_host}"
+        # Replace client and preserve push callback
+        self.client = SiegeniaClient(
+            new_host,
+            port=self.port,
+            ws_protocol=self.ws_protocol,
+            logger=self.logger.debug,
+        )
+        if self._push_callback:
+            try:
+                self.client.set_push_callback(self._push_callback)
+            except Exception:
+                pass
+        # Ensure we still have a serial cached
+        if self.serial:
+            self._update_serial(self.serial)
+        # Persist host change on the config entry
+        data = dict(self.entry.data)
+        data[CONF_HOST] = new_host
+        data.setdefault(CONF_PORT, self.port)
+        data.setdefault(CONF_USERNAME, self.username)
+        data.setdefault(CONF_PASSWORD, self.password)
+        data.setdefault(CONF_WS_PROTOCOL, self.ws_protocol)
+        data.setdefault(CONF_AUTO_DISCOVER, self.auto_discover)
+        if self.serial:
+            data.setdefault(CONF_SERIAL, self.serial)
+        self.hass.config_entries.async_update_entry(self.entry, data=data)
+
     async def async_setup(self) -> None:
         await self.client.connect()
         await self.client.login(self.username, self.password)
         await self.client.start_heartbeat(self.heartbeat_interval)
-        # Push updates from device (no id) – update coordinator data immediately
-        def _on_push(msg: dict[str, Any]) -> None:
-            cmd = msg.get("command")
-            if cmd in {"getDeviceParams", "deviceParams"} and "data" in msg:
-                # Update data and switch to push-optimized interval immediately
-                # (tests call this callback directly on the event loop thread).
-                try:
-                    self._handle_push_update(msg)
-                except Exception:
-                    # Fallback to scheduling if we're on a different thread
-                    self.hass.loop.call_soon_threadsafe(self._handle_push_update, msg)
-        self.client.set_push_callback(_on_push)
         # Prime device info once
         try:
             self.device_info = await self.client.get_device()
+            data = (self.device_info or {}).get("data") or {}
+            self._update_serial(data.get("serialnr"))
         except Exception as exc:  # noqa: BLE001
             self.logger.debug("Failed to get device info during setup: %s", exc)
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
-            if not self.client.connected:
-                await self.client.connect()
-                await self.client.login(self.username, self.password)
-                await self.client.start_heartbeat(self.heartbeat_interval)
+            await self._ensure_connected()
             params = await self.client.get_device_params()
             self._adjust_interval(params)
             # Check warnings on polled data too
@@ -125,6 +328,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Trigger reauth flow in HA
             raise ConfigEntryAuthFailed from err
         except Exception as err:  # noqa: BLE001
+            recovered = await self._handle_connection_error(err)
+            if recovered:
+                # Try once more immediately after recovery
+                return await self._async_update_data()
             raise UpdateFailed(err) from err
 
     def _handle_push_update(self, msg: dict[str, Any]) -> None:
@@ -172,6 +379,12 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for k, v in states_map.items():
                 if v and v != "MOVING":
                     self._last_stable_state_by_sash[int(k)] = v
+        except Exception:
+            pass
+        # Update serial if delivered in push payload (rare)
+        try:
+            data = (msg or {}).get("data") or {}
+            self._update_serial(data.get("serialnr"))
         except Exception:
             pass
         # Detect manual operation edges and emit log/event once
