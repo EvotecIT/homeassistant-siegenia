@@ -61,6 +61,8 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
    - Close w/o lock max % (default 40)
    - Stop Over display % (default 40; use 30/40/90 to match your preference)
 
+[![Siegenia Device Page](assets\screenshot1.png)](assets\screenshot1.png)
+
 ### Quick Buttons
 
 - Built-in Button entities (under the device) for: Open, Close, Gap Vent, Close w/o Lock, Stop Over, Stop.
