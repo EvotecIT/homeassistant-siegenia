@@ -59,7 +59,8 @@
           "ws_protocol": "WS Protocol",
           "username": "Username",
           "password": "Password",
-          "auto_discover": "Auto-detect IP changes on your network"
+          "auto_discover": "Auto-detect IP changes on your network",
+          "extended_discovery": "Scan common home subnets (broader, slower)"
         }
       }
     }

@@ -48,7 +48,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             return
 
         new_data = dict(entry.data)
-        new_data[CONF_HOST] = call.data.get(CONF_HOST, new_data.get(CONF_HOST))
+        if CONF_HOST in call.data:
+            new_data[CONF_HOST] = call.data[CONF_HOST]
         if call.data.get(CONF_PORT) is not None:
             new_data[CONF_PORT] = call.data[CONF_PORT]
         if call.data.get(CONF_WS_PROTOCOL):

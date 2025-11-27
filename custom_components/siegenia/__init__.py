@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+import asyncio
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .const import (
@@ -19,9 +20,11 @@ from .const import (
     CONF_USERNAME,
     CONF_HOST,
     CONF_AUTO_DISCOVER,
+    CONF_EXTENDED_DISCOVERY,
     CONF_WS_PROTOCOL,
     DEFAULT_WS_PROTOCOL,
     DEFAULT_AUTO_DISCOVER,
+    DEFAULT_EXTENDED_DISCOVERY,
     CONF_SERIAL,
     MIGRATION_DEVICES_V2,
     PLATFORMS,
@@ -66,6 +69,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         password=data[CONF_PASSWORD],
         ws_protocol=data.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL),
         auto_discover=data.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER),
+        extended_discovery=data.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY),
         poll_interval=data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
         heartbeat_interval=data.get(CONF_HEARTBEAT_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL),
     )
@@ -89,12 +93,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator.logger.warning("Initial connection failed; will retry in background: %s", exc)
 
     # Merge duplicate devices once per entry
-    if not entry.data.get(MIGRATION_DEVICES_V2):
-        try:
-            await _async_migrate_devices(hass, entry)
-            hass.config_entries.async_update_entry(entry, data={**entry.data, MIGRATION_DEVICES_V2: True})
-        except Exception as exc:  # noqa: BLE001
-            coordinator.logger.debug("Device migration skipped: %s", exc)
+    _lock_key = f"{DOMAIN}_migration_lock"
+    if _lock_key not in hass.data:
+        hass.data[_lock_key] = asyncio.Lock()
+    async with hass.data[_lock_key]:
+        if not entry.data.get(MIGRATION_DEVICES_V2):
+            try:
+                await _async_migrate_devices(hass, entry)
+                hass.config_entries.async_update_entry(entry, data={**entry.data, MIGRATION_DEVICES_V2: True})
+            except Exception as exc:  # noqa: BLE001
+                coordinator.logger.debug("Device migration skipped: %s", exc)
 
     hass.data.setdefault(entry.domain, {})[entry.entry_id] = coordinator
 
@@ -209,9 +217,6 @@ async def _async_migrate_devices(hass: HomeAssistant, entry: ConfigEntry) -> Non
             if ent.device_id == dev.id:
                 ent_reg.async_update_entity(ent.entity_id, device_id=primary.id)
         # Remove the now-empty device
-        if not dev_reg.async_get_device(dev.identifiers, dev.connections, dev.id, raise_on_missing=False):
-            # compatibility safeguard
-            pass
         try:
             dev_reg.async_remove_device(dev.id)
         except Exception:

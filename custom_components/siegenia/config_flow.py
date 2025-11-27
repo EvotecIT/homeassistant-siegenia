@@ -16,6 +16,7 @@ from .const import (
     CONF_POLL_INTERVAL,
     CONF_PORT,
     CONF_AUTO_DISCOVER,
+    CONF_EXTENDED_DISCOVERY,
     CONF_USERNAME,
     DEFAULT_HEARTBEAT_INTERVAL,
     DEFAULT_POLL_INTERVAL,
@@ -42,6 +43,7 @@ from .const import (
     DEFAULT_MOTION_INTERVAL,
     DEFAULT_IDLE_INTERVAL,
     DEFAULT_AUTO_DISCOVER,
+    DEFAULT_EXTENDED_DISCOVERY,
     CONF_SERIAL,
 )
 
@@ -55,6 +57,8 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_WS_PROTOCOL, default=DEFAULT_WS_PROTOCOL): vol.In(["wss", "ws"]),
         vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): int,
         vol.Optional(CONF_HEARTBEAT_INTERVAL, default=DEFAULT_HEARTBEAT_INTERVAL): int,
+        vol.Optional(CONF_AUTO_DISCOVER, default=DEFAULT_AUTO_DISCOVER): bool,
+        vol.Optional(CONF_EXTENDED_DISCOVERY, default=DEFAULT_EXTENDED_DISCOVERY): bool,
     }
 )
 
@@ -96,6 +100,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data = dict(user_input)
         data.setdefault(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)
+        data.setdefault(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY)
         data.setdefault(CONF_SERIAL, serial)
 
         title = (info.get("data") or {}).get("devicename") or f"Siegenia {host}"
@@ -231,6 +236,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Required(CONF_USERNAME, default=d.get(CONF_USERNAME)): str,
                     vol.Required(CONF_PASSWORD): str,
                     vol.Required(CONF_AUTO_DISCOVER, default=d.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)): bool,
+                    vol.Required(CONF_EXTENDED_DISCOVERY, default=d.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY)): bool,
                 }
             )
             return self.async_show_form(step_id="connection", data_schema=schema)
@@ -245,6 +251,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_USERNAME: user_input[CONF_USERNAME],
                 CONF_PASSWORD: user_input[CONF_PASSWORD],
                 CONF_AUTO_DISCOVER: user_input.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER),
+                CONF_EXTENDED_DISCOVERY: user_input.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY),
             }
         )
         self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)

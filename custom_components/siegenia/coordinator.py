@@ -75,6 +75,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.client = SiegeniaClient(host, port=port, ws_protocol=self.ws_protocol, session=session, logger=self.logger.debug)
         self.device_info: dict[str, Any] | None = None
         self._issue_lock = asyncio.Lock()
+        self.extended_discovery = bool(entry.data.get(CONF_EXTENDED_DISCOVERY, False))
         # Push/poll strategy
         self._default_interval = timedelta(seconds=poll_interval)
         self._push_interval = timedelta(seconds=max(poll_interval * 6, 30))
@@ -135,9 +136,15 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _ensure_connected(self) -> None:
         if self.client.connected:
             return
-        await self.client.connect()
-        await self.client.login(self.username, self.password)
-        await self.client.start_heartbeat(self.heartbeat_interval)
+        try:
+            await self.client.connect()
+            await self.client.login(self.username, self.password)
+            await self.client.start_heartbeat(self.heartbeat_interval)
+        except (ClientConnectorError, TimeoutError, asyncio.TimeoutError, WSServerHandshakeError, OSError, AuthenticationError) as exc:
+            raise UpdateFailed(exc) from exc
+        except Exception as exc:  # noqa: BLE001
+            self.logger.debug("Unexpected ensure_connected failure: %s", exc)
+            raise UpdateFailed(exc) from exc
 
     async def _handle_connection_error(self, err: Exception) -> bool:
         """Try to recover from connection errors by rediscovering the host.
@@ -224,13 +231,14 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if current_ip.version != 4:
             return None
 
-        # Build a small set of subnets to probe: previous /24 plus common home nets (limited)
+        # Build subnets to probe: previous /24 plus optional common home nets if extended
         nets: list[ipaddress.IPv4Network] = [ipaddress.ip_network(f"{self.host}/24", strict=False)]
-        common = ["192.168.0.0/24", "192.168.1.0/24", "10.0.0.0/24", "172.16.0.0/24"]
-        for n in common[: REDISCOVER_MAX_SUBNETS - 1]:
-            net = ipaddress.ip_network(n)
-            if net not in nets:
-                nets.append(net)
+        if self.extended_discovery:
+            common = ["192.168.0.0/24", "192.168.1.0/24", "10.0.0.0/24", "172.16.0.0/24"]
+            for n in common[: REDISCOVER_MAX_SUBNETS - 1]:
+                net = ipaddress.ip_network(n)
+                if net not in nets:
+                    nets.append(net)
 
         candidates: list[ipaddress.IPv4Address] = []
         for net in nets:
@@ -255,19 +263,23 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 return await self._probe_host(str(ip_obj))
 
         tasks = [asyncio.create_task(_runner(ip)) for ip in candidates]
-        for task in asyncio.as_completed(tasks):
-            host = await task
-            if host:
-                # Cancel any remaining probes
-                for t in tasks:
-                    if not t.done():
-                        t.cancel()
-                try:
-                    await asyncio.gather(*tasks, return_exceptions=True)
-                except Exception:
-                    pass
-                return host
-        return None
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        found = None
+        for d in done:
+            try:
+                found = d.result()
+            except Exception as exc:  # noqa: BLE001
+                self.logger.debug("Probe task failed: %s", exc)
+            if found:
+                break
+        # Cancel remaining tasks
+        for t in pending:
+            t.cancel()
+        try:
+            await asyncio.gather(*pending, return_exceptions=True)
+        except Exception:
+            pass
+        return found
 
     async def _probe_host(self, host: str) -> str | None:
         client = SiegeniaClient(
@@ -350,32 +362,35 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.logger.debug("Failed to get device info during setup: %s", exc)
 
     async def _async_update_data(self) -> dict[str, Any]:
-        try:
-            await self._ensure_connected()
-            params = await self.client.get_device_params()
-            self._adjust_interval(params)
-            # Check warnings on polled data too
-            self._handle_warnings(params)
-            await self._clear_issue()
-            # Track last stable states per sash for UX when MOVING without a recent command
+        attempts = 0
+        while attempts < 2:
             try:
-                states = ((params or {}).get("data") or {}).get("states") or {}
-                for k, v in states.items():
-                    if v and v != "MOVING":
-                        self._last_stable_state_by_sash[int(k)] = v
-            except Exception:
-                pass
-            return params
-        except AuthenticationError as err:
-            # Trigger reauth flow in HA
-            raise ConfigEntryAuthFailed from err
-        except Exception as err:  # noqa: BLE001
-            recovered = await self._handle_connection_error(err)
-            if recovered:
-                # Try once more immediately after recovery
-                return await self._async_update_data()
-            await self._raise_issue()
-            raise UpdateFailed(err) from err
+                await self._ensure_connected()
+                params = await self.client.get_device_params()
+                self._adjust_interval(params)
+                # Check warnings on polled data too
+                self._handle_warnings(params)
+                await self._clear_issue()
+                # Track last stable states per sash for UX when MOVING without a recent command
+                try:
+                    states = ((params or {}).get("data") or {}).get("states") or {}
+                    for k, v in states.items():
+                        if v and v != "MOVING":
+                            self._last_stable_state_by_sash[int(k)] = v
+                except Exception:
+                    pass
+                return params
+            except AuthenticationError as err:
+                raise ConfigEntryAuthFailed from err
+            except Exception as err:  # noqa: BLE001
+                recovered = await self._handle_connection_error(err)
+                if recovered:
+                    attempts += 1
+                    continue
+                await self._raise_issue()
+                raise UpdateFailed(err) from err
+        # Should not reach here
+        raise UpdateFailed("Failed after retry")
 
     def _handle_push_update(self, msg: dict[str, Any]) -> None:
         # Mark push as active; slow down poller while push is flowing
