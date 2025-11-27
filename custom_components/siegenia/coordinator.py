@@ -134,6 +134,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def get_last_stable_state(self, sash: int) -> str | None:
         return self._last_stable_state_by_sash.get(int(sash))
 
+    def device_identifier(self) -> str:
+        """Return the stable identifier (serial preferred) for entities."""
+        return self.serial or self.entry.unique_id or self.host
+
     async def _ensure_connected(self) -> None:
         if self.client.connected:
             return

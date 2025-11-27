@@ -30,8 +30,8 @@ CONF_IDLE_INTERVAL = "idle_interval"      # seconds when idle (no push)
 
 DEFAULT_MOTION_INTERVAL = 2
 DEFAULT_IDLE_INTERVAL = 60
-DEFAULT_AUTO_DISCOVER = False
-DEFAULT_EXTENDED_DISCOVERY = False
+DEFAULT_AUTO_DISCOVER = False  # opt-in to avoid surprise scans
+DEFAULT_EXTENDED_DISCOVERY = False  # broader scan of common home subnets
 
 # Repairs / issue ids
 ISSUE_UNREACHABLE = "cannot_connect"

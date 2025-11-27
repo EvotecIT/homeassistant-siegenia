@@ -102,6 +102,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         data.setdefault(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)
         data.setdefault(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY)
         data.setdefault(CONF_SERIAL, serial)
+        if not data.get(CONF_AUTO_DISCOVER, False):
+            data[CONF_EXTENDED_DISCOVERY] = False
 
         title = (info.get("data") or {}).get("devicename") or f"Siegenia {host}"
         return self.async_create_entry(title=title, data=data)
@@ -254,6 +256,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_EXTENDED_DISCOVERY: user_input.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY),
             }
         )
+        if not new_data.get(CONF_AUTO_DISCOVER, False):
+            new_data[CONF_EXTENDED_DISCOVERY] = False
         self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
         await self.hass.config_entries.async_reload(self.config_entry.entry_id)
         return self.async_abort(reason="reconfigured")

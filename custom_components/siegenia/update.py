@@ -51,7 +51,7 @@ class SiegeniaFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         info = (self.coordinator.device_info or {}).get("data", {})
         model = resolve_model(info)
         suggested = info.get("devicelocation") or info.get("devicefloor")
-        ident = self._entry.unique_id or getattr(self.coordinator, "serial", None) or info.get("serialnr") or self._serial
+        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or info.get("serialnr") or self._serial
         return DeviceInfo(
             identifiers={(DOMAIN, ident)},
             manufacturer="Siegenia",

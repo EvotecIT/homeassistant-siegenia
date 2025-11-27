@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er, device_registry as dr
 from homeassistant.util import slugify as _slug
 
@@ -41,11 +42,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         entity_id: str = call.data["entity_id"]
         entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
         if entity is None:
-            return
+            raise ServiceValidationError(f"Entity {entity_id} not found for siegenia.set_connection")
         coordinator = getattr(entity, "coordinator", None)
         entry = getattr(coordinator, "entry", None) if coordinator else None
         if entry is None:
-            return
+            raise ServiceValidationError("Coordinator missing on entity for siegenia.set_connection")
 
         new_data = dict(entry.data)
         if CONF_HOST in call.data:
@@ -96,21 +97,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         if not target_entry_id:
             entries = hass.config_entries.async_entries(DOMAIN)
             if not entries:
-                return
+                raise ServiceValidationError("No Siegenia entries found for cleanup")
             target_entry_id = entries[0].entry_id
 
-        devices = [d for d in dev_reg.devices.values() if target_entry_id in d.config_entries]
+        devices = dev_reg.async_entries_for_config_entry(target_entry_id) if hasattr(dev_reg, "async_entries_for_config_entry") else [d for d in dev_reg.devices.values() if target_entry_id in d.config_entries]
         if not devices:
-            return
+            raise ServiceValidationError("No devices found for this Siegenia entry")
 
         primary = max(devices, key=lambda d: len(d.identifiers))
 
         for dev in devices:
             if dev.id == primary.id:
                 continue
-            for ent in list(ent_reg.entities.values()):
-                if ent.device_id == dev.id:
-                    ent_reg.async_update_entity(ent.entity_id, device_id=primary.id)
+            ents = ent_reg.async_entries_for_device(dev.id) if hasattr(ent_reg, "async_entries_for_device") else [e for e in ent_reg.entities.values() if e.device_id == dev.id]
+            for ent in ents:
+                ent_reg.async_update_entity(ent.entity_id, device_id=primary.id)
             try:
                 dev_reg.async_remove_device(dev.id)
             except Exception:

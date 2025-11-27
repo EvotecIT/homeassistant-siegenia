@@ -48,7 +48,7 @@ class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
     def device_info(self) -> DeviceInfo:
         info = (self.coordinator.device_info or {}).get("data", {})
         model = DEVICE_TYPE_MAP.get(info.get("type"), info.get("type"))
-        ident = self._entry.unique_id or getattr(self.coordinator, "serial", None) or info.get("serialnr") or self._entry.data.get("host")
+        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or info.get("serialnr") or self._entry.data.get("host")
         return DeviceInfo(
             identifiers={(DOMAIN, ident)},
             manufacturer="Siegenia",

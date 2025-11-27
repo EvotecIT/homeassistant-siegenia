@@ -55,7 +55,7 @@ class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
     @property
     def device_info(self):
         info = (self.coordinator.device_info or {}).get("data", {})
-        ident = self._entry.unique_id or getattr(self.coordinator, "serial", None) or self._serial
+        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or self._serial
         return {
             "identifiers": {(DOMAIN, ident)},
             "manufacturer": "Siegenia",
