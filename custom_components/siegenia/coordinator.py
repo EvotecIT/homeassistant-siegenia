@@ -52,6 +52,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         password: str,
         ws_protocol: str = DEFAULT_WS_PROTOCOL,
         auto_discover: bool = DEFAULT_AUTO_DISCOVER,
+        extended_discovery: bool = False,
         poll_interval: int = DEFAULT_POLL_INTERVAL,
         heartbeat_interval: int = DEFAULT_HEARTBEAT_INTERVAL,
         session: ClientSession | None = None,
@@ -75,7 +76,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.client = SiegeniaClient(host, port=port, ws_protocol=self.ws_protocol, session=session, logger=self.logger.debug)
         self.device_info: dict[str, Any] | None = None
         self._issue_lock = asyncio.Lock()
-        self.extended_discovery = bool(entry.data.get(CONF_EXTENDED_DISCOVERY, False))
+        self.extended_discovery = bool(extended_discovery)
         # Push/poll strategy
         self._default_interval = timedelta(seconds=poll_interval)
         self._push_interval = timedelta(seconds=max(poll_interval * 6, 30))
