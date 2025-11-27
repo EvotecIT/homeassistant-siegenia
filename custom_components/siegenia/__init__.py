@@ -87,7 +87,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Allow setup to continue so options/services stay available; coordinator will retry in background
         coordinator.logger.warning("Initial connection failed; will retry in background: %s", exc)
 
-    # Merge legacy host-based devices into the stable serial-based device
+    # Merge any duplicate devices into the primary device
     try:
         await _async_migrate_devices(hass, entry)
     except Exception as exc:  # noqa: BLE001
@@ -177,43 +177,42 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_migrate_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    serial = entry.data.get(CONF_SERIAL) or entry.unique_id
-    host = entry.data.get(CONF_HOST)
-    if not serial:
-        return
-
     dev_reg = dr.async_get(hass)
     ent_reg = er.async_get(hass)
 
-    serial_id = (DOMAIN, serial)
-    host_id = (DOMAIN, host) if host else None
-
-    primary = dev_reg.async_get_device({serial_id})
-    legacy = dev_reg.async_get_device({host_id}) if host_id else None
-
-    # If only legacy exists, upgrade its identifiers to include serial
-    if not primary and legacy:
-        new_ids = set(legacy.identifiers)
-        new_ids.add(serial_id)
-        if host_id:
-            new_ids.add(host_id)
-        dev_reg.async_update_device(legacy.id, new_identifiers=new_ids)
+    serial = entry.data.get(CONF_SERIAL) or entry.unique_id
+    # Collect all devices belonging to this domain
+    devices = [d for d in dev_reg.devices.values() if any(idt[0] == DOMAIN for idt in d.identifiers)]
+    if not devices:
         return
 
-    if not primary:
-        return
+    # Pick primary: with serial match, else one with most entities, else first
+    primary = None
+    if serial:
+        for d in devices:
+            if (DOMAIN, serial) in d.identifiers:
+                primary = d
+                break
+    if primary is None:
+        primary = max(devices, key=lambda d: len(d.identifiers))
 
-    # Ensure primary also carries the host identifier to avoid future duplication
-    if host_id and host_id not in primary.identifiers:
-        dev_reg.async_update_device(primary.id, new_identifiers=set(primary.identifiers) | {host_id})
+    # Ensure primary carries current host identifier too
+    host = entry.data.get(CONF_HOST)
+    if host and (DOMAIN, host) not in primary.identifiers:
+        dev_reg.async_update_device(primary.id, new_identifiers=set(primary.identifiers) | {(DOMAIN, host)})
 
-    if legacy and legacy.id != primary.id:
-        # Re-home any entities on the legacy device to the primary
+    for dev in devices:
+        if dev.id == primary.id:
+            continue
+        # Move entities from this device to primary
         for ent in list(ent_reg.entities.values()):
-            if ent.device_id == legacy.id:
+            if ent.device_id == dev.id:
                 ent_reg.async_update_entity(ent.entity_id, device_id=primary.id)
-        # Remove the now-empty legacy device (best effort)
+        # Remove the now-empty device
+        if not dev_reg.async_get_device(dev.identifiers, dev.connections, dev.id, raise_on_missing=False):
+            # compatibility safeguard
+            pass
         try:
-            dev_reg.async_remove_device(legacy.id)
+            dev_reg.async_remove_device(dev.id)
         except Exception:
             pass

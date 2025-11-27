@@ -20,6 +20,12 @@
       "cannot_connect": "Failed to connect to the device."
     }
   },
+  "issues": {
+    "cannot_connect": {
+      "title": "Siegenia cannot connect",
+      "description": "The Siegenia controller at {host} is unreachable. Update the host/IP in options or call siegenia.set_connection."
+    }
+  },
   "options": {
     "error": {
       "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."

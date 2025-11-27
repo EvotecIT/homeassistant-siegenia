@@ -146,3 +146,8 @@ timer_set_duration:
       required: true
       selector:
         text:
+
+cleanup_devices:
+  name: Cleanup Devices
+  description: Merge duplicate Siegenia devices and remove empty legacy ones.
+  fields: {}

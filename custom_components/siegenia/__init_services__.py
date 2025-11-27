@@ -78,6 +78,35 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, "set_mode", _handle_set_mode)
     hass.services.async_register(DOMAIN, "set_connection", _handle_set_connection)
 
+    async def _cleanup_devices(call: ServiceCall) -> None:
+        """Merge duplicate devices and remove empty leftovers.
+
+        Useful when a legacy host-based device remains after IP changes.
+        """
+        dev_reg = dr.async_get(hass)
+        ent_reg = er.async_get(hass)
+
+        # Find all devices for this domain
+        devices = [d for d in dev_reg.devices.values() if any(idt[0] == DOMAIN for idt in d.identifiers)]
+        if not devices:
+            return
+
+        # Choose primary: most identifiers -> tends to be the serial device
+        primary = max(devices, key=lambda d: len(d.identifiers))
+
+        for dev in devices:
+            if dev.id == primary.id:
+                continue
+            for ent in list(ent_reg.entities.values()):
+                if ent.device_id == dev.id:
+                    ent_reg.async_update_entity(ent.entity_id, device_id=primary.id)
+            try:
+                dev_reg.async_remove_device(dev.id)
+            except Exception:
+                pass
+
+    hass.services.async_register(DOMAIN, "cleanup_devices", _cleanup_devices)
+
     async def _reboot(call):
         await _wrap_entity(call, "reboot_device")
 

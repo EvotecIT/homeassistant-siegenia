@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.event import async_call_later
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import issue_registry as ir
 
 from .api import AuthenticationError, SiegeniaClient
 from .const import (
@@ -27,6 +28,7 @@ from .const import (
     CONF_AUTO_DISCOVER,
     CONF_SERIAL,
     DEFAULT_AUTO_DISCOVER,
+    ISSUE_UNREACHABLE,
 )
 
 
@@ -101,6 +103,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.client.set_push_callback(self._push_callback)
         except Exception:
             pass
+        self._issue_set = False
 
     # Shared helpers for entities
     def set_last_cmd(self, sash: int, cmd: str | None) -> None:
@@ -164,6 +167,31 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         data = dict(self.entry.data)
         data[CONF_SERIAL] = serial
         self.hass.config_entries.async_update_entry(self.entry, data=data)
+
+    def _raise_issue(self) -> None:
+        if self._issue_set:
+            return
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            ISSUE_UNREACHABLE,
+            is_fixable=True,
+            breaks_in_ha_version=None,
+            severity=ir.IssueSeverity.ERROR,
+            translation_key=ISSUE_UNREACHABLE,
+            translation_placeholders={"host": self.host},
+            data={"entry_id": self.entry.entry_id},
+        )
+        self._issue_set = True
+
+    def _clear_issue(self) -> None:
+        if not self._issue_set:
+            return
+        try:
+            ir.async_delete_issue(self.hass, DOMAIN, ISSUE_UNREACHABLE)
+        except Exception:
+            pass
+        self._issue_set = False
 
     async def _rediscover_host(self) -> str | None:
         """Scan the previous subnet for the device.
@@ -295,6 +323,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.serial:
             data.setdefault(CONF_SERIAL, self.serial)
         self.hass.config_entries.async_update_entry(self.entry, data=data)
+        self._clear_issue()
 
     async def async_setup(self) -> None:
         await self.client.connect()
@@ -315,6 +344,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._adjust_interval(params)
             # Check warnings on polled data too
             self._handle_warnings(params)
+            self._clear_issue()
             # Track last stable states per sash for UX when MOVING without a recent command
             try:
                 states = ((params or {}).get("data") or {}).get("states") or {}
@@ -332,6 +362,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if recovered:
                 # Try once more immediately after recovery
                 return await self._async_update_data()
+            self._raise_issue()
             raise UpdateFailed(err) from err
 
     def _handle_push_update(self, msg: dict[str, Any]) -> None:

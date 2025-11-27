@@ -31,6 +31,9 @@ DEFAULT_MOTION_INTERVAL = 2
 DEFAULT_IDLE_INTERVAL = 60
 DEFAULT_AUTO_DISCOVER = True
 
+# Repairs / issue ids
+ISSUE_UNREACHABLE = "cannot_connect"
+
 # Slider threshold options
 CONF_SLIDER_GAP_MAX = "slider_gap_max"            # 0 < x < 100; 1..x -> GAP_VENT
 CONF_SLIDER_CWOL_MAX = "slider_cwol_max"          # (gap_max+1)..x -> CLOSE_WO_LOCK
