@@ -113,6 +113,13 @@
         "password": {"name": "Password", "description": "Optional new password."}
       }
     },
+    "cleanup_devices": {
+      "name": "Cleanup Duplicate Devices",
+      "description": "Merge duplicate Siegenia devices for this entry and remove empty leftovers.",
+      "fields": {
+        "entity_id": {"name": "Entity", "description": "Optional: any Siegenia entity to scope the cleanup."}
+      }
+    },
     "reboot_device": {
       "name": "Reboot Device",
       "description": "Reboot the Siegenia controller.",

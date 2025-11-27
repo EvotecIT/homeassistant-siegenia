@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/EvotecIT/homeassistant-siegenia/issues",
   "loggers": ["custom_components.siegenia"],
   "requirements": [],
-  "version": "1.1.5"
+  "version": "1.1.7"
 }

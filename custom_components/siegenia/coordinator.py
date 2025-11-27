@@ -19,6 +19,7 @@ from .api import AuthenticationError, SiegeniaClient
 from .const import (
     DEFAULT_HEARTBEAT_INTERVAL,
     DEFAULT_POLL_INTERVAL,
+    DOMAIN,
     DEFAULT_WS_PROTOCOL,
     CONF_HOST,
     CONF_PORT,
@@ -29,6 +30,13 @@ from .const import (
     CONF_SERIAL,
     DEFAULT_AUTO_DISCOVER,
     ISSUE_UNREACHABLE,
+    REDISCOVER_COOLDOWN_SECONDS,
+    REDISCOVER_BACKOFF_MAX,
+    REDISCOVER_MAX_SUBNETS,
+    REDISCOVER_MAX_PER_SUBNET,
+    REDISCOVER_MAX_HOSTS,
+    REDISCOVER_CONCURRENCY,
+    PROBE_TIMEOUT,
 )
 
 
@@ -66,6 +74,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.heartbeat_interval = heartbeat_interval
         self.client = SiegeniaClient(host, port=port, ws_protocol=self.ws_protocol, session=session, logger=self.logger.debug)
         self.device_info: dict[str, Any] | None = None
+        self._issue_lock = asyncio.Lock()
         # Push/poll strategy
         self._default_interval = timedelta(seconds=poll_interval)
         self._push_interval = timedelta(seconds=max(poll_interval * 6, 30))
@@ -86,6 +95,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_stable_state_by_sash: dict[int, str | None] = {}
         self._manual_active_by_sash: dict[int, bool] = {}
         self._last_rediscovery: float | None = None
+        self._rediscovery_backoff = REDISCOVER_COOLDOWN_SECONDS
+        self._issue_set = False
         # Push updates from device (no id) – update coordinator data immediately
         def _on_push(msg: dict[str, Any]) -> None:
             cmd = msg.get("command")
@@ -140,9 +151,9 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Require a known serial/unique_id to avoid hijacking a different device
         if not self.serial:
             return False
-        # Avoid tight rediscovery loops
+        # Avoid tight rediscovery loops with backoff
         now = time.monotonic()
-        if self._last_rediscovery and (now - self._last_rediscovery) < 900:
+        if self._last_rediscovery and (now - self._last_rediscovery) < self._rediscovery_backoff:
             return False
 
         self._last_rediscovery = now
@@ -150,12 +161,15 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             new_host = await self._rediscover_host()
         except Exception as exc:  # noqa: BLE001
             self.logger.debug("Rediscovery failed: %s", exc)
+            self._rediscovery_backoff = min(self._rediscovery_backoff * 2, REDISCOVER_BACKOFF_MAX)
             return False
 
         if not new_host or new_host == self.host:
+            self._rediscovery_backoff = min(self._rediscovery_backoff * 2, REDISCOVER_BACKOFF_MAX)
             return False
 
         await self._switch_host(new_host)
+        self._rediscovery_backoff = REDISCOVER_COOLDOWN_SECONDS
         return True
 
     def _update_serial(self, serial: str | None) -> None:
@@ -168,30 +182,32 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         data[CONF_SERIAL] = serial
         self.hass.config_entries.async_update_entry(self.entry, data=data)
 
-    def _raise_issue(self) -> None:
-        if self._issue_set:
-            return
-        ir.async_create_issue(
-            self.hass,
-            DOMAIN,
-            ISSUE_UNREACHABLE,
-            is_fixable=True,
-            breaks_in_ha_version=None,
-            severity=ir.IssueSeverity.ERROR,
-            translation_key=ISSUE_UNREACHABLE,
-            translation_placeholders={"host": self.host},
-            data={"entry_id": self.entry.entry_id},
-        )
-        self._issue_set = True
+    async def _raise_issue(self) -> None:
+        async with self._issue_lock:
+            if self._issue_set:
+                return
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                ISSUE_UNREACHABLE,
+                is_fixable=True,
+                breaks_in_ha_version=None,
+                severity=ir.IssueSeverity.ERROR,
+                translation_key=ISSUE_UNREACHABLE,
+                translation_placeholders={"host": self.host},
+                data={"entry_id": self.entry.entry_id},
+            )
+            self._issue_set = True
 
-    def _clear_issue(self) -> None:
-        if not self._issue_set:
-            return
-        try:
-            ir.async_delete_issue(self.hass, DOMAIN, ISSUE_UNREACHABLE)
-        except Exception:
-            pass
-        self._issue_set = False
+    async def _clear_issue(self) -> None:
+        async with self._issue_lock:
+            if not self._issue_set:
+                return
+            try:
+                ir.async_delete_issue(self.hass, DOMAIN, ISSUE_UNREACHABLE)
+            except Exception:
+                pass
+            self._issue_set = False
 
     async def _rediscover_host(self) -> str | None:
         """Scan the previous subnet for the device.
@@ -208,10 +224,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if current_ip.version != 4:
             return None
 
-        # Build a small set of subnets to probe: previous /24 plus common home nets
+        # Build a small set of subnets to probe: previous /24 plus common home nets (limited)
         nets: list[ipaddress.IPv4Network] = [ipaddress.ip_network(f"{self.host}/24", strict=False)]
         common = ["192.168.0.0/24", "192.168.1.0/24", "10.0.0.0/24", "172.16.0.0/24"]
-        for n in common:
+        for n in common[: REDISCOVER_MAX_SUBNETS - 1]:
             net = ipaddress.ip_network(n)
             if net not in nets:
                 nets.append(net)
@@ -220,22 +236,19 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         for net in nets:
             hosts = list(net.hosts())
             if net.supernet_of(ipaddress.ip_network(f"{self.host}/32")):
-                # prioritize addresses closest to old IP
                 center = int(current_ip)
                 hosts = sorted(hosts, key=lambda ip: abs(int(ip) - center))
-            # limit per subnet to keep scan bounded
-            candidates.extend(hosts[:64])
+            candidates.extend(hosts[:REDISCOVER_MAX_PER_SUBNET])
 
-        # Deduplicate while preserving order
         seen = set()
         deduped: list[ipaddress.IPv4Address] = []
         for ip in candidates:
             if ip not in seen:
                 seen.add(ip)
                 deduped.append(ip)
-        candidates = deduped[:192]
+        candidates = deduped[:REDISCOVER_MAX_HOSTS]
 
-        semaphore = asyncio.Semaphore(8)
+        semaphore = asyncio.Semaphore(REDISCOVER_CONCURRENCY)
 
         async def _runner(ip_obj: ipaddress.IPv4Address):
             async with semaphore:
@@ -261,7 +274,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             host,
             port=self.port,
             ws_protocol=self.ws_protocol,
-            response_timeout=3.0,
+            response_timeout=PROBE_TIMEOUT,
             logger=self.logger.debug,
         )
         try:
@@ -276,7 +289,6 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._update_serial(serial)
             return host
         except AuthenticationError:
-            # Wrong device or creds; skip
             return None
         except (ClientConnectorError, TimeoutError, asyncio.TimeoutError, WSServerHandshakeError, OSError):
             return None
@@ -285,9 +297,9 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return None
         finally:
             try:
-                await client.disconnect()
-            except Exception:
-                pass
+                await asyncio.wait_for(client.disconnect(), timeout=2.0)
+            except Exception as exc:  # noqa: BLE001
+                self.logger.debug("Probe cleanup failed for %s: %s", host, exc)
 
     async def _switch_host(self, new_host: str) -> None:
         self.logger.info("Detected Siegenia IP change: %s -> %s", self.host, new_host)
@@ -308,7 +320,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             try:
                 self.client.set_push_callback(self._push_callback)
             except Exception:
-                pass
+                self.logger.debug("Failed to rebind push callback after host switch")
         # Ensure we still have a serial cached
         if self.serial:
             self._update_serial(self.serial)
@@ -323,7 +335,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.serial:
             data.setdefault(CONF_SERIAL, self.serial)
         self.hass.config_entries.async_update_entry(self.entry, data=data)
-        self._clear_issue()
+        await self._clear_issue()
 
     async def async_setup(self) -> None:
         await self.client.connect()
@@ -344,7 +356,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._adjust_interval(params)
             # Check warnings on polled data too
             self._handle_warnings(params)
-            self._clear_issue()
+            await self._clear_issue()
             # Track last stable states per sash for UX when MOVING without a recent command
             try:
                 states = ((params or {}).get("data") or {}).get("states") or {}
@@ -362,7 +374,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if recovered:
                 # Try once more immediately after recovery
                 return await self._async_update_data()
-            self._raise_issue()
+            await self._raise_issue()
             raise UpdateFailed(err) from err
 
     def _handle_push_update(self, msg: dict[str, Any]) -> None:

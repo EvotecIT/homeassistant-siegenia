@@ -79,19 +79,29 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, "set_connection", _handle_set_connection)
 
     async def _cleanup_devices(call: ServiceCall) -> None:
-        """Merge duplicate devices and remove empty leftovers.
+        """Merge duplicate devices for a specific entry and remove empty leftovers.
 
-        Useful when a legacy host-based device remains after IP changes.
+        Accepts optional entity_id to scope; otherwise uses the first Siegenia entry.
         """
         dev_reg = dr.async_get(hass)
         ent_reg = er.async_get(hass)
 
-        # Find all devices for this domain
-        devices = [d for d in dev_reg.devices.values() if any(idt[0] == DOMAIN for idt in d.identifiers)]
+        target_entry_id: str | None = None
+        entity_id = call.data.get("entity_id")
+        if entity_id:
+            ent = ent_reg.async_get(entity_id)
+            if ent and ent.config_entry_id:
+                target_entry_id = ent.config_entry_id
+        if not target_entry_id:
+            entries = hass.config_entries.async_entries(DOMAIN)
+            if not entries:
+                return
+            target_entry_id = entries[0].entry_id
+
+        devices = [d for d in dev_reg.devices.values() if target_entry_id in d.config_entries]
         if not devices:
             return
 
-        # Choose primary: most identifiers -> tends to be the serial device
         primary = max(devices, key=lambda d: len(d.identifiers))
 
         for dev in devices:

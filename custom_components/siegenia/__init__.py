@@ -23,6 +23,7 @@ from .const import (
     DEFAULT_WS_PROTOCOL,
     DEFAULT_AUTO_DISCOVER,
     CONF_SERIAL,
+    MIGRATION_DEVICES_V2,
     PLATFORMS,
     CONF_WARNING_NOTIFICATIONS,
     CONF_WARNING_EVENTS,
@@ -87,11 +88,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Allow setup to continue so options/services stay available; coordinator will retry in background
         coordinator.logger.warning("Initial connection failed; will retry in background: %s", exc)
 
-    # Merge any duplicate devices into the primary device
-    try:
-        await _async_migrate_devices(hass, entry)
-    except Exception as exc:  # noqa: BLE001
-        coordinator.logger.debug("Device migration skipped: %s", exc)
+    # Merge duplicate devices once per entry
+    if not entry.data.get(MIGRATION_DEVICES_V2):
+        try:
+            await _async_migrate_devices(hass, entry)
+            hass.config_entries.async_update_entry(entry, data={**entry.data, MIGRATION_DEVICES_V2: True})
+        except Exception as exc:  # noqa: BLE001
+            coordinator.logger.debug("Device migration skipped: %s", exc)
 
     hass.data.setdefault(entry.domain, {})[entry.entry_id] = coordinator
 
@@ -181,23 +184,20 @@ async def _async_migrate_devices(hass: HomeAssistant, entry: ConfigEntry) -> Non
     ent_reg = er.async_get(hass)
 
     serial = entry.data.get(CONF_SERIAL) or entry.unique_id
-    # Collect all devices belonging to this domain
-    devices = [d for d in dev_reg.devices.values() if any(idt[0] == DOMAIN for idt in d.identifiers)]
+    host = entry.data.get(CONF_HOST)
+    # Collect devices that belong to THIS config entry only
+    devices = [d for d in dev_reg.devices.values() if entry.entry_id in d.config_entries]
     if not devices:
         return
 
-    # Pick primary: with serial match, else one with most entities, else first
+    # Pick primary: prefer serial match, else most identifiers
     primary = None
     if serial:
-        for d in devices:
-            if (DOMAIN, serial) in d.identifiers:
-                primary = d
-                break
+        primary = next((d for d in devices if (DOMAIN, serial) in d.identifiers), None)
     if primary is None:
         primary = max(devices, key=lambda d: len(d.identifiers))
 
     # Ensure primary carries current host identifier too
-    host = entry.data.get(CONF_HOST)
     if host and (DOMAIN, host) not in primary.identifiers:
         dev_reg.async_update_device(primary.id, new_identifiers=set(primary.identifiers) | {(DOMAIN, host)})
 

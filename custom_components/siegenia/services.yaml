@@ -149,5 +149,10 @@ timer_set_duration:
 
 cleanup_devices:
   name: Cleanup Devices
-  description: Merge duplicate Siegenia devices and remove empty legacy ones.
-  fields: {}
+  description: Merge duplicate Siegenia devices (scoped to an entry) and remove empty legacy ones.
+  fields:
+    entity_id:
+      required: false
+      selector:
+        entity:
+          integration: siegenia
