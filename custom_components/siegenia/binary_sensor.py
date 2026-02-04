@@ -11,7 +11,7 @@ from .const import DOMAIN, STATE_MOVING, resolve_model
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    serial = getattr(coordinator, "serial", None) or (coordinator.device_info or {}).get("data", {}).get("serialnr") or entry.unique_id or entry.data.get("host")
+    serial = coordinator.device_serial()
     entities = [
         SiegeniaOnlineBinary(coordinator, entry, serial),
         SiegeniaMovingBinary(coordinator, entry, serial),
@@ -45,7 +45,7 @@ class SiegeniaOnlineBinary(CoordinatorEntity, BinarySensorEntity):
     @property
     def device_info(self):
         info = (self.coordinator.device_info or {}).get("data", {})
-        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or self._serial
+        ident = self.coordinator.device_identifier()
         return {
             "identifiers": {(DOMAIN, ident)},
             "manufacturer": "Siegenia",
@@ -76,7 +76,7 @@ class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
     @property
     def device_info(self):
         info = (self.coordinator.device_info or {}).get("data", {})
-        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or self._serial
+        ident = self.coordinator.device_identifier()
         return {
             "identifiers": {(DOMAIN, ident)},
             "manufacturer": "Siegenia",
@@ -108,7 +108,7 @@ class SiegeniaWarningBinary(CoordinatorEntity, BinarySensorEntity):
     @property
     def device_info(self):
         info = (self.coordinator.device_info or {}).get("data", {})
-        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or self._serial
+        ident = self.coordinator.device_identifier()
         return {
             "identifiers": {(DOMAIN, ident)},
             "manufacturer": "Siegenia",

@@ -25,8 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     if not entry.options.get(CONF_ENABLE_BUTTONS, False):
         return
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    info = (coordinator.device_info or {}).get("data", {})
-    serial = getattr(coordinator, "serial", None) or info.get("serialnr") or entry.unique_id or entry.data.get("host")
+    serial = coordinator.device_serial()
     entities: list[ButtonEntity] = []
     for key, mode in _ACTIONS:
         entities.append(SiegeniaModeButton(coordinator, entry, serial, key, mode))
@@ -48,7 +47,7 @@ class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
     def device_info(self) -> DeviceInfo:
         info = (self.coordinator.device_info or {}).get("data", {})
         model = DEVICE_TYPE_MAP.get(info.get("type"), info.get("type"))
-        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or info.get("serialnr") or self._entry.data.get("host")
+        ident = self.coordinator.device_identifier()
         return DeviceInfo(
             identifiers={(DOMAIN, ident)},
             manufacturer="Siegenia",

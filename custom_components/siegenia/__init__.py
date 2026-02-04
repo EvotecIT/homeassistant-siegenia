@@ -7,7 +7,6 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
 import asyncio
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
@@ -38,6 +37,7 @@ from .const import (
     DEFAULT_IDLE_INTERVAL,
 )
 from .coordinator import SiegeniaDataUpdateCoordinator
+from .device_registry import async_merge_devices
 from .__init_services__ import async_setup_services
 from homeassistant.components.http import HomeAssistantView
 from ._brand_assets import ICON_PNG_B64, LOGO_PNG_B64
@@ -195,36 +195,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_migrate_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    dev_reg = dr.async_get(hass)
-    ent_reg = er.async_get(hass)
-
     serial = entry.data.get(CONF_SERIAL) or entry.unique_id
     host = entry.data.get(CONF_HOST)
-    # Collect devices that belong to THIS config entry only
-    devices = [d for d in dev_reg.devices.values() if entry.entry_id in d.config_entries]
-    if not devices:
-        return
-
-    # Pick primary: prefer serial match, else most identifiers
-    primary = None
-    if serial:
-        primary = next((d for d in devices if (DOMAIN, serial) in d.identifiers), None)
-    if primary is None:
-        primary = max(devices, key=lambda d: len(d.identifiers))
-
-    # Ensure primary carries current host identifier too
-    if host and (DOMAIN, host) not in primary.identifiers:
-        dev_reg.async_update_device(primary.id, new_identifiers=set(primary.identifiers) | {(DOMAIN, host)})
-
-    for dev in devices:
-        if dev.id == primary.id:
-            continue
-        # Move entities from this device to primary
-        for ent in list(ent_reg.entities.values()):
-            if ent.device_id == dev.id:
-                ent_reg.async_update_entity(ent.entity_id, device_id=primary.id)
-        # Remove the now-empty device
-        try:
-            dev_reg.async_remove_device(dev.id)
-        except Exception:
-            pass
+    await async_merge_devices(hass, entry.entry_id, serial=serial, host=host)

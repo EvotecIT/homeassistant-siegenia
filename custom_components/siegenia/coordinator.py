@@ -142,6 +142,11 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Return the stable identifier (serial preferred) for entities."""
         return self.serial or self.entry.unique_id or self.host
 
+    def device_serial(self) -> str:
+        """Return the preferred serial/identifier for unique_id prefixes."""
+        info_serial = ((self.device_info or {}).get("data") or {}).get("serialnr")
+        return self.serial or info_serial or self.entry.unique_id or self.host
+
     async def _ensure_connected(self) -> None:
         if self.client.connected:
             return
