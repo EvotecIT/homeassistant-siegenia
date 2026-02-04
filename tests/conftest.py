@@ -33,7 +33,7 @@ def verify_cleanup():  # noqa: D401
 @pytest.fixture
 def mock_client(monkeypatch):
     class _Client:
-        def __init__(self, host, port=DEFAULT_PORT, session=None, logger=None):  # noqa: ARG002
+        def __init__(self, host, port=DEFAULT_PORT, session=None, logger=None, ws_protocol="wss", **_):  # noqa: ARG002
             self.host = host
             self.port = port
             # Async methods mocked

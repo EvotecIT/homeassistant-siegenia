@@ -35,6 +35,9 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
 - WS Protocol: `wss`
 - Poll Interval: how often device params are polled
 - Heartbeat Interval: keep-alive ping interval
+- Auto-discover IP changes: optional. Enable in Options → Connection. Scans the previous /24; optional “extended discovery” also probes common home subnets.
+- Manual reconnect: Use Settings → Devices & Services → Siegenia → Configure → Connection to edit the host/credentials even when the device is offline, or call the `siegenia.set_connection` service.
+- Duplicate cleanup: If a legacy “Siegenia Device” remains after IP moves, call `siegenia.cleanup_devices` (Developer Tools → Actions) to merge entities into the main device and remove the empty duplicate.
 
 ## Features
 
@@ -57,6 +60,8 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
    - Gap Vent max % (default 19)
    - Close w/o lock max % (default 40)
    - Stop Over display % (default 40; use 30/40/90 to match your preference)
+
+[![Siegenia Device Page](assets/screenshot1.png)](assets/screenshot1.png)
 
 ### Quick Buttons
 

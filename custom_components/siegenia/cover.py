@@ -19,6 +19,7 @@ from .const import (
     state_to_position,
     position_to_command,
     resolve_model,
+    CMD_CLOSE_WO_LOCK,
     CONF_SLIDER_GAP_MAX,
     CONF_SLIDER_CWOL_MAX,
     CONF_SLIDER_STOP_OVER_DISPLAY,
@@ -49,8 +50,8 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         self._sash = sash
         self._last_cmd: str | None = None
         # Use serial number if available
-        serial = (coordinator.device_info or {}).get("data", {}).get("serialnr") if coordinator.device_info else None
-        self._attr_unique_id = f"{serial or entry.data.get('host')}-sash-{self._sash}"
+        serial = getattr(coordinator, "serial", None) or (coordinator.device_info or {}).get("data", {}).get("serialnr") if coordinator.device_info else None
+        self._attr_unique_id = f"{serial or entry.unique_id or entry.data.get('host')}-sash-{self._sash}"
         # Options: enable/disable slider
         enable_slider = entry.options.get("enable_position_slider", True)
         self._attr_supported_features = self._with_slider if enable_slider else self._base_features
@@ -60,8 +61,9 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         info = (self.coordinator.device_info or {}).get("data", {})
         model = resolve_model(info)
         suggested = info.get("devicelocation") or info.get("devicefloor")
+        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or self._entry.data.get("host")
         return DeviceInfo(
-            identifiers={(DOMAIN, info.get("serialnr") or self._entry.data.get("host"))},
+            identifiers={(DOMAIN, ident)},
             manufacturer="Siegenia",
             model=str(model),
             name=info.get("devicename") or "Siegenia Device",
@@ -86,7 +88,10 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         state = self._current_state()
         if state is None:
             return None
-        return state_to_position(state) == 0
+        pos = state_to_position(state)
+        if pos is None:
+            return None
+        return pos == 0
 
     @property
     def current_cover_position(self) -> int | None:
@@ -121,7 +126,7 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
                 return None
         except Exception:
             pass
-        return True if last in {"CLOSE", "CLOSE_WO_LOCK"} else None
+        return True if last in {"CLOSE", CMD_CLOSE_WO_LOCK} else None
 
     @property
     def extra_state_attributes(self) -> dict | None:

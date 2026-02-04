@@ -8,13 +8,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, DEVICE_TYPE_MAP, CONF_ENABLE_BUTTONS
+from .const import DOMAIN, DEVICE_TYPE_MAP, CONF_ENABLE_BUTTONS, CMD_CLOSE_WO_LOCK
 
 _ACTIONS = [
     ("open", "OPEN"),
     ("close", "CLOSE"),
     ("gap_vent", "GAP_VENT"),
-    ("close_wo_lock", "CLOSE_WO_LOCK"),
+    ("close_wo_lock", CMD_CLOSE_WO_LOCK),
     ("stop_over", "STOP_OVER"),
     ("stop", "STOP"),
 ]
@@ -26,7 +26,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         return
     coordinator = hass.data[DOMAIN][entry.entry_id]
     info = (coordinator.device_info or {}).get("data", {})
-    serial = info.get("serialnr") or entry.data.get("host")
+    serial = getattr(coordinator, "serial", None) or info.get("serialnr") or entry.unique_id or entry.data.get("host")
     entities: list[ButtonEntity] = []
     for key, mode in _ACTIONS:
         entities.append(SiegeniaModeButton(coordinator, entry, serial, key, mode))
@@ -48,8 +48,9 @@ class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
     def device_info(self) -> DeviceInfo:
         info = (self.coordinator.device_info or {}).get("data", {})
         model = DEVICE_TYPE_MAP.get(info.get("type"), info.get("type"))
+        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or info.get("serialnr") or self._entry.data.get("host")
         return DeviceInfo(
-            identifiers={(DOMAIN, info.get("serialnr") or self._entry.data.get("host"))},
+            identifiers={(DOMAIN, ident)},
             manufacturer="Siegenia",
             model=str(model),
             name=info.get("devicename") or "Siegenia Device",

@@ -20,6 +20,9 @@ CONF_INFORMATIONAL = "informational"
 CONF_WARNING_NOTIFICATIONS = "warning_notifications"
 CONF_WARNING_EVENTS = "warning_events"
 CONF_ENABLE_BUTTONS = "enable_buttons"
+CONF_AUTO_DISCOVER = "auto_discover"
+CONF_SERIAL = "serial"
+CONF_EXTENDED_DISCOVERY = "extended_discovery"
 
 # Advanced timing options
 CONF_MOTION_INTERVAL = "motion_interval"  # seconds while moving
@@ -27,6 +30,21 @@ CONF_IDLE_INTERVAL = "idle_interval"      # seconds when idle (no push)
 
 DEFAULT_MOTION_INTERVAL = 2
 DEFAULT_IDLE_INTERVAL = 60
+DEFAULT_AUTO_DISCOVER = False  # opt-in to avoid surprise scans
+DEFAULT_EXTENDED_DISCOVERY = False  # broader scan of common home subnets
+
+# Repairs / issue ids
+ISSUE_UNREACHABLE = "cannot_connect"
+MIGRATION_DEVICES_V2 = "migration_devices_v2"
+
+# Rediscovery tuning
+REDISCOVER_COOLDOWN_SECONDS = 900  # base backoff
+REDISCOVER_BACKOFF_MAX = 7200      # cap backoff at 2h
+REDISCOVER_MAX_SUBNETS = 5
+REDISCOVER_MAX_PER_SUBNET = 64
+REDISCOVER_MAX_HOSTS = 192
+REDISCOVER_CONCURRENCY = 8
+PROBE_TIMEOUT = 3.0
 
 # Slider threshold options
 CONF_SLIDER_GAP_MAX = "slider_gap_max"            # 0 < x < 100; 1..x -> GAP_VENT
@@ -44,6 +62,7 @@ PLATFORMS = ["cover", "sensor", "binary_sensor", "button", "number", "update", "
 STATE_OPEN = "OPEN"
 STATE_CLOSED = "CLOSED"
 STATE_CLOSED_WO_LOCK = "CLOSED_WO_LOCK"
+CMD_CLOSE_WO_LOCK = "CLOSE_WO_LOCK"
 STATE_GAP_VENT = "GAP_VENT"
 STATE_STOP_OVER = "STOP_OVER"
 STATE_STOPPED = "STOPPED"
@@ -68,17 +87,17 @@ def position_to_command(position: int, *, gap_max: int = DEFAULT_GAP_MAX, cwol_m
     if cwol_max < position < 100:
         return STATE_STOP_OVER
     if gap_max < position <= cwol_max:
-        return STATE_CLOSED_WO_LOCK
+        return CMD_CLOSE_WO_LOCK
     if 0 < position <= gap_max:
         return STATE_GAP_VENT
     if position == 0:
         return "CLOSE"
     return None
 
-def state_to_position(state: str, *, stop_over_display: int = DEFAULT_STOP_OVER_DISPLAY) -> int:
+def state_to_position(state: str, *, stop_over_display: int = DEFAULT_STOP_OVER_DISPLAY) -> int | None:
     if state == STATE_STOP_OVER:
         return int(stop_over_display)
-    return STATE_TO_POSITION_DEFAULT.get(state, 0)
+    return STATE_TO_POSITION_DEFAULT.get(state)
 
 # Select options for mode selector (lowercase for translations)
 SELECT_OPTIONS = [
@@ -105,7 +124,7 @@ OPTION_TO_CMD = {
     "open": STATE_OPEN,
     "close": "CLOSE",
     "gap_vent": STATE_GAP_VENT,
-    "close_wo_lock": STATE_CLOSED_WO_LOCK,
+    "close_wo_lock": CMD_CLOSE_WO_LOCK,
     "stop_over": STATE_STOP_OVER,
     "stop": "STOP",
 }
