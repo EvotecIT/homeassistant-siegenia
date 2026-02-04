@@ -22,7 +22,7 @@ class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
     def __init__(self, coordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        serial = getattr(coordinator, "serial", None) or (coordinator.device_info or {}).get("data", {}).get("serialnr") or entry.unique_id or entry.data.get("host")
+        serial = coordinator.device_serial()
         self._attr_unique_id = f"{serial}-stopover"
         self._serial = serial
 
@@ -55,7 +55,7 @@ class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
     @property
     def device_info(self):
         info = (self.coordinator.device_info or {}).get("data", {})
-        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or self._serial
+        ident = self.coordinator.device_identifier()
         return {
             "identifiers": {(DOMAIN, ident)},
             "manufacturer": "Siegenia",

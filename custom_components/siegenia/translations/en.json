@@ -60,7 +60,7 @@
           "username": "Username",
           "password": "Password",
           "auto_discover": "Auto-detect IP changes on your network",
-          "extended_discovery": "Scan common home subnets (broader, slower)"
+          "extended_discovery": "Scan common home subnets (broader, slower; may trigger security alerts on corporate networks)"
         }
       }
     }
@@ -104,14 +104,12 @@
     },
     "set_connection": {
       "name": "Update Connection",
-      "description": "Change host/port/protocol or credentials if the device IP changed.",
+      "description": "Change host/port/protocol if the device IP changed. Use the UI options to update credentials.",
       "fields": {
         "entity_id": {"name": "Entity", "description": "Any entity from the device."},
         "host": {"name": "Host/IP", "description": "New IP or hostname of the controller."},
         "port": {"name": "Port", "description": "TCP port (default 443)."},
-        "ws_protocol": {"name": "WS Protocol", "description": "wss or ws"},
-        "username": {"name": "Username", "description": "Optional new username."},
-        "password": {"name": "Password", "description": "Optional new password."}
+        "ws_protocol": {"name": "WS Protocol", "description": "wss or ws"}
       }
     },
     "cleanup_devices": {

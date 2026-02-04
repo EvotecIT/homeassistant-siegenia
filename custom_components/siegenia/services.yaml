@@ -22,7 +22,7 @@ set_mode:
 
 set_connection:
   name: Update Connection
-  description: "Change host/port/protocol or credentials if the device IP changed. Note: passwords in service calls are stored in HA history; prefer the UI when possible."
+  description: "Change host/port/protocol if the device IP changed. Use the UI options to update credentials."
   fields:
     entity_id:
       selector:
@@ -48,15 +48,6 @@ set_connection:
           options:
             - wss
             - ws
-    username:
-      required: false
-      selector:
-        text:
-    password:
-      required: false
-      selector:
-        text:
-          type: password
 
 reboot_device:
   name: Reboot Device

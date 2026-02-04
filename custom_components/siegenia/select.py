@@ -38,7 +38,7 @@ class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
         super().__init__(coordinator)
         self._entry = entry
         self._sash = sash
-        serial = getattr(coordinator, "serial", None) or (coordinator.device_info or {}).get("data", {}).get("serialnr") or entry.unique_id or entry.data.get("host")
+        serial = coordinator.device_serial()
         self._attr_unique_id = f"{serial}-mode-sash-{sash}"
         self._serial = serial
 
@@ -101,7 +101,7 @@ class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
     @property
     def device_info(self) -> DeviceInfo:
         info = (self.coordinator.device_info or {}).get("data", {})
-        ident = getattr(self.coordinator, "device_identifier", lambda: None)() or self._serial
+        ident = self.coordinator.device_identifier()
         return DeviceInfo(
             identifiers={(DOMAIN, ident)},
             manufacturer="Siegenia",
