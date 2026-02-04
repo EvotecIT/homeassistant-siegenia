@@ -6,12 +6,12 @@ from collections.abc import Callable
 import voluptuous as vol
 try:
     from homeassistant.helpers.config_validation import DEVICE_CONDITION_BASE_SCHEMA
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):
     from homeassistant.components.device_automation import DEVICE_CONDITION_BASE_SCHEMA  # type: ignore
 try:
     # Older HA versions provided a StateCondition class
     from homeassistant.components.homeassistant.condition import state as _StateCondition  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):
     _StateCondition = None
 from homeassistant.helpers import condition as cond_helper
 from homeassistant.const import CONF_DEVICE_ID, CONF_DOMAIN, CONF_ENTITY_ID, CONF_TYPE
@@ -27,7 +27,7 @@ CONDITION_TYPES = {
     "is_gap_vent": {"entity_suffix": "_window_state", "state": "gap_vent"},
     "is_closed_wo_lock": {"entity_suffix": "_window_state", "state": "closed_wo_lock"},
     "is_stop_over": {"entity_suffix": "_window_state", "state": "stop_over"},
-    "is_moving": {"entity_suffix": "_moving", "state": "on"},
+    "is_moving": {"entity_suffix": "_moving", "legacy_suffix": "_window_moving", "state": "on"},
     "warning_active": {"entity_suffix": "_warning_active", "state": "on"},
 }
 
@@ -39,7 +39,9 @@ async def async_get_conditions(hass: HomeAssistant, device_id: str) -> list[dict
         if entry.domain not in {"sensor", "binary_sensor"}:
             continue
         for t, meta in CONDITION_TYPES.items():
-            if entry.entity_id.endswith(meta["entity_suffix"]):
+            suffix = meta["entity_suffix"]
+            legacy = meta.get("legacy_suffix")
+            if entry.entity_id.endswith(suffix) or (legacy and entry.entity_id.endswith(legacy)):
                 conditions.append(
                     {
                         CONF_DOMAIN: DOMAIN,

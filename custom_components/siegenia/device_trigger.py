@@ -5,18 +5,19 @@ from typing import Any
 import voluptuous as vol
 try:
     from homeassistant.components.automation import AutomationActionType
-except Exception:  # noqa: BLE001
-    from typing import Any as AutomationActionType
+except (ImportError, ModuleNotFoundError):
+    from typing import Any, Callable
+    AutomationActionType = Callable[..., Any]  # type: ignore[misc]
 try:
     from homeassistant.components.device_automation import DEVICE_TRIGGER_BASE_SCHEMA as TRIGGER_BASE_SCHEMA
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):
     from homeassistant.helpers import config_validation as cv
     TRIGGER_BASE_SCHEMA = cv.TRIGGER_BASE_SCHEMA
 try:
     from homeassistant.components.homeassistant.triggers import state as _state_trigger
     _state_validate = _state_trigger.async_validate_trigger_config
     _state_attach = _state_trigger.async_attach_trigger
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):
     from homeassistant.components.homeassistant.triggers.state import StateTrigger as _StateTrigger  # type: ignore
     _state_validate = _StateTrigger.async_validate_trigger_config
     _state_attach = _StateTrigger.async_attach_trigger
@@ -33,8 +34,8 @@ TRIGGER_TYPES = {
     "gap_vent": {"entity_suffix": "_window_state", "to": "gap_vent"},
     "closed_wo_lock": {"entity_suffix": "_window_state", "to": "closed_wo_lock"},
     "stop_over": {"entity_suffix": "_window_state", "to": "stop_over"},
-    "moving_started": {"entity_suffix": "_moving", "to": "on"},
-    "moving_stopped": {"entity_suffix": "_moving", "to": "off"},
+    "moving_started": {"entity_suffix": "_moving", "legacy_suffix": "_window_moving", "to": "on"},
+    "moving_stopped": {"entity_suffix": "_moving", "legacy_suffix": "_window_moving", "to": "off"},
     "warning_active": {"entity_suffix": "_warning_active", "to": "on"},
     "warning_cleared": {"entity_suffix": "_warning_active", "to": "off"},
 }
@@ -47,7 +48,9 @@ async def async_get_triggers(hass: HomeAssistant, device_id: str) -> list[dict[s
         if entry.domain not in {"sensor", "binary_sensor"}:
             continue
         for t, meta in TRIGGER_TYPES.items():
-            if entry.entity_id.endswith(meta["entity_suffix"]):
+            suffix = meta["entity_suffix"]
+            legacy = meta.get("legacy_suffix")
+            if entry.entity_id.endswith(suffix) or (legacy and entry.entity_id.endswith(legacy)):
                 triggers.append(
                     {
                         CONF_PLATFORM: "device",

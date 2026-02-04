@@ -78,8 +78,14 @@ async def test_device_automation_suffix_and_state_values(hass, setup_integration
     assert CONDITION_TYPES["is_closed"]["state"] == "closed"
 
 
-async def test_options_override_intervals(hass, mock_client, config_entry_data):  # noqa: ARG001
+async def test_options_override_intervals(hass, mock_client, config_entry_data, monkeypatch):  # noqa: ARG001
     from pytest_homeassistant_custom_component.common import MockConfigEntry
+    from custom_components.siegenia.coordinator import SiegeniaDataUpdateCoordinator
+
+    def _no_adjust(self, _payload):  # noqa: ANN001
+        return None
+
+    monkeypatch.setattr(SiegeniaDataUpdateCoordinator, "_adjust_interval", _no_adjust)
 
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -92,7 +98,7 @@ async def test_options_override_intervals(hass, mock_client, config_entry_data):
     await hass.async_block_till_done()
 
     coordinator = hass.data[entry.domain][entry.entry_id]
-    assert coordinator._default_interval == timedelta(seconds=12)  # noqa: SLF001
+    assert coordinator.update_interval == timedelta(seconds=12)
     assert coordinator.heartbeat_interval == 33
 
 
