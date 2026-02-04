@@ -19,6 +19,7 @@ from .const import (
     state_to_position,
     position_to_command,
     resolve_model,
+    CMD_CLOSE_WO_LOCK,
     CONF_SLIDER_GAP_MAX,
     CONF_SLIDER_CWOL_MAX,
     CONF_SLIDER_STOP_OVER_DISPLAY,
@@ -87,7 +88,10 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         state = self._current_state()
         if state is None:
             return None
-        return state_to_position(state) == 0
+        pos = state_to_position(state)
+        if pos is None:
+            return None
+        return pos == 0
 
     @property
     def current_cover_position(self) -> int | None:
@@ -122,7 +126,7 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
                 return None
         except Exception:
             pass
-        return True if last in {"CLOSE", "CLOSE_WO_LOCK"} else None
+        return True if last in {"CLOSE", CMD_CLOSE_WO_LOCK} else None
 
     @property
     def extra_state_attributes(self) -> dict | None:

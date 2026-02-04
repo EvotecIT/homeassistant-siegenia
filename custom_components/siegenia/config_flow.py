@@ -78,7 +78,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         password = user_input[CONF_PASSWORD]
 
         # Try to connect and fetch device info
-        client = SiegeniaClient(host, port=port)
+        client = SiegeniaClient(host, port=port, ws_protocol=user_input.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL))
         try:
             await client.connect()
             await client.login(username, password)
@@ -130,7 +130,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(step_id="reauth_confirm", data_schema=schema)
 
         # Try new credentials
-        client = SiegeniaClient(entry.data[CONF_HOST], port=entry.data.get(CONF_PORT, DEFAULT_PORT))
+        client = SiegeniaClient(
+            entry.data[CONF_HOST],
+            port=entry.data.get(CONF_PORT, DEFAULT_PORT),
+            ws_protocol=entry.data.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL),
+        )
         try:
             await client.connect()
             await client.login(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])

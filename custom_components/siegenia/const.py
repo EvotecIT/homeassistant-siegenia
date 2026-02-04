@@ -62,6 +62,7 @@ PLATFORMS = ["cover", "sensor", "binary_sensor", "button", "number", "update", "
 STATE_OPEN = "OPEN"
 STATE_CLOSED = "CLOSED"
 STATE_CLOSED_WO_LOCK = "CLOSED_WO_LOCK"
+CMD_CLOSE_WO_LOCK = "CLOSE_WO_LOCK"
 STATE_GAP_VENT = "GAP_VENT"
 STATE_STOP_OVER = "STOP_OVER"
 STATE_STOPPED = "STOPPED"
@@ -86,17 +87,17 @@ def position_to_command(position: int, *, gap_max: int = DEFAULT_GAP_MAX, cwol_m
     if cwol_max < position < 100:
         return STATE_STOP_OVER
     if gap_max < position <= cwol_max:
-        return STATE_CLOSED_WO_LOCK
+        return CMD_CLOSE_WO_LOCK
     if 0 < position <= gap_max:
         return STATE_GAP_VENT
     if position == 0:
         return "CLOSE"
     return None
 
-def state_to_position(state: str, *, stop_over_display: int = DEFAULT_STOP_OVER_DISPLAY) -> int:
+def state_to_position(state: str, *, stop_over_display: int = DEFAULT_STOP_OVER_DISPLAY) -> int | None:
     if state == STATE_STOP_OVER:
         return int(stop_over_display)
-    return STATE_TO_POSITION_DEFAULT.get(state, 0)
+    return STATE_TO_POSITION_DEFAULT.get(state)
 
 # Select options for mode selector (lowercase for translations)
 SELECT_OPTIONS = [
@@ -123,7 +124,7 @@ OPTION_TO_CMD = {
     "open": STATE_OPEN,
     "close": "CLOSE",
     "gap_vent": STATE_GAP_VENT,
-    "close_wo_lock": STATE_CLOSED_WO_LOCK,
+    "close_wo_lock": CMD_CLOSE_WO_LOCK,
     "stop_over": STATE_STOP_OVER,
     "stop": "STOP",
 }
