@@ -105,7 +105,9 @@ async def test_async_merge_devices(hass):
 
     assert ent_reg.async_get(secondary_ent.entity_id).device_id == dev_primary.id
     assert dev_reg.async_get(dev_secondary.id) is None
-    assert (DOMAIN, "192.0.2.1") in dev_reg.async_get(dev_primary.id).identifiers
+    primary_dev = dev_reg.async_get(dev_primary.id)
+    assert primary_dev is not None
+    assert (DOMAIN, "192.0.2.1") in primary_dev.identifiers
 
 
 async def test_async_merge_devices_no_devices(hass):

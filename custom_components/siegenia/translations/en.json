@@ -60,7 +60,7 @@
           "username": "Username",
           "password": "Password",
           "auto_discover": "Auto-detect IP changes on your network",
-          "extended_discovery": "Scan common home subnets (broader, slower; avoid on corporate networks)"
+          "extended_discovery": "Scan common home subnets (broader, slower; may trigger security alerts on corporate networks)"
         }
       }
     }
