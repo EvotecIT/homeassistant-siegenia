@@ -30,6 +30,8 @@ from .const import (
     PLATFORMS,
     CONF_WARNING_NOTIFICATIONS,
     CONF_WARNING_EVENTS,
+    CONF_DEBUG,
+    CONF_INFORMATIONAL,
     CONF_MOTION_INTERVAL,
     CONF_IDLE_INTERVAL,
     DEFAULT_MOTION_INTERVAL,
@@ -60,6 +62,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data = entry.data
     from .const import DEFAULT_POLL_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL
 
+    poll_interval = entry.options.get(CONF_POLL_INTERVAL, data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL))
+    heartbeat_interval = entry.options.get(CONF_HEARTBEAT_INTERVAL, data.get(CONF_HEARTBEAT_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL))
+
     coordinator = SiegeniaDataUpdateCoordinator(
         hass,
         entry=entry,
@@ -70,12 +75,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ws_protocol=data.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL),
         auto_discover=data.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER),
         extended_discovery=data.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY),
-        poll_interval=data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
-        heartbeat_interval=data.get(CONF_HEARTBEAT_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL),
+        poll_interval=poll_interval,
+        heartbeat_interval=heartbeat_interval,
     )
     # Pass options for warnings routing
     coordinator.warning_notifications = entry.options.get(CONF_WARNING_NOTIFICATIONS, True)
     coordinator.warning_events = entry.options.get(CONF_WARNING_EVENTS, True)
+    coordinator.debug_logging = entry.options.get(CONF_DEBUG, False)
+    coordinator.informational_logging = entry.options.get(CONF_INFORMATIONAL, False)
     # Advanced intervals
     motion_s = entry.options.get(CONF_MOTION_INTERVAL, DEFAULT_MOTION_INTERVAL)
     idle_s = entry.options.get(CONF_IDLE_INTERVAL, DEFAULT_IDLE_INTERVAL)

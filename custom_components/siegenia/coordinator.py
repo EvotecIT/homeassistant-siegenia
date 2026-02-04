@@ -87,6 +87,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._revert_handle = None
         # Warnings tracking
         self._last_warnings: str | None = None
+        # Optional logging toggles
+        self.debug_logging: bool = False
+        self.informational_logging: bool = False
+        self._last_logged_states: dict[str, str | None] = {}
         # Options toggles (set from setup_entry)
         self.warning_notifications: bool = True
         self.warning_events: bool = True
@@ -373,6 +377,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 await self._ensure_connected()
                 params = await self.client.get_device_params()
                 self._adjust_interval(params)
+                self._maybe_log_states(params, source="poll")
                 # Check warnings on polled data too
                 self._handle_warnings(params)
                 await self._clear_issue()
@@ -402,6 +407,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_push_monotonic = time.monotonic()
         # Prefer motion interval if moving; else push interval
         states_map = (msg.get("data") or {}).get("states", {})
+        self._maybe_log_states(msg, source="push")
         moving = any(v == "MOVING" for v in states_map.values())
         if moving:
             self.update_interval = self._motion_interval
@@ -523,6 +529,26 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             # Idle: lengthen
             self.update_interval = self._idle_interval
+
+    def _maybe_log_states(self, payload: dict[str, Any], *, source: str) -> None:
+        if not (self.debug_logging or self.informational_logging):
+            return
+        data = (payload or {}).get("data") or {}
+        states = data.get("states") or {}
+        if not states:
+            return
+        if self.debug_logging:
+            self.logger.info("Siegenia %s states: %s", source, states)
+            return
+        changes: list[str] = []
+        for k, v in states.items():
+            key = str(k)
+            last = self._last_logged_states.get(key)
+            if v != last:
+                changes.append(f"sash {key}: {last} -> {v}")
+                self._last_logged_states[key] = v
+        if changes:
+            self.logger.info("Siegenia state change (%s): %s", source, ", ".join(changes))
 
     def _handle_warnings(self, payload: dict[str, Any]) -> None:
         data = (payload or {}).get("data") or {}

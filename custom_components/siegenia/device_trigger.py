@@ -3,10 +3,23 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.components.automation import AutomationActionType
-from homeassistant.components.device_automation import TRIGGER_BASE_SCHEMA
-from homeassistant.components.device_automation import async_validate_trigger_config
-from homeassistant.components.homeassistant.triggers.state import StateTrigger
+try:
+    from homeassistant.components.automation import AutomationActionType
+except Exception:  # noqa: BLE001
+    from typing import Any as AutomationActionType
+try:
+    from homeassistant.components.device_automation import DEVICE_TRIGGER_BASE_SCHEMA as TRIGGER_BASE_SCHEMA
+except Exception:  # noqa: BLE001
+    from homeassistant.helpers import config_validation as cv
+    TRIGGER_BASE_SCHEMA = cv.TRIGGER_BASE_SCHEMA
+try:
+    from homeassistant.components.homeassistant.triggers import state as _state_trigger
+    _state_validate = _state_trigger.async_validate_trigger_config
+    _state_attach = _state_trigger.async_attach_trigger
+except Exception:  # noqa: BLE001
+    from homeassistant.components.homeassistant.triggers.state import StateTrigger as _StateTrigger  # type: ignore
+    _state_validate = _StateTrigger.async_validate_trigger_config
+    _state_attach = _StateTrigger.async_attach_trigger
 from homeassistant.const import CONF_DEVICE_ID, CONF_DOMAIN, CONF_ENTITY_ID, CONF_FOR, CONF_PLATFORM, CONF_TYPE
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers import config_validation as cv, entity_registry as er
@@ -15,13 +28,13 @@ from .const import DOMAIN
 
 
 TRIGGER_TYPES = {
-    "opened": {"entity_suffix": "_window_state", "to": "OPEN"},
-    "closed": {"entity_suffix": "_window_state", "to": "CLOSED"},
-    "gap_vent": {"entity_suffix": "_window_state", "to": "GAP_VENT"},
-    "closed_wo_lock": {"entity_suffix": "_window_state", "to": "CLOSED_WO_LOCK"},
-    "stop_over": {"entity_suffix": "_window_state", "to": "STOP_OVER"},
-    "moving_started": {"entity_suffix": "_window_moving", "to": "on"},
-    "moving_stopped": {"entity_suffix": "_window_moving", "to": "off"},
+    "opened": {"entity_suffix": "_window_state", "to": "open"},
+    "closed": {"entity_suffix": "_window_state", "to": "closed"},
+    "gap_vent": {"entity_suffix": "_window_state", "to": "gap_vent"},
+    "closed_wo_lock": {"entity_suffix": "_window_state", "to": "closed_wo_lock"},
+    "stop_over": {"entity_suffix": "_window_state", "to": "stop_over"},
+    "moving_started": {"entity_suffix": "_moving", "to": "on"},
+    "moving_stopped": {"entity_suffix": "_moving", "to": "off"},
     "warning_active": {"entity_suffix": "_warning_active", "to": "on"},
     "warning_cleared": {"entity_suffix": "_warning_active", "to": "off"},
 }
@@ -71,6 +84,5 @@ async def async_attach_trigger(
     }
     if CONF_FOR in config:
         state_config[CONF_FOR] = config[CONF_FOR]
-    state_config = await async_validate_trigger_config(hass, state_config)
-    return await StateTrigger.async_attach_trigger(hass, state_config, action, trigger_info, platform_type="device")
-
+    state_config = await _state_validate(hass, state_config)
+    return await _state_attach(hass, state_config, action, trigger_info, platform_type="device")

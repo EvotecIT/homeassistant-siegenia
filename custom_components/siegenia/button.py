@@ -8,13 +8,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, DEVICE_TYPE_MAP, CONF_ENABLE_BUTTONS
+from .const import DOMAIN, DEVICE_TYPE_MAP, CONF_ENABLE_BUTTONS, CMD_CLOSE_WO_LOCK
 
 _ACTIONS = [
     ("open", "OPEN"),
     ("close", "CLOSE"),
     ("gap_vent", "GAP_VENT"),
-    ("close_wo_lock", "CLOSE_WO_LOCK"),
+    ("close_wo_lock", CMD_CLOSE_WO_LOCK),
     ("stop_over", "STOP_OVER"),
     ("stop", "STOP"),
 ]
