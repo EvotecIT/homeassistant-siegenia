@@ -287,6 +287,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return found
 
     async def _probe_host(self, host: str) -> str | None:
+        if not self.serial:
+            return None
         client = SiegeniaClient(
             host,
             port=self.port,

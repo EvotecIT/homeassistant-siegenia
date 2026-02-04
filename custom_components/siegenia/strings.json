@@ -95,7 +95,7 @@
     },
     "set_connection": {
       "name": "Update Connection",
-      "description": "Change host/port/protocol or credentials if the device IP changed.",
+      "description": "Change host/port/protocol or credentials if the device IP changed. Note: passwords in service calls are stored in HA history; prefer the UI when possible.",
       "fields": {
         "entity_id": {"name": "Entity", "description": "Any entity from the device."},
         "host": {"name": "Host/IP", "description": "New IP or hostname of the controller."},

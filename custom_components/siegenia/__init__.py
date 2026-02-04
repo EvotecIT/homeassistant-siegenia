@@ -98,10 +98,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[_lock_key] = asyncio.Lock()
     async with hass.data[_lock_key]:
         if not entry.data.get(MIGRATION_DEVICES_V2):
-            # Set flag optimistically to avoid reruns if HA crashes mid-migration
-            hass.config_entries.async_update_entry(entry, data={**entry.data, MIGRATION_DEVICES_V2: True})
             try:
                 await _async_migrate_devices(hass, entry)
+                hass.config_entries.async_update_entry(entry, data={**entry.data, MIGRATION_DEVICES_V2: True})
             except Exception as exc:  # noqa: BLE001
                 coordinator.logger.debug("Device migration skipped: %s", exc)
 
