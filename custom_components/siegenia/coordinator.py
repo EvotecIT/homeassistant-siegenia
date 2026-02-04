@@ -143,7 +143,11 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return self.serial or self.entry.unique_id or self.host
 
     def device_serial(self) -> str:
-        """Return the preferred serial/identifier for unique_id prefixes."""
+        """Return the preferred serial/identifier for unique_id prefixes.
+
+        We prefer the device-reported serial when available to avoid host-based
+        unique_ids, even before the entry serial is persisted.
+        """
         info_serial = ((self.device_info or {}).get("data") or {}).get("serialnr")
         return self.serial or info_serial or self.entry.unique_id or self.host
 

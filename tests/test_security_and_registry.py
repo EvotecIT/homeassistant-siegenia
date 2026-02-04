@@ -19,6 +19,13 @@ async def test_set_connection_rejects_credentials(hass, setup_integration):
             {ATTR_ENTITY_ID: eid, "password": "secret"},
             blocking=True,
         )
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            "siegenia",
+            "set_connection",
+            {ATTR_ENTITY_ID: eid, "username": "admin"},
+            blocking=True,
+        )
 
 
 async def test_set_connection_updates_host(hass, setup_integration):
@@ -99,3 +106,7 @@ async def test_async_merge_devices(hass):
     assert ent_reg.async_get(secondary_ent.entity_id).device_id == dev_primary.id
     assert dev_reg.async_get(dev_secondary.id) is None
     assert (DOMAIN, "192.0.2.1") in dev_reg.async_get(dev_primary.id).identifiers
+
+
+async def test_async_merge_devices_no_devices(hass):
+    await async_merge_devices(hass, "missing-entry")

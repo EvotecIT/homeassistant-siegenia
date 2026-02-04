@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
+
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_merge_devices(
@@ -49,5 +53,5 @@ async def async_merge_devices(
             ent_reg.async_update_entity(ent.entity_id, device_id=primary.id)
         try:
             dev_reg.async_remove_device(dev.id)
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.debug("Failed to remove device %s: %s", dev.id, exc)
