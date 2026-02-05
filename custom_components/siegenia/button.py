@@ -57,12 +57,11 @@ class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         sash = 0
-        if self._mode == "STOP":
-            await self.coordinator.client.stop(sash)
-        else:
-            await self.coordinator.client.open_close(sash, self._mode)
-        try:
-            self.coordinator.set_last_cmd(sash, self._mode)
-        except Exception:
-            pass
+        await self.coordinator.async_send_command(
+            sash,
+            self._mode,
+            source="button",
+            entity_id=getattr(self, "entity_id", None),
+            context=getattr(self, "context", None),
+        )
         await self.coordinator.async_request_refresh()

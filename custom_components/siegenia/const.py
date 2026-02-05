@@ -23,6 +23,7 @@ CONF_ENABLE_BUTTONS = "enable_buttons"
 CONF_AUTO_DISCOVER = "auto_discover"
 CONF_SERIAL = "serial"
 CONF_EXTENDED_DISCOVERY = "extended_discovery"
+CONF_PREVENT_OPENING = "prevent_opening"
 
 # Advanced timing options
 CONF_MOTION_INTERVAL = "motion_interval"  # seconds while moving
@@ -32,6 +33,7 @@ DEFAULT_MOTION_INTERVAL = 2
 DEFAULT_IDLE_INTERVAL = 60
 DEFAULT_AUTO_DISCOVER = False  # opt-in to avoid surprise scans
 DEFAULT_EXTENDED_DISCOVERY = False  # broader scan of common home subnets
+DEFAULT_PREVENT_OPENING = False
 
 # Repairs / issue ids
 ISSUE_UNREACHABLE = "cannot_connect"
@@ -56,7 +58,7 @@ DEFAULT_GAP_MAX = 19
 DEFAULT_CWOL_MAX = 40
 DEFAULT_STOP_OVER_DISPLAY = 40
 
-PLATFORMS = ["cover", "sensor", "binary_sensor", "button", "number", "update", "select"]
+PLATFORMS = ["cover", "sensor", "binary_sensor", "button", "number", "update", "select", "switch"]
 
 # Raw device states observed from Siegenia API
 STATE_OPEN = "OPEN"
@@ -109,6 +111,21 @@ SELECT_OPTIONS = [
     "stop",
 ]
 
+VALID_COMMANDS = {
+    STATE_OPEN,
+    "CLOSE",
+    STATE_GAP_VENT,
+    CMD_CLOSE_WO_LOCK,
+    STATE_STOP_OVER,
+    "STOP",
+}
+
+OPENING_COMMANDS = {
+    STATE_OPEN,
+    STATE_GAP_VENT,
+    STATE_STOP_OVER,
+}
+
 # Map raw state -> select option key (lowercase)
 STATE_TO_SELECT = {
     STATE_OPEN: "open",
@@ -131,6 +148,10 @@ OPTION_TO_CMD = {
 
 # Reverse mapping command/state (uppercase) -> option key (lowercase)
 CMD_TO_OPTION = {v: k for k, v in OPTION_TO_CMD.items()}
+
+
+def is_opening_command(cmd: str) -> bool:
+    return cmd in OPENING_COMMANDS
 
 # Lowercase mapping for sensor state translations
 STATE_TO_LOWER = {

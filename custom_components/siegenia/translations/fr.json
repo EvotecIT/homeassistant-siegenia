@@ -38,6 +38,7 @@
           "warning_notifications": "Créer des notifications persistantes en cas d'alerte",
           "warning_events": "Émettre des événements en cas d'alerte (siegenia_warning)",
           "enable_buttons": "Créer des boutons d'action (Ouvrir/Fermer/…)",
+          "prevent_opening": "Bloquer les commandes d'ouverture (Ouvrir/Entrebâillement/Stop Over)",
           "motion_interval": "Intervalle en mouvement (s)",
           "idle_interval": "Intervalle au repos (s)",
           "slider_gap_max": "Curseur : % max aération (ex : 19)",
@@ -160,6 +161,11 @@
           "stop_over": "Stop over",
           "stop": "Stop"
         }
+      }
+    },
+    "switch": {
+      "opening_lock": {
+        "name": "Verrou d'ouverture"
       }
     },
     "binary_sensor": {

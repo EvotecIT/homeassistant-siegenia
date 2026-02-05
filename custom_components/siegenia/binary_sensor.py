@@ -70,8 +70,10 @@ class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         params = self.coordinator.data or {}
         data = params.get("data") or {}
-        state = (data.get("states") or {}).get("0")
-        return state == STATE_MOVING
+        states = data.get("states") or {}
+        if not states:
+            return None
+        return any(state == STATE_MOVING for state in states.values())
 
     @property
     def device_info(self):
@@ -115,4 +117,3 @@ class SiegeniaWarningBinary(CoordinatorEntity, BinarySensorEntity):
             "name": info.get("devicename") or "Siegenia Device",
             "model": resolve_model(info),
         }
-from homeassistant.helpers.entity import EntityCategory

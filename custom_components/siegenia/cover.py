@@ -31,10 +31,27 @@ from .const import (
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    data = coordinator.data or {}
-    states = (data.get("data") or {}).get("states") or {"0": None}
-    entities = [SiegeniaWindowCover(coordinator, entry, int(sash)) for sash in sorted(map(int, states.keys()))]
-    async_add_entities(entities)
+    known_sashes: set[int] = set()
+
+    def _current_sashes() -> list[int]:
+        data = coordinator.data or {}
+        states = (data.get("data") or {}).get("states") or {}
+        if not states:
+            return [0]
+        return sorted(map(int, states.keys()))
+
+    def _add_missing() -> None:
+        new_entities = []
+        for sash in _current_sashes():
+            if sash in known_sashes:
+                continue
+            known_sashes.add(sash)
+            new_entities.append(SiegeniaWindowCover(coordinator, entry, int(sash)))
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _add_missing()
+    entry.async_on_unload(coordinator.async_add_listener(_add_missing))
 
 
 class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
@@ -142,30 +159,36 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
             return None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
+        await self.coordinator.async_send_command(
+            self._sash,
+            "OPEN",
+            source="cover",
+            entity_id=getattr(self, "entity_id", None),
+            context=getattr(self, "context", None),
+        )
         self._last_cmd = "OPEN"
-        try:
-            self.coordinator.set_last_cmd(self._sash, self._last_cmd)
-        except Exception:
-            pass
-        await self.coordinator.client.open_close(self._sash, "OPEN")
         await self.coordinator.async_request_refresh()
 
     async def async_close_cover(self, **kwargs: Any) -> None:
+        await self.coordinator.async_send_command(
+            self._sash,
+            "CLOSE",
+            source="cover",
+            entity_id=getattr(self, "entity_id", None),
+            context=getattr(self, "context", None),
+        )
         self._last_cmd = "CLOSE"
-        try:
-            self.coordinator.set_last_cmd(self._sash, self._last_cmd)
-        except Exception:
-            pass
-        await self.coordinator.client.open_close(self._sash, "CLOSE")
         await self.coordinator.async_request_refresh()
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
+        await self.coordinator.async_send_command(
+            self._sash,
+            "STOP",
+            source="cover",
+            entity_id=getattr(self, "entity_id", None),
+            context=getattr(self, "context", None),
+        )
         self._last_cmd = "STOP"
-        try:
-            self.coordinator.set_last_cmd(self._sash, self._last_cmd)
-        except Exception:
-            pass
-        await self.coordinator.client.stop(self._sash)
         await self.coordinator.async_request_refresh()
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
@@ -184,10 +207,12 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         cmd = position_to_command(position, gap_max=gap_max, cwol_max=cwol_max)
         if cmd is None:
             return
+        await self.coordinator.async_send_command(
+            self._sash,
+            cmd,
+            source="cover_position",
+            entity_id=getattr(self, "entity_id", None),
+            context=getattr(self, "context", None),
+        )
         self._last_cmd = cmd
-        try:
-            self.coordinator.set_last_cmd(self._sash, self._last_cmd)
-        except Exception:
-            pass
-        await self.coordinator.client.open_close(self._sash, cmd)
         await self.coordinator.async_request_refresh()

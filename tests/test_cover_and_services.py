@@ -1,7 +1,10 @@
-from unittest.mock import AsyncMock
+import pytest
+from homeassistant.exceptions import HomeAssistantError
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant.const import ATTR_ENTITY_ID
 
+from custom_components.siegenia.const import CONF_PREVENT_OPENING, DOMAIN
 
 async def test_cover_commands(hass, setup_integration):
     # Entity should be there
@@ -47,3 +50,37 @@ async def test_integration_services(hass, setup_integration):
     client.reboot_device.assert_called()
     client.reset_device.assert_called()
     client.renew_cert.assert_called()
+
+
+async def test_prevent_opening_blocks_open(hass, mock_client, config_entry_data):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=config_entry_data,
+        options={CONF_PREVENT_OPENING: True},
+        title="Siegenia Test",
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    cover_eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
+    select_eid = next(s.entity_id for s in hass.states.async_all("select") if s.entity_id.endswith("_mode"))
+
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("cover", "open_cover", {ATTR_ENTITY_ID: cover_eid}, blocking=True)
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call(
+            "cover",
+            "set_cover_position",
+            {ATTR_ENTITY_ID: cover_eid, "position": 50},
+            blocking=True,
+        )
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("select", "select_option", {ATTR_ENTITY_ID: select_eid, "option": "open"}, blocking=True)
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("siegenia", "set_mode", {"entity_id": cover_eid, "mode": "OPEN"}, blocking=True)
+
+    # Closing should still work
+    await hass.services.async_call("cover", "close_cover", {ATTR_ENTITY_ID: cover_eid}, blocking=True)
+    client = hass.data[entry.domain][entry.entry_id].client
+    client.open_close.assert_any_call(0, "CLOSE")

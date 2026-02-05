@@ -22,10 +22,27 @@ from .const import (
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    data = coordinator.data or {}
-    states = (data.get("data") or {}).get("states") or {"0": None}
-    entities = [SiegeniaModeSelect(coordinator, entry, int(sash)) for sash in sorted(map(int, states.keys()))]
-    async_add_entities(entities)
+    known_sashes: set[int] = set()
+
+    def _current_sashes() -> list[int]:
+        data = coordinator.data or {}
+        states = (data.get("data") or {}).get("states") or {}
+        if not states:
+            return [0]
+        return sorted(map(int, states.keys()))
+
+    def _add_missing() -> None:
+        new_entities = []
+        for sash in _current_sashes():
+            if sash in known_sashes:
+                continue
+            known_sashes.add(sash)
+            new_entities.append(SiegeniaModeSelect(coordinator, entry, int(sash)))
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _add_missing()
+    entry.async_on_unload(coordinator.async_add_listener(_add_missing))
 
 
 class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
@@ -68,15 +85,14 @@ class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         # Option is lower-case; map to device command
-        if option == "stop":
-            await self.coordinator.client.stop(self._sash)
-        else:
-            await self.coordinator.client.open_close(self._sash, OPTION_TO_CMD.get(option, option.upper()))
-        # Remember last command for motion inference across entities
-        try:
-            self.coordinator.set_last_cmd(self._sash, OPTION_TO_CMD.get(option, option.upper()))
-        except Exception:
-            pass
+        cmd = "STOP" if option == "stop" else OPTION_TO_CMD.get(option, option.upper())
+        await self.coordinator.async_send_command(
+            self._sash,
+            cmd,
+            source="select",
+            entity_id=getattr(self, "entity_id", None),
+            context=getattr(self, "context", None),
+        )
         await self.coordinator.async_request_refresh()
 
     @property

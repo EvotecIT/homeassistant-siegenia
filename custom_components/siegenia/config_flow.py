@@ -45,6 +45,8 @@ from .const import (
     DEFAULT_AUTO_DISCOVER,
     DEFAULT_EXTENDED_DISCOVERY,
     CONF_SERIAL,
+    CONF_PREVENT_OPENING,
+    DEFAULT_PREVENT_OPENING,
 )
 
 
@@ -194,6 +196,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             CONF_ENABLE_BUTTONS: self.config_entry.options.get(CONF_ENABLE_BUTTONS, False),
             CONF_MOTION_INTERVAL: self.config_entry.options.get(CONF_MOTION_INTERVAL, DEFAULT_MOTION_INTERVAL),
             CONF_IDLE_INTERVAL: self.config_entry.options.get(CONF_IDLE_INTERVAL, DEFAULT_IDLE_INTERVAL),
+            CONF_PREVENT_OPENING: self.config_entry.options.get(CONF_PREVENT_OPENING, DEFAULT_PREVENT_OPENING),
             CONF_SLIDER_GAP_MAX: self.config_entry.options.get(CONF_SLIDER_GAP_MAX, DEFAULT_GAP_MAX),
             CONF_SLIDER_CWOL_MAX: self.config_entry.options.get(CONF_SLIDER_CWOL_MAX, DEFAULT_CWOL_MAX),
             CONF_SLIDER_STOP_OVER_DISPLAY: self.config_entry.options.get(CONF_SLIDER_STOP_OVER_DISPLAY, DEFAULT_STOP_OVER_DISPLAY),
@@ -213,6 +216,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(CONF_ENABLE_BUTTONS, default=data[CONF_ENABLE_BUTTONS]): bool,
                 vol.Required(CONF_MOTION_INTERVAL, default=data[CONF_MOTION_INTERVAL]): vol.All(int, vol.Range(min=1, max=10)),
                 vol.Required(CONF_IDLE_INTERVAL, default=data[CONF_IDLE_INTERVAL]): vol.All(int, vol.Range(min=10, max=600)),
+                vol.Required(CONF_PREVENT_OPENING, default=data[CONF_PREVENT_OPENING]): bool,
                 vol.Required(CONF_SLIDER_GAP_MAX, default=data[CONF_SLIDER_GAP_MAX]): vol.All(int, vol.Range(min=1, max=99)),
                 vol.Required(CONF_SLIDER_CWOL_MAX, default=data[CONF_SLIDER_CWOL_MAX]): vol.All(int, vol.Range(min=1, max=99)),
                 vol.Required(CONF_SLIDER_STOP_OVER_DISPLAY, default=data[CONF_SLIDER_STOP_OVER_DISPLAY]): vol.All(int, vol.Range(min=1, max=99)),

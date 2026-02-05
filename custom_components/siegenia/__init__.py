@@ -35,6 +35,8 @@ from .const import (
     CONF_IDLE_INTERVAL,
     DEFAULT_MOTION_INTERVAL,
     DEFAULT_IDLE_INTERVAL,
+    CONF_PREVENT_OPENING,
+    DEFAULT_PREVENT_OPENING,
 )
 from .coordinator import SiegeniaDataUpdateCoordinator
 from .device_registry import async_merge_devices
@@ -83,6 +85,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator.warning_events = entry.options.get(CONF_WARNING_EVENTS, True)
     coordinator.debug_logging = entry.options.get(CONF_DEBUG, False)
     coordinator.informational_logging = entry.options.get(CONF_INFORMATIONAL, False)
+    coordinator.prevent_opening = entry.options.get(CONF_PREVENT_OPENING, DEFAULT_PREVENT_OPENING)
     # Advanced intervals
     motion_s = entry.options.get(CONF_MOTION_INTERVAL, DEFAULT_MOTION_INTERVAL)
     idle_s = entry.options.get(CONF_IDLE_INTERVAL, DEFAULT_IDLE_INTERVAL)
