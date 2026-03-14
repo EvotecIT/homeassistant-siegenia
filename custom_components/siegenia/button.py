@@ -62,6 +62,6 @@ class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
             self._mode,
             source="button",
             entity_id=getattr(self, "entity_id", None),
-            context=getattr(self, "context", None),
+            context=getattr(self, "_context", None),
         )
         await self.coordinator.async_request_refresh()

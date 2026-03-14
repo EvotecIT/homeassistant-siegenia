@@ -164,7 +164,7 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
             "OPEN",
             source="cover",
             entity_id=getattr(self, "entity_id", None),
-            context=getattr(self, "context", None),
+            context=getattr(self, "_context", None),
         )
         self._last_cmd = "OPEN"
         await self.coordinator.async_request_refresh()
@@ -175,7 +175,7 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
             "CLOSE",
             source="cover",
             entity_id=getattr(self, "entity_id", None),
-            context=getattr(self, "context", None),
+            context=getattr(self, "_context", None),
         )
         self._last_cmd = "CLOSE"
         await self.coordinator.async_request_refresh()
@@ -186,7 +186,7 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
             "STOP",
             source="cover",
             entity_id=getattr(self, "entity_id", None),
-            context=getattr(self, "context", None),
+            context=getattr(self, "_context", None),
         )
         self._last_cmd = "STOP"
         await self.coordinator.async_request_refresh()
@@ -212,7 +212,7 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
             cmd,
             source="cover_position",
             entity_id=getattr(self, "entity_id", None),
-            context=getattr(self, "context", None),
+            context=getattr(self, "_context", None),
         )
         self._last_cmd = cmd
         await self.coordinator.async_request_refresh()

@@ -1,10 +1,15 @@
 import pytest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+from homeassistant.core import Context, Event
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant.const import ATTR_ENTITY_ID
 
 from custom_components.siegenia.const import CONF_PREVENT_OPENING, DOMAIN
+
 
 async def test_cover_commands(hass, setup_integration):
     # Entity should be there
@@ -84,3 +89,89 @@ async def test_prevent_opening_blocks_open(hass, mock_client, config_entry_data)
     await hass.services.async_call("cover", "close_cover", {ATTR_ENTITY_ID: cover_eid}, blocking=True)
     client = hass.data[entry.domain][entry.entry_id].client
     client.open_close.assert_any_call(0, "CLOSE")
+
+
+async def test_command_event_and_logbook_include_context(hass, setup_integration, monkeypatch):
+    entry = setup_integration
+    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator.informational_logging = True
+    cover_eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
+
+    monkeypatch.setattr(hass.auth, "async_get_user", AsyncMock(return_value=SimpleNamespace(name="Test User")))
+    logbook_calls = []
+
+    async def _capture_logbook(call):
+        logbook_calls.append(call.data)
+
+    hass.services.async_register("logbook", "log", _capture_logbook)
+
+    context = Context(user_id="user-1", parent_id="parent-1", id="ctx-1")
+    Event(
+        "call_service",
+        {
+            "domain": "cover",
+            "service": "open_cover",
+            "entity_id": cover_eid,
+            "trigger": {"platform": "state", "entity_id": cover_eid, "from_state": "closed", "to_state": "open"},
+        },
+        context=context,
+    )
+
+    events = []
+    hass.bus.async_listen_once("siegenia_command", lambda event: events.append(event))
+
+    await coordinator.async_send_command(0, "OPEN", source="cover", entity_id=cover_eid, context=context)
+    await hass.async_block_till_done()
+
+    coordinator.client.open_close.assert_any_call(0, "OPEN")
+    assert len(events) == 1
+    data = events[0].data
+    assert data["command"] == "OPEN"
+    assert data["sash"] == 0
+    assert data["source"] == "cover"
+    assert data["entity_id"] == cover_eid
+    assert data["blocked"] is False
+    assert data["context_id"] == "ctx-1"
+    assert data["user_id"] == "user-1"
+    assert data["parent_id"] == "parent-1"
+    assert data["user_name"] == "Test User"
+    assert data["origin"] == {
+        "event_type": "call_service",
+        "domain": "cover",
+        "service": "open_cover",
+        "entity_id": cover_eid,
+        "trigger": {
+            "platform": "state",
+            "entity_id": cover_eid,
+            "from_state": "closed",
+            "to_state": "open",
+        },
+    }
+
+    assert logbook_calls == [
+        {
+            "name": "Siegenia af050261",
+            "message": f"Command sent: OPEN (sash 0) via cover ({cover_eid}) user=Test User",
+            "domain": "siegenia",
+        }
+    ]
+
+
+async def test_blocked_command_emits_blocked_event(hass, setup_integration):
+    entry = setup_integration
+    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator.prevent_opening = True
+    cover_eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
+
+    events = []
+    hass.bus.async_listen_once("siegenia_command", lambda event: events.append(event))
+
+    with pytest.raises(HomeAssistantError):
+        await coordinator.async_send_command(0, "OPEN", source="cover", entity_id=cover_eid)
+    await hass.async_block_till_done()
+
+    coordinator.client.open_close.assert_not_called()
+    assert len(events) == 1
+    assert events[0].data["command"] == "OPEN"
+    assert events[0].data["blocked"] is True
+    assert events[0].data["entity_id"] == cover_eid

@@ -184,8 +184,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "origin": origin,
                 },
             )
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001
+            self.logger.debug("Failed to emit siegenia_command event: %s", exc)
 
     async def async_send_command(
         self,
@@ -197,7 +197,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         context: Context | None = None,
     ) -> None:
         cmd = str(command).strip().upper()
-        user_name = self._context_user_name(context)
+        user_name = await self._context_user_name(context)
         origin = self._context_origin(context)
         if self.prevent_opening and is_opening_command(cmd):
             self.logger.warning(
@@ -235,13 +235,14 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._log_command(cmd, sash, source, entity_id, blocked=False, user_name=user_name)
 
-    def _context_user_name(self, context: Context | None) -> str | None:
+    async def _context_user_name(self, context: Context | None) -> str | None:
         if context is None or not context.user_id:
             return None
         try:
-            user = self.hass.auth.async_get_user(context.user_id)
+            user = await self.hass.auth.async_get_user(context.user_id)
             return getattr(user, "name", None) if user else None
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            self.logger.debug("Failed to resolve user for command context: %s", exc)
             return None
 
     def _context_origin(self, context: Context | None) -> dict[str, Any] | None:
@@ -286,17 +287,24 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if user_name:
             msg = f"{msg} user={user_name}"
         self.logger.info("Siegenia %s: %s", serial, msg)
-        try:
-            self.hass.async_create_task(
-                self.hass.services.async_call(
+        self._schedule_logbook_entry(name=f"Siegenia {serial}", message=msg)
+
+    def _schedule_logbook_entry(self, *, name: str, message: str) -> None:
+        if not self.hass.services.has_service("logbook", "log"):
+            return
+
+        async def _async_logbook() -> None:
+            try:
+                await self.hass.services.async_call(
                     "logbook",
                     "log",
-                    {"name": f"Siegenia {serial}", "message": msg, "domain": "siegenia"},
+                    {"name": name, "message": message, "domain": "siegenia"},
                     blocking=False,
                 )
-            )
-        except Exception:
-            pass
+            except Exception as exc:  # noqa: BLE001
+                self.logger.debug("Failed to create Siegenia logbook entry: %s", exc)
+
+        self.hass.async_create_task(_async_logbook())
 
     async def _ensure_connected(self) -> None:
         if self.client.connected:
@@ -446,8 +454,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     t.cancel()
             try:
                 await asyncio.gather(*tasks, return_exceptions=True)
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001
+                self.logger.debug("Error while gathering probe tasks during cleanup: %s", exc)
         return found
 
     async def _probe_host(self, host: str) -> str | None:
@@ -643,18 +651,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             serial = ((self.device_info or {}).get("data", {}) or {}).get("serialnr") or self.host
             name = f"Siegenia {serial}"
             msg = f"Manual operation detected (sash {sash})"
-            # Best-effort logbook entry
-            try:
-                self.hass.async_create_task(
-                    self.hass.services.async_call(
-                        "logbook",
-                        "log",
-                        {"name": name, "message": msg, "domain": "siegenia"},
-                        blocking=False,
-                    )
-                )
-            except Exception:
-                pass
+            self._schedule_logbook_entry(name=name, message=msg)
             # Also fire a dedicated event for automations
             self.hass.bus.async_fire(
                 "siegenia_operation",

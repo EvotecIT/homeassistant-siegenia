@@ -3,10 +3,10 @@ from __future__ import annotations
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, CONF_PREVENT_OPENING, DEFAULT_PREVENT_OPENING
+from .const import DOMAIN, CONF_PREVENT_OPENING, DEFAULT_PREVENT_OPENING, resolve_model
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
@@ -30,6 +30,20 @@ class SiegeniaOpeningLockSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def is_on(self) -> bool:
         return bool(getattr(self.coordinator, "prevent_opening", DEFAULT_PREVENT_OPENING))
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        info = (self.coordinator.device_info or {}).get("data", {})
+        ident = self.coordinator.device_identifier()
+        return DeviceInfo(
+            identifiers={(DOMAIN, ident)},
+            manufacturer="Siegenia",
+            model=resolve_model(info),
+            name=info.get("devicename") or "Siegenia Device",
+            sw_version=info.get("softwareversion"),
+            hw_version=info.get("hardwareversion"),
+            configuration_url=f"https://{self._entry.data.get('host')}:{self.coordinator.port}",
+        )
 
     async def async_turn_on(self, **kwargs) -> None:  # type: ignore[no-untyped-def]
         self._set_lock(True)

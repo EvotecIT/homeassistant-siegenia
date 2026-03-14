@@ -49,6 +49,7 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
   - (Y+1)–99% → Stop over (display % configurable in Options)
   - 100% → Open
 - Service `siegenia.set_mode` for discrete actions (`OPEN`, `CLOSE`, `GAP_VENT`, `CLOSE_WO_LOCK`, `STOP_OVER`, `STOP`)
+- Config switch: Opening Lock, which blocks opening-style commands while still allowing close/stop automations
 - Number entity: Stopover distance (dm) with live min/max from the device
 - Update entity: "Siegenia Firmware" (read-only availability signal from device)
 - Service `siegenia.sync_clock` to set device clock to HA's current local time; optional `timezone` parameter (POSIX/TZ string like `CET-1CEST,M3.5.0,M10.5.0/3`).
@@ -56,6 +57,7 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
 - Timer services: `siegenia.timer_start` (minutes or HH:MM), `siegenia.timer_stop`, `siegenia.timer_set_duration`.
 - Device automations: triggers (opened/closed/gap vent/close w/o lock/stop over, moving started/stopped, warning active/cleared) and conditions (is_open/is_closed/is_gap_vent/is_closed_wo_lock/is_stop_over/moving/warning_active).
 - Warning routing: options to enable persistent notifications and/or HA events (`siegenia_warning`).
+- Command tracing: every command attempt fires a `siegenia_command` event with command/source/entity/context metadata; informational logging also adds a logbook entry when enabled.
  - Slider threshold options (Options → Integration):
    - Gap Vent max % (default 19)
    - Close w/o lock max % (default 40)
