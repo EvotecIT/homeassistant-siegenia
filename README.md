@@ -99,16 +99,22 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
 - Run tests locally:
   - `pip install -r requirements_test.txt`
   - `pytest`
-- CI: `.github/workflows/ci.yml` (Python 3.11/3.12; Home Assistant installed via pytest-homeassistant-custom-component)
+- Latest Home Assistant line:
+  - requires Python 3.14
+  - `pip install -r requirements_test_latest.txt`
+  - `pytest`
+- CI: `.github/workflows/ci.yml` (Python 3.12/3.13; Home Assistant installed via pytest-homeassistant-custom-component)
+- CI also runs a latest-stack job against Home Assistant 2026.3.1 on Python 3.14.
 - Validation: `.github/workflows/hassfest.yml`, `.github/workflows/validate-hacs.yml`
 
 ## Branding
 
-- Vector sources are in `assets/brand` and `assets/icons`.
+- Home Assistant 2026.3+ can load custom integration branding directly from `custom_components/siegenia/brand`.
+- Vector sources are in `assets/brand` and dashboard icons are in `assets/icons`.
 - Generate PNGs for the Home Assistant brands repo:
   - `.venv/bin/python tools/gen_brand_icons.py`
   - Outputs: `build/brand/icon.png` (256×256), `logo.png` (512×256), plus `icon@2x.png` and `logo@2x.png`.
-- The integration serves any files in `build/brand/` at `/static/icons/brands/siegenia/` so your local instance shows the logo immediately after a restart.
+- The shipped `brand/` folder is the source of truth for Home Assistant branding. Regenerate and copy those files there when the artwork changes.
 - Full PR checklist and steps: `docs/brands-pr/README.md`.
 
 ### Use the custom icons in dashboards
