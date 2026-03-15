@@ -8,7 +8,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant.const import ATTR_ENTITY_ID
 
-from custom_components.siegenia.const import CONF_PREVENT_OPENING, DOMAIN
+from custom_components.siegenia.const import CMD_CLOSE, CMD_CLOSE_WO_LOCK, CONF_PREVENT_OPENING, DOMAIN
 
 
 async def test_cover_commands(hass, setup_integration):
@@ -81,14 +81,28 @@ async def test_prevent_opening_blocks_open(hass, mock_client, config_entry_data)
             blocking=True,
         )
     with pytest.raises(HomeAssistantError):
+        await hass.services.async_call(
+            "cover",
+            "set_cover_position",
+            {ATTR_ENTITY_ID: cover_eid, "position": 100},
+            blocking=True,
+        )
+    with pytest.raises(HomeAssistantError):
         await hass.services.async_call("select", "select_option", {ATTR_ENTITY_ID: select_eid, "option": "open"}, blocking=True)
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call("siegenia", "set_mode", {"entity_id": cover_eid, "mode": "OPEN"}, blocking=True)
 
-    # Closing should still work
+    # Closing commands should still work while the opening lock is enabled.
     await hass.services.async_call("cover", "close_cover", {ATTR_ENTITY_ID: cover_eid}, blocking=True)
+    await hass.services.async_call(
+        "siegenia",
+        "set_mode",
+        {"entity_id": cover_eid, "mode": CMD_CLOSE_WO_LOCK},
+        blocking=True,
+    )
     client = hass.data[entry.domain][entry.entry_id].client
-    client.open_close.assert_any_call(0, "CLOSE")
+    client.open_close.assert_any_call(0, CMD_CLOSE)
+    client.open_close.assert_any_call(0, CMD_CLOSE_WO_LOCK)
 
 
 async def test_command_event_and_logbook_include_context(hass, setup_integration, monkeypatch):
@@ -106,6 +120,7 @@ async def test_command_event_and_logbook_include_context(hass, setup_integration
     hass.services.async_register("logbook", "log", _capture_logbook)
 
     context = Context(user_id="user-1", parent_id="parent-1", id="ctx-1")
+    # Event() mutates the supplied context and stores itself as origin_event.
     Event(
         "call_service",
         {

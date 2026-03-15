@@ -64,7 +64,9 @@ PLATFORMS = ["cover", "sensor", "binary_sensor", "button", "number", "update", "
 STATE_OPEN = "OPEN"
 STATE_CLOSED = "CLOSED"
 STATE_CLOSED_WO_LOCK = "CLOSED_WO_LOCK"
+CMD_CLOSE = "CLOSE"
 CMD_CLOSE_WO_LOCK = "CLOSE_WO_LOCK"
+CMD_STOP = "STOP"
 STATE_GAP_VENT = "GAP_VENT"
 STATE_STOP_OVER = "STOP_OVER"
 STATE_STOPPED = "STOPPED"
@@ -93,7 +95,7 @@ def position_to_command(position: int, *, gap_max: int = DEFAULT_GAP_MAX, cwol_m
     if 0 < position <= gap_max:
         return STATE_GAP_VENT
     if position == 0:
-        return "CLOSE"
+        return CMD_CLOSE
     return None
 
 def state_to_position(state: str, *, stop_over_display: int = DEFAULT_STOP_OVER_DISPLAY) -> int | None:
@@ -113,11 +115,11 @@ SELECT_OPTIONS = [
 
 VALID_COMMANDS = {
     STATE_OPEN,
-    "CLOSE",
+    CMD_CLOSE,
     STATE_GAP_VENT,
     CMD_CLOSE_WO_LOCK,
     STATE_STOP_OVER,
-    "STOP",
+    CMD_STOP,
 }
 
 OPENING_COMMANDS = {
@@ -139,11 +141,11 @@ STATE_TO_SELECT = {
 # Map select option key -> device command (uppercase)
 OPTION_TO_CMD = {
     "open": STATE_OPEN,
-    "close": "CLOSE",
+    "close": CMD_CLOSE,
     "gap_vent": STATE_GAP_VENT,
     "close_wo_lock": CMD_CLOSE_WO_LOCK,
     "stop_over": STATE_STOP_OVER,
-    "stop": "STOP",
+    "stop": CMD_STOP,
 }
 
 # Reverse mapping command/state (uppercase) -> option key (lowercase)
@@ -196,3 +198,11 @@ def resolve_model(device_info: dict) -> str:
             if name:
                 return name
     return str(base)
+
+
+def device_configuration_url(host: str | None, port: int | None, ws_protocol: str | None) -> str | None:
+    """Map the configured WS protocol back to the device UI URL."""
+    if not host or port is None:
+        return None
+    scheme = "https" if (ws_protocol or DEFAULT_WS_PROTOCOL) == "wss" else "http"
+    return f"{scheme}://{host}:{port}"

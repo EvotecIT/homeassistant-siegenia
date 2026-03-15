@@ -7,7 +7,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, resolve_model
+from .const import DOMAIN, device_configuration_url, resolve_model
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
@@ -58,7 +58,11 @@ class SiegeniaFirmwareUpdate(CoordinatorEntity, UpdateEntity):
             model=str(model),
             name=info.get("devicename") or "Siegenia Device",
             sw_version=info.get("softwareversion"),
-            configuration_url=f"https://{self._entry.data.get('host')}:{self.coordinator.port}" if hasattr(self.coordinator, 'port') else None,
+            configuration_url=device_configuration_url(
+                self._entry.data.get("host"),
+                getattr(self.coordinator, "port", None),
+                getattr(self.coordinator, "ws_protocol", None),
+            ),
             suggested_area=suggested,
         )
 

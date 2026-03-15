@@ -7,6 +7,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo
 
 from .const import (
+    CMD_STOP,
     DOMAIN,
     SELECT_OPTIONS,
     STATE_TO_SELECT,
@@ -85,7 +86,7 @@ class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         # Option is lower-case; map to device command
-        cmd = "STOP" if option == "stop" else OPTION_TO_CMD.get(option, option.upper())
+        cmd = CMD_STOP if option == "stop" else OPTION_TO_CMD.get(option, option.upper())
         await self.coordinator.async_send_command(
             self._sash,
             cmd,

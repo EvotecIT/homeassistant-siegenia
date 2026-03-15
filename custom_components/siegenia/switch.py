@@ -6,7 +6,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, CONF_PREVENT_OPENING, DEFAULT_PREVENT_OPENING, resolve_model
+from .const import (
+    DOMAIN,
+    CONF_PREVENT_OPENING,
+    DEFAULT_PREVENT_OPENING,
+    device_configuration_url,
+    resolve_model,
+)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
@@ -42,7 +48,11 @@ class SiegeniaOpeningLockSwitch(CoordinatorEntity, SwitchEntity):
             name=info.get("devicename") or "Siegenia Device",
             sw_version=info.get("softwareversion"),
             hw_version=info.get("hardwareversion"),
-            configuration_url=f"https://{self._entry.data.get('host')}:{self.coordinator.port}",
+            configuration_url=device_configuration_url(
+                self._entry.data.get("host"),
+                getattr(self.coordinator, "port", None),
+                getattr(self.coordinator, "ws_protocol", None),
+            ),
         )
 
     async def async_turn_on(self, **kwargs) -> None:  # type: ignore[no-untyped-def]
@@ -55,5 +65,7 @@ class SiegeniaOpeningLockSwitch(CoordinatorEntity, SwitchEntity):
         options = dict(self._entry.options)
         options[CONF_PREVENT_OPENING] = enabled
         self.hass.config_entries.async_update_entry(self._entry, options=options)
+        # Mirror the option immediately so commands honor the new lock state
+        # before Home Assistant finishes propagating the entry update.
         self.coordinator.prevent_opening = enabled
         self.async_write_ha_state()

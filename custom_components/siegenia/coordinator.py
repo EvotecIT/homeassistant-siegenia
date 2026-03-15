@@ -452,10 +452,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for t in tasks:
                 if not t.done():
                     t.cancel()
-            try:
-                await asyncio.gather(*tasks, return_exceptions=True)
-            except Exception as exc:  # noqa: BLE001
-                self.logger.debug("Error while gathering probe tasks during cleanup: %s", exc)
+            await asyncio.gather(*tasks, return_exceptions=True)
         return found
 
     async def _probe_host(self, host: str) -> str | None:
