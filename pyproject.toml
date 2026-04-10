@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "homeassistant-siegenia"
+version = "1.1.8"
+description = "HACS-ready Siegenia integration for Home Assistant"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Community Maintainers" }]
+dependencies = ["aiohttp>=3.9"]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=7.4",
+  "pytest-asyncio>=0.23",
+  "pytest-cov>=4.1",
+  "pytest-homeassistant-custom-component>=0.13"
+]
+
+[tool.setuptools.packages.find]
+include = ["custom_components*", "siegenia_client*", "tests*"]
+
+[tool.setuptools.package-data]
+"custom_components.siegenia" = ["manifest.json", "translations/*.json", "services.yaml", "brand/*.png"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q"

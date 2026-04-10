@@ -63,14 +63,22 @@ The integration also includes options for reconnect behavior, discovery helpers,
 - warning events and notifications
 - blueprints and dashboard examples
 
-## 🧱 Project Structure
+## 🧱 Reusable Python Package
 
-This repo is intentionally split into two layers:
+This repository now ships two usable layers:
 
-- a reusable local protocol/client layer for talking to the Siegenia controller
-- the Home Assistant integration layer on top of it
+- `siegenia_client` for direct Python access to the local Siegenia controller API
+- the Home Assistant integration in `custom_components/siegenia`
 
-That keeps the Home Assistant behavior clean while leaving the protocol side reusable and easier to test.
+Example:
+
+```python
+from siegenia_client import SiegeniaClient
+
+client = SiegeniaClient("192.168.1.30")
+```
+
+That keeps the local protocol layer reusable for scripts or tooling while the Home Assistant integration stays focused on setup, entities, and automations.
 
 ## 🛠️ Development
 
