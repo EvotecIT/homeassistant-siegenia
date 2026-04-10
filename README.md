@@ -70,12 +70,28 @@ This repository now ships two usable layers:
 - `siegenia_client` for direct Python access to the local Siegenia controller API
 - the Home Assistant integration in `custom_components/siegenia`
 
+Library docs: `docs/python-library.md`
+
+Runnable example: `examples/python_client.py`
+
 Example:
 
 ```python
+import asyncio
+
 from siegenia_client import SiegeniaClient
 
-client = SiegeniaClient("192.168.1.30")
+
+async def main() -> None:
+    client = SiegeniaClient("192.168.1.30")
+    await client.connect()
+    try:
+        ...
+    finally:
+        await client.disconnect()
+
+
+asyncio.run(main())
 ```
 
 That keeps the local protocol layer reusable for scripts or tooling while the Home Assistant integration stays focused on setup, entities, and automations.
@@ -83,7 +99,8 @@ That keeps the local protocol layer reusable for scripts or tooling while the Ho
 ## 🛠️ Development
 
 ```bash
-pip install -r requirements_test.txt
+python -m pip install -e .[test]
+python -m compileall siegenia_client custom_components tests examples
 pytest
 ```
 
