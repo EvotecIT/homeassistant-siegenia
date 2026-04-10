@@ -8,15 +8,25 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, DEVICE_TYPE_MAP, CONF_ENABLE_BUTTONS, CMD_CLOSE_WO_LOCK
+from .const import (
+    DOMAIN,
+    DEVICE_TYPE_MAP,
+    CONF_ENABLE_BUTTONS,
+    CMD_CLOSE,
+    CMD_CLOSE_WO_LOCK,
+    CMD_STOP,
+    STATE_GAP_VENT,
+    STATE_OPEN,
+    STATE_STOP_OVER,
+)
 
 _ACTIONS = [
-    ("open", "OPEN"),
-    ("close", "CLOSE"),
-    ("gap_vent", "GAP_VENT"),
+    ("open", STATE_OPEN),
+    ("close", CMD_CLOSE),
+    ("gap_vent", STATE_GAP_VENT),
     ("close_wo_lock", CMD_CLOSE_WO_LOCK),
-    ("stop_over", "STOP_OVER"),
-    ("stop", "STOP"),
+    ("stop_over", STATE_STOP_OVER),
+    ("stop", CMD_STOP),
 ]
 
 
@@ -57,12 +67,11 @@ class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         sash = 0
-        if self._mode == "STOP":
-            await self.coordinator.client.stop(sash)
-        else:
-            await self.coordinator.client.open_close(sash, self._mode)
-        try:
-            self.coordinator.set_last_cmd(sash, self._mode)
-        except Exception:
-            pass
+        await self.coordinator.async_send_command(
+            sash,
+            self._mode,
+            source="button",
+            entity_id=getattr(self, "entity_id", None),
+            context=getattr(self, "_context", None),
+        )
         await self.coordinator.async_request_refresh()

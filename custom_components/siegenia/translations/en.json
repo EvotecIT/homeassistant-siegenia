@@ -44,6 +44,7 @@
           "warning_notifications": "Create persistent notifications on warnings",
           "warning_events": "Fire events on warnings (siegenia_warning)",
           "enable_buttons": "Create discrete action buttons (Open/Close/Gap/…)",
+          "prevent_opening": "Block opening commands (Open/Gap/Stop Over)",
           "motion_interval": "Motion poll interval (s)",
           "idle_interval": "Idle poll interval (s)",
           "slider_gap_max": "Slider: Gap Vent max % (e.g., 19)",
@@ -250,6 +251,11 @@
           "stop_over": "Stop over",
           "stop": "Stop"
         }
+      }
+    },
+    "switch": {
+      "opening_lock": {
+        "name": "Opening Lock"
       }
     },
     "sensor": {

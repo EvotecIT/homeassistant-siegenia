@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, STATE_MOVING, resolve_model
+from .const import DOMAIN, STATE_MOVING, device_configuration_url, resolve_model
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
@@ -51,7 +51,11 @@ class SiegeniaOnlineBinary(CoordinatorEntity, BinarySensorEntity):
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
             "model": resolve_model(info),
-            "configuration_url": f"https://{self._entry.data.get('host')}:{getattr(self.coordinator, 'port', 443)}",
+            "configuration_url": device_configuration_url(
+                self._entry.data.get("host"),
+                getattr(self.coordinator, "port", 443),
+                getattr(self.coordinator, "ws_protocol", None),
+            ),
         }
 
 
@@ -70,8 +74,10 @@ class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         params = self.coordinator.data or {}
         data = params.get("data") or {}
-        state = (data.get("states") or {}).get("0")
-        return state == STATE_MOVING
+        states = data.get("states") or {}
+        if not states:
+            return None
+        return any(state == STATE_MOVING for state in states.values())
 
     @property
     def device_info(self):
@@ -82,7 +88,11 @@ class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
             "model": resolve_model(info),
-            "configuration_url": f"https://{self._entry.data.get('host')}:{getattr(self.coordinator, 'port', 443)}",
+            "configuration_url": device_configuration_url(
+                self._entry.data.get("host"),
+                getattr(self.coordinator, "port", 443),
+                getattr(self.coordinator, "ws_protocol", None),
+            ),
         }
 
 
@@ -115,4 +125,3 @@ class SiegeniaWarningBinary(CoordinatorEntity, BinarySensorEntity):
             "name": info.get("devicename") or "Siegenia Device",
             "model": resolve_model(info),
         }
-from homeassistant.helpers.entity import EntityCategory

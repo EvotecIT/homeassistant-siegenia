@@ -38,6 +38,7 @@
           "warning_notifications": "Twórz powiadomienia przy ostrzeżeniach",
           "warning_events": "Wysyłaj zdarzenia przy ostrzeżeniach (siegenia_warning)",
           "enable_buttons": "Utwórz przyciski akcji (Otwórz/Zamknij/Wietrzenie/…)",
+          "prevent_opening": "Blokuj komendy otwierania (Otwórz/Wietrzenie/Stop Over)",
           "motion_interval": "Interwał odświeżania podczas ruchu (s)",
           "idle_interval": "Interwał odświeżania w spoczynku (s)",
           "slider_gap_max": "Suwak: maks. % dla wietrzenia (np. 19)",
@@ -215,6 +216,11 @@
           "stop_over": "Stop over",
           "stop": "Stop"
         }
+      }
+    },
+    "switch": {
+      "opening_lock": {
+        "name": "Blokada otwierania"
       }
     },
     "sensor": {

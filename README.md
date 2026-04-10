@@ -49,6 +49,7 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
   - (Y+1)–99% → Stop over (display % configurable in Options)
   - 100% → Open
 - Service `siegenia.set_mode` for discrete actions (`OPEN`, `CLOSE`, `GAP_VENT`, `CLOSE_WO_LOCK`, `STOP_OVER`, `STOP`)
+- Config switch: Opening Lock, which blocks opening-style commands while still allowing close/stop automations
 - Number entity: Stopover distance (dm) with live min/max from the device
 - Update entity: "Siegenia Firmware" (read-only availability signal from device)
 - Service `siegenia.sync_clock` to set device clock to HA's current local time; optional `timezone` parameter (POSIX/TZ string like `CET-1CEST,M3.5.0,M10.5.0/3`).
@@ -56,6 +57,7 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
 - Timer services: `siegenia.timer_start` (minutes or HH:MM), `siegenia.timer_stop`, `siegenia.timer_set_duration`.
 - Device automations: triggers (opened/closed/gap vent/close w/o lock/stop over, moving started/stopped, warning active/cleared) and conditions (is_open/is_closed/is_gap_vent/is_closed_wo_lock/is_stop_over/moving/warning_active).
 - Warning routing: options to enable persistent notifications and/or HA events (`siegenia_warning`).
+- Command tracing: every command attempt fires a `siegenia_command` event with command/source/entity/context metadata; informational logging also adds a logbook entry when enabled.
  - Slider threshold options (Options → Integration):
    - Gap Vent max % (default 19)
    - Close w/o lock max % (default 40)
@@ -97,16 +99,22 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
 - Run tests locally:
   - `pip install -r requirements_test.txt`
   - `pytest`
-- CI: `.github/workflows/ci.yml` (Python 3.11/3.12; Home Assistant installed via pytest-homeassistant-custom-component)
+- Latest Home Assistant line:
+  - requires Python 3.14
+  - `pip install -r requirements_test_latest.txt`
+  - `pytest`
+- CI: `.github/workflows/ci.yml` (Python 3.12/3.13; Home Assistant installed via pytest-homeassistant-custom-component)
+- CI also runs a latest-stack job against Home Assistant 2026.3.1 on Python 3.14.
 - Validation: `.github/workflows/hassfest.yml`, `.github/workflows/validate-hacs.yml`
 
 ## Branding
 
-- Vector sources are in `assets/brand` and `assets/icons`.
+- Home Assistant 2026.3+ can load custom integration branding directly from `custom_components/siegenia/brand`.
+- Vector sources are in `assets/brand` and dashboard icons are in `assets/icons`.
 - Generate PNGs for the Home Assistant brands repo:
   - `.venv/bin/python tools/gen_brand_icons.py`
   - Outputs: `build/brand/icon.png` (256×256), `logo.png` (512×256), plus `icon@2x.png` and `logo@2x.png`.
-- The integration serves any files in `build/brand/` at `/static/icons/brands/siegenia/` so your local instance shows the logo immediately after a restart.
+- The shipped `brand/` folder is the source of truth for Home Assistant branding. Regenerate and copy those files there when the artwork changes.
 - Full PR checklist and steps: `docs/brands-pr/README.md`.
 
 ### Use the custom icons in dashboards

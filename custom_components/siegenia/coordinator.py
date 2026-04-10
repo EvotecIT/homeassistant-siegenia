@@ -9,10 +9,10 @@ from typing import Any
 
 from aiohttp import ClientSession, ClientConnectorError, WSServerHandshakeError
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, Context
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.event import async_call_later
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
 
 from .api import AuthenticationError, SiegeniaClient
@@ -29,6 +29,7 @@ from .const import (
     CONF_AUTO_DISCOVER,
     CONF_SERIAL,
     DEFAULT_AUTO_DISCOVER,
+    is_opening_command,
     ISSUE_UNREACHABLE,
     REDISCOVER_COOLDOWN_SECONDS,
     REDISCOVER_BACKOFF_MAX,
@@ -95,6 +96,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.warning_notifications: bool = True
         self.warning_events: bool = True
         self._motion_revert_handle = None
+        self.prevent_opening: bool = False
         # Last command per sash (shared across entities for better UX during motion)
         self._last_cmd_by_sash: dict[int, str | None] = {}
         self._last_cmd_ts_by_sash: dict[int, float] = {}
@@ -150,6 +152,159 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """
         info_serial = ((self.device_info or {}).get("data") or {}).get("serialnr")
         return self.serial or info_serial or self.entry.unique_id or self.host
+
+    def _emit_command_event(
+        self,
+        *,
+        command: str,
+        sash: int,
+        source: str,
+        blocked: bool,
+        entity_id: str | None,
+        context: Context | None,
+        user_name: str | None,
+        origin: dict[str, Any] | None,
+    ) -> None:
+        try:
+            serial = ((self.device_info or {}).get("data", {}) or {}).get("serialnr") or self.serial
+            self.hass.bus.async_fire(
+                "siegenia_command",
+                {
+                    "host": self.host,
+                    "serial": serial,
+                    "sash": sash,
+                    "command": command,
+                    "source": source,
+                    "entity_id": entity_id,
+                    "blocked": blocked,
+                    "context_id": getattr(context, "id", None),
+                    "user_id": getattr(context, "user_id", None),
+                    "parent_id": getattr(context, "parent_id", None),
+                    "user_name": user_name,
+                    "origin": origin,
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.logger.debug("Failed to emit siegenia_command event: %s", exc)
+
+    async def async_send_command(
+        self,
+        sash: int,
+        command: str,
+        *,
+        source: str,
+        entity_id: str | None = None,
+        context: Context | None = None,
+    ) -> None:
+        cmd = str(command).strip().upper()
+        user_name = await self._context_user_name(context)
+        origin = self._context_origin(context)
+        if self.prevent_opening and is_opening_command(cmd):
+            self.logger.warning(
+                "Blocked opening command %s (sash %s) from %s due to prevent_opening option",
+                cmd,
+                sash,
+                source,
+            )
+            self._emit_command_event(
+                command=cmd,
+                sash=sash,
+                source=source,
+                blocked=True,
+                entity_id=entity_id,
+                context=context,
+                user_name=user_name,
+                origin=origin,
+            )
+            self._log_command(cmd, sash, source, entity_id, blocked=True, user_name=user_name)
+            raise HomeAssistantError("Opening commands are disabled in Siegenia options.")
+        if cmd == "STOP":
+            await self.client.stop(sash)
+        else:
+            await self.client.open_close(sash, cmd)
+        self.set_last_cmd(sash, cmd)
+        self._emit_command_event(
+            command=cmd,
+            sash=sash,
+            source=source,
+            blocked=False,
+            entity_id=entity_id,
+            context=context,
+            user_name=user_name,
+            origin=origin,
+        )
+        self._log_command(cmd, sash, source, entity_id, blocked=False, user_name=user_name)
+
+    async def _context_user_name(self, context: Context | None) -> str | None:
+        if context is None or not context.user_id:
+            return None
+        try:
+            user = await self.hass.auth.async_get_user(context.user_id)
+            return getattr(user, "name", None) if user else None
+        except Exception as exc:  # noqa: BLE001
+            self.logger.debug("Failed to resolve user for command context: %s", exc)
+            return None
+
+    def _context_origin(self, context: Context | None) -> dict[str, Any] | None:
+        if context is None or context.origin_event is None:
+            return None
+        event = context.origin_event
+        data = event.data or {}
+        origin: dict[str, Any] = {"event_type": event.event_type}
+        if "domain" in data:
+            origin["domain"] = data.get("domain")
+        if "service" in data:
+            origin["service"] = data.get("service")
+        if "entity_id" in data:
+            origin["entity_id"] = data.get("entity_id")
+        if "platform" in data:
+            origin["platform"] = data.get("platform")
+        if "trigger" in data and isinstance(data.get("trigger"), dict):
+            trig = data["trigger"]
+            origin["trigger"] = {
+                k: trig.get(k)
+                for k in ("platform", "entity_id", "from_state", "to_state", "at", "event_type")
+                if k in trig
+            }
+        return origin
+
+    def _log_command(
+        self,
+        cmd: str,
+        sash: int,
+        source: str,
+        entity_id: str | None,
+        blocked: bool,
+        user_name: str | None,
+    ) -> None:
+        if not self.informational_logging:
+            return
+        serial = ((self.device_info or {}).get("data", {}) or {}).get("serialnr") or self.serial or self.host
+        status = "BLOCKED" if blocked else "sent"
+        msg = f"Command {status}: {cmd} (sash {sash}) via {source}"
+        if entity_id:
+            msg = f"{msg} ({entity_id})"
+        if user_name:
+            msg = f"{msg} user={user_name}"
+        self.logger.info("Siegenia %s: %s", serial, msg)
+        self._schedule_logbook_entry(name=f"Siegenia {serial}", message=msg)
+
+    def _schedule_logbook_entry(self, *, name: str, message: str) -> None:
+        if not self.hass.services.has_service("logbook", "log"):
+            return
+
+        async def _async_logbook() -> None:
+            try:
+                await self.hass.services.async_call(
+                    "logbook",
+                    "log",
+                    {"name": name, "message": message, "domain": "siegenia"},
+                    blocking=False,
+                )
+            except Exception as exc:  # noqa: BLE001
+                self.logger.debug("Failed to create Siegenia logbook entry: %s", exc)
+
+        self.hass.async_create_task(_async_logbook())
 
     async def _ensure_connected(self) -> None:
         if self.client.connected:
@@ -281,22 +436,23 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 return await self._probe_host(str(ip_obj))
 
         tasks = [asyncio.create_task(_runner(ip)) for ip in candidates]
-        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         found = None
-        for d in done:
-            try:
-                found = d.result()
-            except Exception as exc:  # noqa: BLE001
-                self.logger.debug("Probe task failed: %s", exc)
-            if found:
-                break
-        # Cancel remaining tasks
-        for t in pending:
-            t.cancel()
         try:
-            await asyncio.gather(*pending, return_exceptions=True)
-        except Exception:
-            pass
+            for task in asyncio.as_completed(tasks):
+                try:
+                    result = await task
+                except Exception as exc:  # noqa: BLE001
+                    self.logger.debug("Probe task failed: %s", exc)
+                    continue
+                if result:
+                    found = result
+                    break
+        finally:
+            # Cancel remaining tasks
+            for t in tasks:
+                if not t.done():
+                    t.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
         return found
 
     async def _probe_host(self, host: str) -> str | None:
@@ -492,18 +648,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             serial = ((self.device_info or {}).get("data", {}) or {}).get("serialnr") or self.host
             name = f"Siegenia {serial}"
             msg = f"Manual operation detected (sash {sash})"
-            # Best-effort logbook entry
-            try:
-                self.hass.async_create_task(
-                    self.hass.services.async_call(
-                        "logbook",
-                        "log",
-                        {"name": name, "message": msg, "domain": "siegenia"},
-                        blocking=False,
-                    )
-                )
-            except Exception:
-                pass
+            self._schedule_logbook_entry(name=name, message=msg)
             # Also fire a dedicated event for automations
             self.hass.bus.async_fire(
                 "siegenia_operation",
@@ -563,6 +708,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _handle_warnings(self, payload: dict[str, Any]) -> None:
         data = (payload or {}).get("data") or {}
+        if "warnings" not in data:
+            return
         warnings = data.get("warnings") or []
         key = ";".join(map(lambda w: w if isinstance(w, str) else str(w), warnings)) if warnings else ""
         if key == (self._last_warnings or ""):

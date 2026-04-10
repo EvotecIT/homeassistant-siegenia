@@ -15,6 +15,7 @@ from .const import (
     CONF_SERIAL,
     CONF_USERNAME,
     CONF_PASSWORD,
+    VALID_COMMANDS,
 )
 from .device_registry import async_merge_devices
 
@@ -23,20 +24,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     async def _handle_set_mode(call: ServiceCall) -> None:
         entity_id: str = call.data["entity_id"]
         mode: str = str(call.data["mode"]).strip().upper()
+        if mode not in VALID_COMMANDS:
+            raise ServiceValidationError(f"Invalid mode '{mode}' for siegenia.set_mode")
         # Resolve entity to platform entity
         entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
         if entity is None:
             return
         coordinator = entity.coordinator  # type: ignore[attr-defined]
         sash = getattr(entity, "_sash", 0)
-        if mode == "STOP":
-            await coordinator.client.stop(sash)
-        else:
-            await coordinator.client.open_close(sash, mode)
-        try:
-            coordinator.set_last_cmd(sash, mode)
-        except Exception:
-            pass
+        await coordinator.async_send_command(
+            sash,
+            mode,
+            source="service:set_mode",
+            entity_id=entity_id,
+            context=getattr(call, "context", None),
+        )
         await coordinator.async_request_refresh()
 
     async def _handle_set_connection(call: ServiceCall) -> None:

@@ -38,6 +38,7 @@
           "warning_notifications": "Persistente Benachrichtigungen bei Warnungen",
           "warning_events": "Ereignisse bei Warnungen auslösen (siegenia_warning)",
           "enable_buttons": "Diskrete Aktions-Buttons erzeugen (Öffnen/Schließen/…)",
+          "prevent_opening": "Öffnen-Befehle blockieren (Öffnen/Spalt/Stop Over)",
           "motion_interval": "Abfrageintervall bei Bewegung (s)",
           "idle_interval": "Abfrageintervall im Leerlauf (s)",
           "slider_gap_max": "Slider: Gap Vent max % (z. B. 19)",
@@ -160,6 +161,11 @@
           "stop_over": "Stop over",
           "stop": "Stopp"
         }
+      }
+    },
+    "switch": {
+      "opening_lock": {
+        "name": "Öffnen-Sperre"
       }
     },
     "binary_sensor": {

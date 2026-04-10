@@ -190,7 +190,11 @@ class SiegeniaOperationSourceSensor(_BaseSiegeniaEntity, SensorEntity):
     def native_value(self) -> str | None:
         data = (self.coordinator.data or {}).get("data", {})
         states = data.get("states") or {}
+        if not states:
+            return None
         state = states.get("0")
+        if state is None:
+            return None
         if state == "MOVING":
             try:
                 return "command" if self.coordinator.is_recent_cmd(0, within=5.0) else "manual"

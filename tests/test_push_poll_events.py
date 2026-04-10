@@ -10,7 +10,13 @@ async def test_push_slows_poll_and_fires_event(hass, setup_integration):
 
     # Listen for event first (to ensure we capture it)
     events = []
-    hass.bus.async_listen_once("siegenia_warning", lambda e: events.append(e))
+    fired = asyncio.Event()
+
+    def _capture(event):
+        events.append(event)
+        fired.set()
+
+    hass.bus.async_listen_once("siegenia_warning", _capture)
 
     # Simulate push
     if hasattr(coordinator.client, "push_cb"):
@@ -22,6 +28,7 @@ async def test_push_slows_poll_and_fires_event(hass, setup_integration):
     # Coordinator should switch to push interval
     assert coordinator.update_interval != default_int
 
-    # Let loop process the fired event
-    await asyncio.sleep(0)
-    assert events, "Expected siegenia_warning event on push with warnings"
+    await asyncio.wait_for(fired.wait(), timeout=2.0)
+    assert len(events) == 1
+    assert events[0].data["warnings"] == ["Test"]
+    assert events[0].data["cleared"] is False
