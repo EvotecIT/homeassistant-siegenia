@@ -1,226 +1,88 @@
-<p align="center">
-  <img src="assets/brand/logo.svg" alt="Siegenia Home Assistant" width="520"/>
-</p>
+# Siegenia for Home Assistant
 
-# Siegenia for Home Assistant (MHS Family)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://hacs.xyz/)
+[![CI](https://img.shields.io/github/actions/workflow/status/EvotecIT/homeassistant-siegenia/ci.yml?branch=master&style=for-the-badge&label=CI)](https://github.com/EvotecIT/homeassistant-siegenia/actions/workflows/ci.yml)
+[![Hassfest](https://img.shields.io/github/actions/workflow/status/EvotecIT/homeassistant-siegenia/hassfest.yml?branch=master&style=for-the-badge&label=Hassfest)](https://github.com/EvotecIT/homeassistant-siegenia/actions/workflows/hassfest.yml)
 
-This custom integration connects Siegenia window controllers (MHS family) to Home Assistant using the device's local WebSocket API.
+Local Siegenia support for Home Assistant, focused on MHS-family controllers and a practical, polished Home Assistant experience.
 
-- Local, fast, and private (LAN only, no cloud)
-- Device page with Controls, Sensors, and Diagnostics
-- GUI setup, multi‑sash support, and responsive push updates
-- Thoughtful extras: mode selector, timers, warnings, and blueprints
+![Siegenia integration overview](assets/screenshots/integration-overview.png)
 
-## Quick Start
+## 🎯 What This Is
 
-1) Copy `custom_components/siegenia` into your HA `config/custom_components` folder (or add the repo in HACS as a custom integration).
-2) Restart Home Assistant.
-3) Settings → Devices & Services → Add Integration → “Siegenia”.
-4) Enter Host/IP, Username, Password (Port 443, `wss`).
-5) Done. A device called “Siegenia” (or your device name) will appear.
+This custom integration connects Siegenia window controllers to Home Assistant using the local device API.
 
-### Install via HACS (recommended)
+It is designed to be:
 
-- HACS → Integrations → 3‑dot menu → Custom repositories →
-  - Repository: this repo URL
-  - Category: Integration
-- Add “Siegenia” from HACS, then restart Home Assistant.
-- Go to Settings → Devices & Services → Add Integration → “Siegenia”.
+- local and private
+- responsive
+- GUI-configurable
+- friendly for dashboards, automations, and daily use
 
-## Configuration
+## ✨ What You Get
 
-- Host/IP: IP of your Siegenia controller
-- Username/Password: credentials used in the official app
-- Port: default 443
-- WS Protocol: `wss`
-- Poll Interval: how often device params are polled
-- Heartbeat Interval: keep-alive ping interval
-- Auto-discover IP changes: optional. Enable in Options → Connection. Scans the previous /24; optional “extended discovery” also probes common home subnets.
-- Manual reconnect: Use Settings → Devices & Services → Siegenia → Configure → Connection to edit the host/credentials even when the device is offline, or call the `siegenia.set_connection` service.
-- Duplicate cleanup: If a legacy “Siegenia Device” remains after IP moves, call `siegenia.cleanup_devices` (Developer Tools → Actions) to merge entities into the main device and remove the empty duplicate.
+- config flow setup
+- cover control for open, close, stop, and mode-style actions
+- sensors, binary sensors, update entity, buttons, numbers, and selects
+- device automations and helpful services
+- diagnostics and push-style behavior where available
 
-## Features
+## 🏠 Installation
 
-- Open/Close/Stop via `cover` entity
-- Slider maps to common modes:
-  - 0% → Close
-  - 1–X% → Gap vent (X configurable in Options)
-  - (X+1)–Y% → Close without lock (Y configurable in Options)
-  - (Y+1)–99% → Stop over (display % configurable in Options)
-  - 100% → Open
-- Service `siegenia.set_mode` for discrete actions (`OPEN`, `CLOSE`, `GAP_VENT`, `CLOSE_WO_LOCK`, `STOP_OVER`, `STOP`)
-- Config switch: Opening Lock, which blocks opening-style commands while still allowing close/stop automations
-- Number entity: Stopover distance (dm) with live min/max from the device
-- Update entity: "Siegenia Firmware" (read-only availability signal from device)
-- Service `siegenia.sync_clock` to set device clock to HA's current local time; optional `timezone` parameter (POSIX/TZ string like `CET-1CEST,M3.5.0,M10.5.0/3`).
-- Select entity: `select.siegenia_mode` with options (Open/Close/Gap Vent/Close w/o Lock/Stop Over/Stop)
-- Timer services: `siegenia.timer_start` (minutes or HH:MM), `siegenia.timer_stop`, `siegenia.timer_set_duration`.
-- Device automations: triggers (opened/closed/gap vent/close w/o lock/stop over, moving started/stopped, warning active/cleared) and conditions (is_open/is_closed/is_gap_vent/is_closed_wo_lock/is_stop_over/moving/warning_active).
-- Warning routing: options to enable persistent notifications and/or HA events (`siegenia_warning`).
-- Command tracing: every command attempt fires a `siegenia_command` event with command/source/entity/context metadata; informational logging also adds a logbook entry when enabled.
- - Slider threshold options (Options → Integration):
-   - Gap Vent max % (default 19)
-   - Close w/o lock max % (default 40)
-   - Stop Over display % (default 40; use 30/40/90 to match your preference)
+### HACS
 
-[![Siegenia Device Page](assets/screenshot1.png)](assets/screenshot1.png)
+1. Open HACS.
+2. Add this repository as a custom repository of type `Integration`.
+3. Install `Siegenia`.
+4. Restart Home Assistant.
+5. Add `Siegenia` from `Settings -> Devices & services`.
 
-### Quick Buttons
+### Manual
 
-- Built-in Button entities (under the device) for: Open, Close, Gap Vent, Close w/o Lock, Stop Over, Stop.
-- Optional script blueprint: `blueprints/script/evotecit/siegenia_mode_button.yaml`.
-  - Import via Settings → Automations & Scenes → Blueprints → Import Blueprint → paste repo URL, or copy the file into your HA `blueprints/script/...` folder.
-  - Create a script from the blueprint, pick your Siegenia cover, and choose the mode. Add the script to your dashboard as a button.
+1. Copy the `custom_components/siegenia` folder into your Home Assistant `config/custom_components` directory.
+2. Restart Home Assistant.
+3. Add the integration from `Settings -> Devices & services`.
 
-### Online Status + Nightly Clock Sync
+## ⚙️ Configuration
 
-- Online chip is included in the Mushroom example YAMLs (uses `binary_sensor.siegenia_online`).
-- Nightly clock sync blueprint: `blueprints/automation/evotecit/siegenia_sync_clock_nightly.yaml`.
-  - Import in Settings → Automations & Scenes → Blueprints, then create an automation selecting your cover and daily time.
+You will usually need:
 
-## Notes
+- host or IP
+- username
+- password
+- default secure WebSocket connection settings
 
-- The controller uses a self‑signed TLS certificate; this integration connects with verification disabled for local LAN use.
-- Multi‑sash: If your device exposes multiple sashes (states 0/1), entities are created per sash automatically.
+The integration also includes options for reconnect behavior, discovery helpers, polling, heartbeat, warnings, and dashboard-oriented behavior.
 
-## Architecture
+## 🪟 Main Features
 
-### Reusable Python protocol layer
+- window control through Home Assistant `cover`
+- extra mode actions such as gap vent, close without lock, and stop over
+- optional opening lock behavior
+- timer support
+- warning events and notifications
+- blueprints and dashboard examples
 
-The WebSocket/client layer is intentionally separated from the Home Assistant entity layer so it can be reused or extracted later if needed.
+## 🧱 Project Structure
 
-The main protocol/client pieces live under:
+This repo is intentionally split into two layers:
 
-- `custom_components/siegenia/api.py`
-- `custom_components/siegenia/coordinator.py`
-- `custom_components/siegenia/const.py`
+- a reusable local protocol/client layer for talking to the Siegenia controller
+- the Home Assistant integration layer on top of it
 
-This layer is responsible for:
+That keeps the Home Assistant behavior clean while leaving the protocol side reusable and easier to test.
 
-- authenticating against the local Siegenia controller
-- maintaining the WebSocket session and heartbeat
-- parsing controller state and warnings
-- normalizing device capabilities for Home Assistant
+## 🛠️ Development
 
-### Home Assistant integration layer
-
-The Home Assistant-specific logic lives under:
-
-- `custom_components/siegenia/config_flow.py`
-- `custom_components/siegenia/coordinator.py`
-- entity platforms such as `cover.py`, `select.py`, `number.py`, `binary_sensor.py`, and `update.py`
-
-This separation keeps the protocol/client side reusable while the integration side stays focused on Home Assistant behavior, entities, services, and options flow.
-
-## Credits
-
-- Inspiration and protocol reference: Homebridge plugin and Siegenia.NET by the repo author.
-- Lovelace Examples
-
-  - Tile (built-in): examples/lovelace/tile-basic.yaml
-  - Mushroom (compact): examples/lovelace/mushroom-compact.yaml
-  - Mushroom (detailed): examples/lovelace/mushroom-detailed.yaml
-
-  Replace `cover.siegenia_window` and button entity ids with your actual entities (shown under the device). For Mushroom cards, install the “Mushroom” frontend via HACS and reload resources.
-
-## Development
-
-- Run tests locally:
-  - `pip install -r requirements_test.txt`
-  - `pytest`
-- Latest Home Assistant line:
-  - requires Python 3.14
-  - `pip install -r requirements_test_latest.txt`
-  - `pytest`
-- CI: `.github/workflows/ci.yml` (Python 3.12/3.13; Home Assistant installed via pytest-homeassistant-custom-component)
-- CI also runs a latest-stack job against Home Assistant 2026.3.1 on Python 3.14.
-- Validation: `.github/workflows/hassfest.yml`, `.github/workflows/validate-hacs.yml`
-
-## Branding
-
-- Home Assistant 2026.3+ can load custom integration branding directly from `custom_components/siegenia/brand`.
-- Vector sources are in `assets/brand` and dashboard icons are in `assets/icons`.
-- Generate PNGs for the Home Assistant brands repo:
-  - `.venv/bin/python tools/gen_brand_icons.py`
-  - Outputs: `build/brand/icon.png` (256×256), `logo.png` (512×256), plus `icon@2x.png` and `logo@2x.png`.
-- The shipped `brand/` folder is the source of truth for Home Assistant branding. Regenerate and copy those files there when the artwork changes.
-- Full PR checklist and steps: `docs/brands-pr/README.md`.
-
-### Use the custom icons in dashboards
-
-The integration serves its icons directly; no manual copying needed. Reference them as `/siegenia-static/icons/<file>.svg`.
-
-Examples (replace the entity_id with yours):
-
-- Custom button (button-card from HACS):
-
-```yaml
-type: custom:button-card
-entity: cover.siegenia_window
-name: Open
-tap_action:
-  action: call-service
-  service: siegenia.set_mode
-  data:
-    mode: OPEN
-  target:
-    entity_id: cover.siegenia_window
-show_entity_picture: true
-entity_picture: /siegenia-static/icons/window-open.svg
+```bash
+pip install -r requirements_test.txt
+pytest
 ```
 
-- Picture chips row (Mushroom):
+There is also a latest-stack test path documented in the repo for newer Home Assistant and Python versions.
 
-```yaml
-type: custom:mushroom-chips-card
-chips:
-  - type: template
-    picture: /siegenia-static/icons/stop-over.svg
-    content: Stop Over
-    tap_action:
-      action: call-service
-      service: siegenia.set_mode
-      data:
-        mode: STOP_OVER
-      target:
-        entity_id: cover.siegenia_window
-```
+## ❤️ Support
 
-## Reset / Start Over
-
-If you want to wipe configuration and go through setup and Options from scratch:
-
-1) Remove the integration instance
-   - Settings → Devices & Services → Integrations → Siegenia → 3‑dot menu → Delete.
-   - When prompted, choose “Also delete devices” to remove all entities.
-2) Restart Home Assistant (recommended).
-3) Add the integration again (Settings → Devices & Services → Add Integration → “Siegenia”).
-
-Optional clean‑ups (rarely needed)
-- Developer Tools → Statistics: clear/fix any lingering compiled statistics for removed sensors.
-- Browser cache: hard‑refresh (Ctrl/Cmd+Shift+R) to ensure the latest logo/strings load.
-- Advanced (only if the UI removal failed): while HA is stopped, remove the old entry from `.storage/core.config_entries` (JSON). Use with care.
-
-### Fix legacy "_none" entity_ids using built‑in tools
-
-Home Assistant can regenerate entity_ids for you based on the current (translated) names:
-
-- Settings → Devices & Services → Entities → filter Integration = Siegenia.
-- If any entity shows a customized/blank name, open it and click “Restore name”.
-- Select the entities you want to fix → overflow menu → “Recreate entity ID”.
-
-This uses our defaults (`has_entity_name` + `translation_key`) so ids become `cover.<device>_window`, `select.<device>_mode`, etc. If you prefer automation, we also provide a service `siegenia.repair_names` that can clear bad names and (optionally) rename ids. You can choose a scheme:
-
-- `device_entity` (default): `<device>_<entity>` → e.g., `okno_salon_window`.
-- `brand_type_place` (optional): `siegenia_<entity>_<device>` → e.g., `siegenia_window_okno_salon`.
-
-Example service data:
-
-```
-service: siegenia.repair_names
-data:
-  rename_entity_ids: true
-  dry_run: false
-  only_suffix_none: false
-  scheme: brand_type_place
-```
+- Support notes: `docs/SUPPORT.md`
+- Releasing notes: `docs/RELEASING.md`
+- Source: [GitHub Repository](https://github.com/EvotecIT/homeassistant-siegenia)
