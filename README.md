@@ -83,6 +83,35 @@ This custom integration connects Siegenia window controllers (MHS family) to Hom
 - The controller uses a self‑signed TLS certificate; this integration connects with verification disabled for local LAN use.
 - Multi‑sash: If your device exposes multiple sashes (states 0/1), entities are created per sash automatically.
 
+## Architecture
+
+### Reusable Python protocol layer
+
+The WebSocket/client layer is intentionally separated from the Home Assistant entity layer so it can be reused or extracted later if needed.
+
+The main protocol/client pieces live under:
+
+- `custom_components/siegenia/api.py`
+- `custom_components/siegenia/coordinator.py`
+- `custom_components/siegenia/const.py`
+
+This layer is responsible for:
+
+- authenticating against the local Siegenia controller
+- maintaining the WebSocket session and heartbeat
+- parsing controller state and warnings
+- normalizing device capabilities for Home Assistant
+
+### Home Assistant integration layer
+
+The Home Assistant-specific logic lives under:
+
+- `custom_components/siegenia/config_flow.py`
+- `custom_components/siegenia/coordinator.py`
+- entity platforms such as `cover.py`, `select.py`, `number.py`, `binary_sensor.py`, and `update.py`
+
+This separation keeps the protocol/client side reusable while the integration side stays focused on Home Assistant behavior, entities, services, and options flow.
+
 ## Credits
 
 - Inspiration and protocol reference: Homebridge plugin and Siegenia.NET by the repo author.
