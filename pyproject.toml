@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "homeassistant-siegenia"
-version = "1.1.8"
+version = "1.1.9"
 description = "HACS-ready Siegenia integration for Home Assistant"
 readme = "README.md"
 requires-python = ">=3.12"
