@@ -9,7 +9,7 @@ except Exception:  # noqa: BLE001
     _FlowResultType = None
     _CREATE = "create_entry"
 
-from custom_components.siegenia.const import DOMAIN
+from custom_components.siegenia.const import CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL, DOMAIN
 from custom_components.siegenia.api import AuthenticationError
 
 
@@ -37,15 +37,19 @@ async def test_user_flow_success(hass, monkeypatch, mock_client):
     assert result2["type"] == _CREATE or result2["type"] == "create_entry"
     assert result2["title"] == "Siegenia Test"
     assert result2["data"]["host"] == "192.0.2.1"
+    assert result2["data"][CONF_VERIFY_SSL] is DEFAULT_VERIFY_SSL
 
 
 async def test_user_flow_uses_ws_protocol(hass, monkeypatch):
+    session = object()
     calls = {}
 
     def _factory(*args, **kwargs):  # noqa: ANN001, ANN002
         from unittest.mock import AsyncMock
 
         calls["ws_protocol"] = kwargs.get("ws_protocol")
+        calls["session"] = kwargs.get("session")
+        calls["verify_ssl"] = kwargs.get("verify_ssl")
 
         class _C:
             connect = AsyncMock()
@@ -62,6 +66,7 @@ async def test_user_flow_uses_ws_protocol(hass, monkeypatch):
 
     monkeypatch.setattr("custom_components.siegenia.api.SiegeniaClient", _factory)
     monkeypatch.setattr("custom_components.siegenia.config_flow.SiegeniaClient", _factory)
+    monkeypatch.setattr("custom_components.siegenia.config_flow.async_get_clientsession", lambda hass: session)
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -74,6 +79,7 @@ async def test_user_flow_uses_ws_protocol(hass, monkeypatch):
         "password": "pw",
         "port": 443,
         "ws_protocol": "ws",
+        CONF_VERIFY_SSL: True,
         "poll_interval": 5,
         "heartbeat_interval": 10,
     }
@@ -81,6 +87,8 @@ async def test_user_flow_uses_ws_protocol(hass, monkeypatch):
     await hass.async_block_till_done()
     assert result2["type"] == _CREATE or result2["type"] == "create_entry"
     assert calls["ws_protocol"] == "ws"
+    assert calls["session"] is session
+    assert calls["verify_ssl"] is True
 
 
 async def test_user_flow_auth_error(hass, monkeypatch):
@@ -114,12 +122,15 @@ async def test_user_flow_auth_error(hass, monkeypatch):
 async def test_reauth_uses_ws_protocol(hass, monkeypatch):
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+    session = object()
     calls = {}
 
     def _factory(*args, **kwargs):  # noqa: ANN001, ANN002
         from unittest.mock import AsyncMock
 
         calls["ws_protocol"] = kwargs.get("ws_protocol")
+        calls["session"] = kwargs.get("session")
+        calls["verify_ssl"] = kwargs.get("verify_ssl")
 
         class _C:
             connect = AsyncMock()
@@ -130,10 +141,18 @@ async def test_reauth_uses_ws_protocol(hass, monkeypatch):
 
     monkeypatch.setattr("custom_components.siegenia.api.SiegeniaClient", _factory)
     monkeypatch.setattr("custom_components.siegenia.config_flow.SiegeniaClient", _factory)
+    monkeypatch.setattr("custom_components.siegenia.config_flow.async_get_clientsession", lambda hass: session)
 
     entry = MockConfigEntry(
         domain=DOMAIN,
-        data={"host": "192.0.2.1", "port": 443, "username": "admin", "password": "pw", "ws_protocol": "ws"},
+        data={
+            "host": "192.0.2.1",
+            "port": 443,
+            "username": "admin",
+            "password": "pw",
+            "ws_protocol": "ws",
+            CONF_VERIFY_SSL: True,
+        },
         title="Siegenia Test",
     )
     entry.add_to_hass(hass)
@@ -149,3 +168,5 @@ async def test_reauth_uses_ws_protocol(hass, monkeypatch):
     )
     assert result2["type"] == "abort"
     assert calls["ws_protocol"] == "ws"
+    assert calls["session"] is session
+    assert calls["verify_ssl"] is True

@@ -10,6 +10,7 @@
           "username": "Username",
           "password": "Password",
           "ws_protocol": "WS Protocol",
+          "verify_ssl": "Verify TLS certificate",
           "poll_interval": "Poll interval (s)",
           "heartbeat_interval": "Heartbeat interval (s)"
         }
@@ -58,6 +59,7 @@
           "host": "Host/IP",
           "port": "Port",
           "ws_protocol": "WS Protocol",
+          "verify_ssl": "Verify TLS certificate",
           "username": "Username",
           "password": "Password",
           "auto_discover": "Auto-detect IP changes on your network",

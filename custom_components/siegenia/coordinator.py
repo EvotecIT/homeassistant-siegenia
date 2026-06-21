@@ -21,11 +21,13 @@ from .const import (
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
     DEFAULT_WS_PROTOCOL,
+    DEFAULT_VERIFY_SSL,
     CONF_HOST,
     CONF_PORT,
     CONF_USERNAME,
     CONF_PASSWORD,
     CONF_WS_PROTOCOL,
+    CONF_VERIFY_SSL,
     CONF_AUTO_DISCOVER,
     CONF_SERIAL,
     DEFAULT_AUTO_DISCOVER,
@@ -57,6 +59,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         poll_interval: int = DEFAULT_POLL_INTERVAL,
         heartbeat_interval: int = DEFAULT_HEARTBEAT_INTERVAL,
         session: ClientSession | None = None,
+        verify_ssl: bool = DEFAULT_VERIFY_SSL,
     ) -> None:
         super().__init__(
             hass,
@@ -70,11 +73,20 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.username = username
         self.password = password
         self.ws_protocol = ws_protocol or DEFAULT_WS_PROTOCOL
+        self.session = session
+        self.verify_ssl = bool(verify_ssl)
         self.auto_discover = bool(auto_discover)
         # Keep a stable serial/identifier across IP changes
         self.serial: str | None = entry.data.get(CONF_SERIAL) or entry.unique_id
         self.heartbeat_interval = heartbeat_interval
-        self.client = SiegeniaClient(host, port=port, ws_protocol=self.ws_protocol, session=session, logger=self.logger.debug)
+        self.client = SiegeniaClient(
+            host,
+            port=port,
+            ws_protocol=self.ws_protocol,
+            session=self.session,
+            logger=self.logger.debug,
+            verify_ssl=self.verify_ssl,
+        )
         self.device_info: dict[str, Any] | None = None
         self._issue_lock = asyncio.Lock()
         self.extended_discovery = bool(extended_discovery)
@@ -462,8 +474,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             host,
             port=self.port,
             ws_protocol=self.ws_protocol,
+            session=self.session,
             response_timeout=PROBE_TIMEOUT,
             logger=self.logger.debug,
+            verify_ssl=self.verify_ssl,
         )
         try:
             await client.connect()
@@ -502,7 +516,9 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             new_host,
             port=self.port,
             ws_protocol=self.ws_protocol,
+            session=self.session,
             logger=self.logger.debug,
+            verify_ssl=self.verify_ssl,
         )
         if self._push_callback:
             try:
@@ -519,6 +535,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         data.setdefault(CONF_USERNAME, self.username)
         data.setdefault(CONF_PASSWORD, self.password)
         data.setdefault(CONF_WS_PROTOCOL, self.ws_protocol)
+        data.setdefault(CONF_VERIFY_SSL, self.verify_ssl)
         data.setdefault(CONF_AUTO_DISCOVER, self.auto_discover)
         if self.serial:
             data.setdefault(CONF_SERIAL, self.serial)

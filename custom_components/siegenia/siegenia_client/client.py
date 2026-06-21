@@ -29,6 +29,7 @@ class SiegeniaClient:
         session: ClientSession | None = None,
         logger: Callable[[str], None] | None = None,
         response_timeout: float = 10.0,
+        verify_ssl: bool = False,
     ) -> None:
         self._host = host
         self._port = port
@@ -37,6 +38,7 @@ class SiegeniaClient:
         self._own_session = False
         self._logger = logger or (lambda s: None)
         self._response_timeout = response_timeout
+        self._verify_ssl = verify_ssl
 
         self._ws: ClientWebSocketResponse | None = None
         self._req_id = 1
@@ -57,15 +59,23 @@ class SiegeniaClient:
             self._session = ClientSession()
             self._own_session = True
 
-        # Accept self-signed cert on device without loading default certs
-        # Avoid ssl.create_default_context() to prevent blocking certificate path loads in the event loop
-        ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = ssl.CERT_NONE
+        ssl_ctx: ssl.SSLContext | bool
+        if self._ws_protocol == "wss":
+            if self._verify_ssl:
+                ssl_ctx = True
+            else:
+                # Accept self-signed cert on device without loading default certs.
+                # Avoid ssl.create_default_context() to prevent blocking certificate path loads in the event loop.
+                ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                ssl_ctx.check_hostname = False
+                ssl_ctx.verify_mode = ssl.CERT_NONE
 
         url = f"{self._ws_protocol}://{self._host}:{self._port}/WebSocket"
         headers = {"Origin": f"{self._ws_protocol}://{self._host}:{self._port}"}
-        self._ws = await self._session.ws_connect(url, ssl=ssl_ctx, headers=headers)
+        connect_kwargs: dict[str, Any] = {"headers": headers}
+        if self._ws_protocol == "wss":
+            connect_kwargs["ssl"] = ssl_ctx
+        self._ws = await self._session.ws_connect(url, **connect_kwargs)
         self._connected_evt.set()
         asyncio.create_task(self._receiver_loop())
 
