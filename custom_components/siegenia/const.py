@@ -24,6 +24,7 @@ CONF_AUTO_DISCOVER = "auto_discover"
 CONF_SERIAL = "serial"
 CONF_EXTENDED_DISCOVERY = "extended_discovery"
 CONF_PREVENT_OPENING = "prevent_opening"
+CONF_VERIFY_SSL = "verify_ssl"
 
 # Advanced timing options
 CONF_MOTION_INTERVAL = "motion_interval"  # seconds while moving
@@ -34,6 +35,7 @@ DEFAULT_IDLE_INTERVAL = 60
 DEFAULT_AUTO_DISCOVER = False  # opt-in to avoid surprise scans
 DEFAULT_EXTENDED_DISCOVERY = False  # broader scan of common home subnets
 DEFAULT_PREVENT_OPENING = False
+DEFAULT_VERIFY_SSL = False
 
 # Repairs / issue ids
 ISSUE_UNREACHABLE = "cannot_connect"

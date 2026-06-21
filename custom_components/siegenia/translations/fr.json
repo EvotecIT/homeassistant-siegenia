@@ -10,6 +10,7 @@
           "username": "Utilisateur",
           "password": "Mot de passe",
           "ws_protocol": "Protocole WS",
+          "verify_ssl": "Vérifier le certificat TLS",
           "poll_interval": "Intervalle d'actualisation (s)",
           "heartbeat_interval": "Intervalle de keep‑alive (s)"
         }

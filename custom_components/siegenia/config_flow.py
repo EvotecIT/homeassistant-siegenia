@@ -7,6 +7,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import SiegeniaClient, AuthenticationError
 from .const import (
@@ -24,6 +25,8 @@ from .const import (
     DEFAULT_WS_PROTOCOL,
     DOMAIN,
     CONF_WS_PROTOCOL,
+    CONF_VERIFY_SSL,
+    DEFAULT_VERIFY_SSL,
     CONF_ENABLE_POSITION_SLIDER,
     CONF_ENABLE_OPEN_COUNT,
     CONF_ENABLE_STATE_SENSOR,
@@ -57,6 +60,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_PASSWORD): str,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
         vol.Optional(CONF_WS_PROTOCOL, default=DEFAULT_WS_PROTOCOL): vol.In(["wss", "ws"]),
+        vol.Optional(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): bool,
         vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): int,
         vol.Optional(CONF_HEARTBEAT_INTERVAL, default=DEFAULT_HEARTBEAT_INTERVAL): int,
         vol.Optional(CONF_AUTO_DISCOVER, default=DEFAULT_AUTO_DISCOVER): bool,
@@ -80,7 +84,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         password = user_input[CONF_PASSWORD]
 
         # Try to connect and fetch device info
-        client = SiegeniaClient(host, port=port, ws_protocol=user_input.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL))
+        client = SiegeniaClient(
+            host,
+            port=port,
+            ws_protocol=user_input.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL),
+            session=async_get_clientsession(self.hass),
+            verify_ssl=user_input.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
+        )
         try:
             await client.connect()
             await client.login(username, password)
@@ -101,6 +111,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
 
         data = dict(user_input)
+        data.setdefault(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
         data.setdefault(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)
         data.setdefault(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY)
         data.setdefault(CONF_SERIAL, serial)
@@ -136,6 +147,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             entry.data[CONF_HOST],
             port=entry.data.get(CONF_PORT, DEFAULT_PORT),
             ws_protocol=entry.data.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL),
+            session=async_get_clientsession(self.hass),
+            verify_ssl=entry.data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
         )
         try:
             await client.connect()
@@ -243,6 +256,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Required(CONF_HOST, default=d.get(CONF_HOST)): str,
                     vol.Required(CONF_PORT, default=d.get(CONF_PORT, DEFAULT_PORT)): int,
                     vol.Required(CONF_WS_PROTOCOL, default=d.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL)): vol.In(["wss", "ws"]),
+                    vol.Required(CONF_VERIFY_SSL, default=d.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)): bool,
                     vol.Required(CONF_USERNAME, default=d.get(CONF_USERNAME)): str,
                     vol.Required(CONF_PASSWORD): str,
                     vol.Required(CONF_AUTO_DISCOVER, default=d.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)): bool,
@@ -258,6 +272,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_HOST: user_input[CONF_HOST],
                 CONF_PORT: user_input[CONF_PORT],
                 CONF_WS_PROTOCOL: user_input[CONF_WS_PROTOCOL],
+                CONF_VERIFY_SSL: user_input[CONF_VERIFY_SSL],
                 CONF_USERNAME: user_input[CONF_USERNAME],
                 CONF_PASSWORD: user_input[CONF_PASSWORD],
                 CONF_AUTO_DISCOVER: user_input.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER),

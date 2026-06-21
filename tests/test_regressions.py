@@ -14,7 +14,12 @@ from homeassistant.const import (
 from custom_components.siegenia.const import (
     CMD_CLOSE_WO_LOCK,
     CONF_HEARTBEAT_INTERVAL,
+    CONF_HOST,
+    CONF_PASSWORD,
     CONF_POLL_INTERVAL,
+    CONF_PORT,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
     DOMAIN,
 )
 from custom_components.siegenia.device_condition import CONDITION_TYPES, async_get_conditions
@@ -100,6 +105,106 @@ async def test_options_override_intervals(hass, mock_client, config_entry_data, 
     coordinator = hass.data[entry.domain][entry.entry_id]
     assert coordinator.update_interval == timedelta(seconds=12)
     assert coordinator.heartbeat_interval == 33
+
+
+async def test_setup_entry_reuses_home_assistant_session(hass, config_entry_data, monkeypatch):
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+    from unittest.mock import AsyncMock
+
+    session = object()
+    calls = []
+
+    class _Client:
+        def __init__(self, host, **kwargs):  # noqa: ANN001
+            calls.append({"host": host, **kwargs})
+            self.connected = True
+            self.connect = AsyncMock()
+            self.disconnect = AsyncMock()
+            self.login = AsyncMock()
+            self.start_heartbeat = AsyncMock()
+            self.get_device = AsyncMock(
+                return_value={
+                    "status": "ok",
+                    "data": {"devicename": "Siegenia Test", "serialnr": "af050261"},
+                }
+            )
+            self.get_device_params = AsyncMock(
+                return_value={"status": "ok", "data": {"states": {"0": "CLOSED"}, "warnings": []}}
+            )
+
+        def set_push_callback(self, cb):  # noqa: ANN001
+            self.push_cb = cb
+
+    monkeypatch.setattr("custom_components.siegenia.async_get_clientsession", lambda hass: session)
+    monkeypatch.setattr("custom_components.siegenia.coordinator.SiegeniaClient", _Client)
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={**config_entry_data, CONF_VERIFY_SSL: True},
+        title="Siegenia Test",
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert calls[0]["session"] is session
+    assert calls[0]["verify_ssl"] is True
+
+
+async def test_rediscovery_probe_reuses_home_assistant_session(hass, monkeypatch):
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+    from unittest.mock import AsyncMock
+
+    from custom_components.siegenia.coordinator import SiegeniaDataUpdateCoordinator
+
+    session = object()
+    calls = []
+
+    class _Client:
+        def __init__(self, host, **kwargs):  # noqa: ANN001
+            calls.append({"host": host, **kwargs})
+            self.connected = False
+            self.connect = AsyncMock()
+            self.disconnect = AsyncMock()
+            self.login = AsyncMock()
+            self.get_device = AsyncMock(return_value={"data": {"serialnr": "af050261"}})
+
+        def set_push_callback(self, cb):  # noqa: ANN001
+            self.push_cb = cb
+
+    monkeypatch.setattr("custom_components.siegenia.coordinator.SiegeniaClient", _Client)
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HOST: "192.0.2.1",
+            CONF_PORT: 443,
+            CONF_USERNAME: "admin",
+            CONF_PASSWORD: "pw",
+            "serial": "af050261",
+        },
+        unique_id="af050261",
+        title="Siegenia Test",
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = SiegeniaDataUpdateCoordinator(
+        hass,
+        entry=entry,
+        host="192.0.2.1",
+        port=443,
+        username="admin",
+        password="pw",
+        session=session,
+        verify_ssl=True,
+    )
+
+    result = await coordinator._probe_host("192.0.2.2")  # noqa: SLF001
+
+    assert result == "192.0.2.2"
+    assert calls[-1]["host"] == "192.0.2.2"
+    assert calls[-1]["session"] is session
+    assert calls[-1]["verify_ssl"] is True
 
 
 async def test_device_trigger_fires_on_state_change(hass, setup_integration):

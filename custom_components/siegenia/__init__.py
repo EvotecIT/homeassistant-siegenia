@@ -6,6 +6,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import asyncio
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
@@ -21,6 +22,8 @@ from .const import (
     CONF_EXTENDED_DISCOVERY,
     CONF_WS_PROTOCOL,
     DEFAULT_WS_PROTOCOL,
+    CONF_VERIFY_SSL,
+    DEFAULT_VERIFY_SSL,
     DEFAULT_AUTO_DISCOVER,
     DEFAULT_EXTENDED_DISCOVERY,
     CONF_SERIAL,
@@ -66,10 +69,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         username=data[CONF_USERNAME],
         password=data[CONF_PASSWORD],
         ws_protocol=data.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL),
+        verify_ssl=data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
         auto_discover=data.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER),
         extended_discovery=data.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY),
         poll_interval=poll_interval,
         heartbeat_interval=heartbeat_interval,
+        session=async_get_clientsession(hass),
     )
     # Pass options for warnings routing
     coordinator.warning_notifications = entry.options.get(CONF_WARNING_NOTIFICATIONS, True)
