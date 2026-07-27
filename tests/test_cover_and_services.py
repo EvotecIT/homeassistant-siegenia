@@ -9,6 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID
 
 from custom_components.siegenia.const import CMD_CLOSE, CMD_CLOSE_WO_LOCK, CONF_PREVENT_OPENING, DOMAIN
+from custom_components.siegenia.api import SiegeniaError
 
 
 async def test_cover_commands(hass, setup_integration):
@@ -165,7 +166,7 @@ async def test_command_event_and_logbook_include_context(hass, setup_integration
 
     assert logbook_calls == [
         {
-            "name": "Siegenia af050261",
+            "name": "Siegenia 00112233",
             "message": f"Command sent: OPEN (sash 0) via cover ({cover_eid}) user=Test User",
             "domain": "siegenia",
         }
@@ -190,3 +191,43 @@ async def test_blocked_command_emits_blocked_event(hass, setup_integration):
     assert events[0].data["command"] == "OPEN"
     assert events[0].data["blocked"] is True
     assert events[0].data["entity_id"] == cover_eid
+
+
+async def test_offline_command_raises_home_assistant_error(hass, setup_integration):
+    entry = setup_integration
+    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator.client.open_close.side_effect = SiegeniaError("Not connected")
+    cover_eid = next(
+        state.entity_id
+        for state in hass.states.async_all("cover")
+        if state.entity_id.endswith("_window")
+    )
+
+    with pytest.raises(HomeAssistantError, match="may be offline"):
+        await hass.services.async_call(
+            "cover",
+            "open_cover",
+            {ATTR_ENTITY_ID: cover_eid},
+            blocking=True,
+        )
+
+
+async def test_entity_unavailable_during_outage_and_recovers(hass, setup_integration):
+    entry = setup_integration
+    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator.auto_discover = False
+    cover_eid = next(
+        state.entity_id
+        for state in hass.states.async_all("cover")
+        if state.entity_id.endswith("_window")
+    )
+    successful_response = coordinator.client.get_device_params.return_value
+
+    coordinator.client.get_device_params.side_effect = SiegeniaError("offline")
+    await coordinator.async_refresh()
+    assert hass.states.get(cover_eid).state == "unavailable"
+
+    coordinator.client.get_device_params.side_effect = None
+    coordinator.client.get_device_params.return_value = successful_response
+    await coordinator.async_refresh()
+    assert hass.states.get(cover_eid).state != "unavailable"

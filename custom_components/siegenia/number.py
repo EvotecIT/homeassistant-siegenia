@@ -28,7 +28,6 @@ class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
 
     @property
     def native_min_value(self) -> float:
-        data = (self.coordinator.data or {}).get("data", {})
         return 0.0
 
     @property
@@ -49,7 +48,10 @@ class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         # Device expects integer decimeters
-        await self.coordinator.client.set_device_params({"stopover": int(value)})
+        await self.coordinator.async_set_device_params(
+            {"stopover": int(value)},
+            action_name="set the stopover distance",
+        )
         await self.coordinator.async_request_refresh()
 
     @property

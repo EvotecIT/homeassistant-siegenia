@@ -1,4 +1,4 @@
-import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant import config_entries
 try:
@@ -9,7 +9,27 @@ except Exception:  # noqa: BLE001
     _FlowResultType = None
     _CREATE = "create_entry"
 
-from custom_components.siegenia.const import CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL, DOMAIN
+from custom_components.siegenia.const import (
+    CONF_ENABLE_BUTTONS,
+    CONF_DEBUG,
+    CONF_ENABLE_OPEN_COUNT,
+    CONF_ENABLE_POSITION_SLIDER,
+    CONF_ENABLE_STATE_SENSOR,
+    CONF_HEARTBEAT_INTERVAL,
+    CONF_IDLE_INTERVAL,
+    CONF_INFORMATIONAL,
+    CONF_MOTION_INTERVAL,
+    CONF_POLL_INTERVAL,
+    CONF_PREVENT_OPENING,
+    CONF_SLIDER_CWOL_MAX,
+    CONF_SLIDER_GAP_MAX,
+    CONF_SLIDER_STOP_OVER_DISPLAY,
+    CONF_VERIFY_SSL,
+    CONF_WARNING_EVENTS,
+    CONF_WARNING_NOTIFICATIONS,
+    DEFAULT_VERIFY_SSL,
+    DOMAIN,
+)
 from custom_components.siegenia.api import AuthenticationError
 
 
@@ -58,7 +78,7 @@ async def test_user_flow_uses_ws_protocol(hass, monkeypatch):
             get_device = AsyncMock(
                 return_value={
                     "status": "ok",
-                    "data": {"devicename": "Siegenia Test", "serialnr": "af050261"},
+                    "data": {"devicename": "Siegenia Test", "serialnr": "00112233"},
                 }
             )
 
@@ -120,8 +140,6 @@ async def test_user_flow_auth_error(hass, monkeypatch):
 
 
 async def test_reauth_uses_ws_protocol(hass, monkeypatch):
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
-
     session = object()
     calls = {}
 
@@ -170,3 +188,46 @@ async def test_reauth_uses_ws_protocol(hass, monkeypatch):
     assert calls["ws_protocol"] == "ws"
     assert calls["session"] is session
     assert calls["verify_ssl"] is True
+
+
+async def test_options_flow_uses_framework_config_entry(hass, config_entry_data):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=config_entry_data,
+        title="Siegenia Test",
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == "menu"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={"next_step_id": "general"},
+    )
+    assert result["type"] == "form"
+    assert result["step_id"] == "general"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_POLL_INTERVAL: 10,
+            CONF_HEARTBEAT_INTERVAL: 20,
+            CONF_ENABLE_POSITION_SLIDER: True,
+            CONF_ENABLE_OPEN_COUNT: True,
+            CONF_ENABLE_STATE_SENSOR: True,
+            CONF_DEBUG: False,
+            CONF_INFORMATIONAL: False,
+            CONF_WARNING_NOTIFICATIONS: True,
+            CONF_WARNING_EVENTS: True,
+            CONF_ENABLE_BUTTONS: False,
+            CONF_MOTION_INTERVAL: 2,
+            CONF_IDLE_INTERVAL: 60,
+            CONF_PREVENT_OPENING: True,
+            CONF_SLIDER_GAP_MAX: 10,
+            CONF_SLIDER_CWOL_MAX: 50,
+            CONF_SLIDER_STOP_OVER_DISPLAY: 90,
+        },
+    )
+    assert result["type"] == "create_entry"
+    assert entry.options[CONF_PREVENT_OPENING] is True

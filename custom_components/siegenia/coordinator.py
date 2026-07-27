@@ -5,6 +5,7 @@ import logging
 import time
 import asyncio
 import ipaddress
+from collections.abc import Awaitable
 from typing import Any
 
 from aiohttp import ClientSession, ClientConnectorError, WSServerHandshakeError
@@ -15,7 +16,7 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
 
-from .api import AuthenticationError, SiegeniaClient
+from .api import AuthenticationError, SiegeniaClient, SiegeniaError
 from .const import (
     DEFAULT_HEARTBEAT_INTERVAL,
     DEFAULT_POLL_INTERVAL,
@@ -230,10 +231,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
             self._log_command(cmd, sash, source, entity_id, blocked=True, user_name=user_name)
             raise HomeAssistantError("Opening commands are disabled in Siegenia options.")
-        if cmd == "STOP":
-            await self.client.stop(sash)
-        else:
-            await self.client.open_close(sash, cmd)
+        action = self.client.stop(sash) if cmd == "STOP" else self.client.open_close(sash, cmd)
+        await self.async_run_device_action(action, action_name=f"send {cmd}")
         self.set_last_cmd(sash, cmd)
         self._emit_command_event(
             command=cmd,
@@ -246,6 +245,43 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             origin=origin,
         )
         self._log_command(cmd, sash, source, entity_id, blocked=False, user_name=user_name)
+
+    async def async_run_device_action(
+        self,
+        action: Awaitable[Any],
+        *,
+        action_name: str,
+    ) -> Any:
+        """Run a device action with a consistent Home Assistant error surface."""
+        try:
+            return await action
+        except AuthenticationError as err:
+            raise HomeAssistantError(
+                "Siegenia authentication failed. Reauthenticate the integration."
+            ) from err
+        except (
+            SiegeniaError,
+            ClientConnectorError,
+            WSServerHandshakeError,
+            TimeoutError,
+            asyncio.TimeoutError,
+            OSError,
+        ) as err:
+            raise HomeAssistantError(
+                f"Unable to {action_name}; the Siegenia device may be offline."
+            ) from err
+
+    async def async_set_device_params(
+        self,
+        params: dict[str, Any],
+        *,
+        action_name: str,
+    ) -> dict[str, Any]:
+        """Update device parameters with Home Assistant-friendly errors."""
+        return await self.async_run_device_action(
+            self.client.set_device_params(params),
+            action_name=action_name,
+        )
 
     async def _context_user_name(self, context: Context | None) -> str | None:
         if context is None or not context.user_id:
@@ -325,11 +361,23 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.client.connect()
             await self.client.login(self.username, self.password)
             await self.client.start_heartbeat(self.heartbeat_interval)
-        except (ClientConnectorError, TimeoutError, asyncio.TimeoutError, WSServerHandshakeError, OSError, AuthenticationError) as exc:
+        except AuthenticationError as exc:
+            await self._disconnect_after_connection_failure()
+            raise ConfigEntryAuthFailed from exc
+        except (ClientConnectorError, TimeoutError, asyncio.TimeoutError, WSServerHandshakeError, OSError) as exc:
+            await self._disconnect_after_connection_failure()
             raise UpdateFailed(exc) from exc
         except Exception as exc:  # noqa: BLE001
+            await self._disconnect_after_connection_failure()
             self.logger.debug("Unexpected ensure_connected failure: %s", exc)
             raise UpdateFailed(exc) from exc
+
+    async def _disconnect_after_connection_failure(self) -> None:
+        """Close a partially connected client without hiding the original error."""
+        try:
+            await self.client.disconnect()
+        except Exception as exc:  # noqa: BLE001
+            self.logger.debug("Failed to clean up a partial connection: %s", exc)
 
     async def _handle_connection_error(self, err: Exception) -> bool:
         """Try to recover from connection errors by rediscovering the host.
@@ -543,9 +591,16 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         await self._clear_issue()
 
     async def async_setup(self) -> None:
-        await self.client.connect()
-        await self.client.login(self.username, self.password)
-        await self.client.start_heartbeat(self.heartbeat_interval)
+        try:
+            await self.client.connect()
+            await self.client.login(self.username, self.password)
+            await self.client.start_heartbeat(self.heartbeat_interval)
+        except AuthenticationError as exc:
+            await self._disconnect_after_connection_failure()
+            raise ConfigEntryAuthFailed from exc
+        except Exception:
+            await self._disconnect_after_connection_failure()
+            raise
         # Prime device info once
         try:
             self.device_info = await self.client.get_device()
@@ -574,6 +629,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 except Exception:
                     pass
                 return params
+            except ConfigEntryAuthFailed:
+                raise
             except AuthenticationError as err:
                 raise ConfigEntryAuthFailed from err
             except Exception as err:  # noqa: BLE001

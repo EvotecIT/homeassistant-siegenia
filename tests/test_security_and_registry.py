@@ -45,7 +45,7 @@ async def test_handle_connection_error_rediscovery(hass, setup_integration):
     entry = setup_integration
     coordinator = hass.data[entry.domain][entry.entry_id]
     coordinator.auto_discover = True
-    coordinator.serial = "af050261"
+    coordinator.serial = "00112233"
     coordinator._rediscovery_backoff = 0  # noqa: SLF001
     coordinator._last_rediscovery = None  # noqa: SLF001
 

@@ -83,6 +83,13 @@ You will usually need:
 
 The integration also includes options for reconnect behavior, discovery helpers, polling, heartbeat, warnings, and dashboard-oriented behavior.
 
+### Online, offline, and connection security
+
+- When a controller goes offline, its entities become unavailable and recover automatically after the connection returns.
+- Commands made while the controller is unavailable fail clearly in Home Assistant instead of being reported as successful.
+- Debug logging redacts passwords before WebSocket requests are written to the log.
+- Secure WebSockets (`wss`) are the default. Certificate verification is optional because many controllers use a self-signed certificate. Enable verification when the controller certificate and hostname are trusted; otherwise keep the controller and Home Assistant on a trusted local network.
+
 ## 🪟 Main Features
 
 - window control through Home Assistant `cover`
@@ -133,7 +140,8 @@ python -m compileall siegenia_client custom_components tests examples
 pytest
 ```
 
-There is also a latest-stack test path documented in the repo for newer Home Assistant and Python versions.
+CI validates supported Python lanes and a current Home Assistant stack. Merged
+pull requests are released automatically through the repository release workflow.
 
 ## ❤️ Support
 

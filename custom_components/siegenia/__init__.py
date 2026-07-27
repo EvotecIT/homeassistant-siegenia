@@ -90,13 +90,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     try:
         await coordinator.async_setup()
-        await coordinator.async_config_entry_first_refresh()
     except ConfigEntryAuthFailed:
-        # Wrong credentials should still trigger HA's reauth flow
+        # Wrong credentials should still trigger HA's reauth flow.
         raise
     except Exception as exc:  # noqa: BLE001
-        # Allow setup to continue so options/services stay available; coordinator will retry in background
+        # Keep loading the integration while the device is offline.
         coordinator.logger.warning("Initial connection failed; will retry in background: %s", exc)
+
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except ConfigEntryAuthFailed:
+        # Wrong credentials should still trigger HA's reauth flow.
+        raise
+    except Exception as exc:  # noqa: BLE001
+        # The failed refresh marks coordinator entities unavailable until recovery.
+        coordinator.logger.warning("Initial refresh failed; will retry in background: %s", exc)
 
     # Merge duplicate devices once per entry
     _lock_key = f"{DOMAIN}_migration_lock_{entry.entry_id}"
