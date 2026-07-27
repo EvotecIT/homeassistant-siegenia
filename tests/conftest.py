@@ -45,7 +45,7 @@ def mock_client(monkeypatch):
                 "status": "ok",
                 "data": {
                     "devicename": "Siegenia Test",
-                    "serialnr": "af050261",
+                    "serialnr": "00112233",
                     "type": 6,
                     "softwareversion": "1.7.2",
                     "hardwareversion": "1.2",

@@ -42,9 +42,9 @@ class SiegeniaClient:
 
         self._ws: ClientWebSocketResponse | None = None
         self._req_id = 1
-        self._awaiting: dict[int, asyncio.Future] = {}
-        self._hb_task: asyncio.Task | None = None
-        self._connected_evt = asyncio.Event()
+        self._awaiting: dict[int, asyncio.Future[dict[str, Any]]] = {}
+        self._hb_task: asyncio.Task[None] | None = None
+        self._receiver_task: asyncio.Task[None] | None = None
         self._on_push: Callable[[dict[str, Any]], None] | None = None
 
     @property
@@ -75,26 +75,48 @@ class SiegeniaClient:
         connect_kwargs: dict[str, Any] = {"headers": headers}
         if self._ws_protocol == "wss":
             connect_kwargs["ssl"] = ssl_ctx
-        self._ws = await self._session.ws_connect(url, **connect_kwargs)
-        self._connected_evt.set()
-        asyncio.create_task(self._receiver_loop())
+        try:
+            self._ws = await self._session.ws_connect(url, **connect_kwargs)
+        except Exception:
+            if self._own_session:
+                await self._session.close()
+                self._session = None
+                self._own_session = False
+            raise
+        self._receiver_task = asyncio.create_task(self._receiver_loop(self._ws))
 
     async def disconnect(self) -> None:
-        if self._hb_task:
-            self._hb_task.cancel()
-            self._hb_task = None
-        if self._ws and not self._ws.closed:
-            await self._ws.close()
+        heartbeat_task = self._hb_task
+        self._hb_task = None
+        if heartbeat_task:
+            heartbeat_task.cancel()
+
+        websocket = self._ws
         self._ws = None
+        if websocket and not websocket.closed:
+            await websocket.close()
+
+        receiver_task = self._receiver_task
+        self._receiver_task = None
+        if receiver_task and receiver_task is not asyncio.current_task():
+            receiver_task.cancel()
+
+        tasks = [
+            task
+            for task in (heartbeat_task, receiver_task)
+            if task is not None and task is not asyncio.current_task()
+        ]
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
         if self._own_session and self._session:
             await self._session.close()
             self._session = None
             self._own_session = False
 
-    async def _receiver_loop(self) -> None:
-        assert self._ws is not None
+    async def _receiver_loop(self, websocket: ClientWebSocketResponse) -> None:
         try:
-            async for msg in self._ws:
+            async for msg in websocket:
                 if msg.type == WSMsgType.TEXT:
                     try:
                         data = json.loads(msg.data)
@@ -114,6 +136,8 @@ class SiegeniaClient:
                 elif msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSED, WSMsgType.ERROR):
                     break
         finally:
+            if self._ws is websocket:
+                self._ws = None
             # Fail any pending futures
             for fut in self._awaiting.values():
                 if not fut.done():
@@ -136,17 +160,18 @@ class SiegeniaClient:
         if params is not None:
             payload["params"] = params
 
-        assert self._ws is not None
-        self._logger(f"SEND: {json.dumps(payload, separators=(',', ':'))}")
-        await self._ws.send_str(json.dumps(payload))
-
-        fut: asyncio.Future = asyncio.get_running_loop().create_future()
+        fut: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
         self._awaiting[req_id] = fut
         try:
+            assert self._ws is not None
+            safe_payload = _redact_sensitive_values(payload)
+            self._logger(f"SEND: {json.dumps(safe_payload, separators=(',', ':'))}")
+            await self._ws.send_str(json.dumps(payload))
             resp = await asyncio.wait_for(fut, timeout=self._response_timeout)
         except asyncio.TimeoutError as exc:  # noqa: PERF203
-            self._awaiting.pop(req_id, None)
             raise SiegeniaError("Timeout waiting for response") from exc
+        finally:
+            self._awaiting.pop(req_id, None)
 
         if not isinstance(resp, dict):
             raise SiegeniaError("Malformed response")
@@ -154,6 +179,10 @@ class SiegeniaClient:
         status = resp.get("status")
         if status in {"not_authenticated", "authentication_error"}:
             raise AuthenticationError(status or "authentication_error")
+        if status is not None and status != "ok":
+            if payload.get("command") == "login":
+                raise AuthenticationError(str(status))
+            raise SiegeniaError(f"Device returned status: {status}")
 
         return resp
 
@@ -221,3 +250,17 @@ class SiegeniaClient:
         Called with the raw message dictionary from the device.
         """
         self._on_push = cb
+
+
+_SENSITIVE_KEYS = frozenset({"password", "passwd", "secret", "token", "authorization"})
+
+
+def _redact_sensitive_values(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {
+            key: "***" if str(key).lower() in _SENSITIVE_KEYS else _redact_sensitive_values(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_sensitive_values(item) for item in value]
+    return value

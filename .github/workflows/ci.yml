@@ -17,9 +17,9 @@ jobs:
       matrix:
         python-version: ["3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -33,15 +33,15 @@ jobs:
   tests-latest-ha:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.14"
       - name: Install latest Home Assistant test stack
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements_test_latest.txt
-      - name: Run tests against Home Assistant 2026.3.1 stack
+      - name: Run tests against the current Home Assistant stack
         run: |
           pytest

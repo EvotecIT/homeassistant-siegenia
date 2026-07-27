@@ -125,7 +125,7 @@ async def test_setup_entry_reuses_home_assistant_session(hass, config_entry_data
             self.get_device = AsyncMock(
                 return_value={
                     "status": "ok",
-                    "data": {"devicename": "Siegenia Test", "serialnr": "af050261"},
+                    "data": {"devicename": "Siegenia Test", "serialnr": "00112233"},
                 }
             )
             self.get_device_params = AsyncMock(
@@ -167,7 +167,7 @@ async def test_rediscovery_probe_reuses_home_assistant_session(hass, monkeypatch
             self.connect = AsyncMock()
             self.disconnect = AsyncMock()
             self.login = AsyncMock()
-            self.get_device = AsyncMock(return_value={"data": {"serialnr": "af050261"}})
+            self.get_device = AsyncMock(return_value={"data": {"serialnr": "00112233"}})
 
         def set_push_callback(self, cb):  # noqa: ANN001
             self.push_cb = cb
@@ -181,9 +181,9 @@ async def test_rediscovery_probe_reuses_home_assistant_session(hass, monkeypatch
             CONF_PORT: 443,
             CONF_USERNAME: "admin",
             CONF_PASSWORD: "pw",
-            "serial": "af050261",
+            "serial": "00112233",
         },
-        unique_id="af050261",
+        unique_id="00112233",
         title="Siegenia Test",
     )
     entry.add_to_hass(hass)

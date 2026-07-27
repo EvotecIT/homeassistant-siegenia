@@ -21,7 +21,8 @@ test = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["custom_components*", "siegenia_client*", "tests*"]
+include = ["custom_components*", "siegenia_client*"]
+exclude = ["tests*"]
 
 [tool.setuptools.package-data]
 "custom_components.siegenia" = ["manifest.json", "translations/*.json", "services.yaml", "brand/*.png"]

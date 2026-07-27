@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er, device_registry as dr
@@ -79,7 +77,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             return
         coordinator = entity.coordinator  # type: ignore[attr-defined]
         func = getattr(coordinator.client, coro_name)
-        await func()
+        await coordinator.async_run_device_action(
+            func(),
+            action_name=coro_name.replace("_", " "),
+        )
         await coordinator.async_request_refresh()
 
     hass.services.async_register(DOMAIN, "set_mode", _handle_set_mode)
@@ -143,7 +144,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         }
         if tz:
             payload["timezone"] = tz
-        await coordinator.client.set_device_params(payload)
+        await coordinator.async_set_device_params(
+            payload,
+            action_name="synchronize the device clock",
+        )
         await coordinator.async_request_refresh()
 
     hass.services.async_register(DOMAIN, "sync_clock", _sync_clock)
@@ -166,7 +170,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         if entity is None:
             return
         coordinator = entity.coordinator  # type: ignore[attr-defined]
-        await coordinator.client.set_device_params({"timer": {"duration": {"hour": h, "minute": m}, "enabled": True}})
+        await coordinator.async_set_device_params(
+            {"timer": {"duration": {"hour": h, "minute": m}, "enabled": True}},
+            action_name="start the timer",
+        )
         await coordinator.async_request_refresh()
 
     async def _timer_stop(call: ServiceCall) -> None:
@@ -175,7 +182,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         if entity is None:
             return
         coordinator = entity.coordinator  # type: ignore[attr-defined]
-        await coordinator.client.set_device_params({"timer": {"enabled": False}})
+        await coordinator.async_set_device_params(
+            {"timer": {"enabled": False}},
+            action_name="stop the timer",
+        )
         await coordinator.async_request_refresh()
 
     async def _timer_set_duration(call: ServiceCall) -> None:
@@ -186,7 +196,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         if entity is None:
             return
         coordinator = entity.coordinator  # type: ignore[attr-defined]
-        await coordinator.client.set_device_params({"timer": {"duration": {"hour": h, "minute": m}}})
+        await coordinator.async_set_device_params(
+            {"timer": {"duration": {"hour": h, "minute": m}}},
+            action_name="set the timer duration",
+        )
         await coordinator.async_request_refresh()
 
     hass.services.async_register(DOMAIN, "timer_start", _timer_start)
