@@ -68,6 +68,9 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             name=f"Siegenia {host}",
             update_interval=timedelta(seconds=poll_interval),
         )
+        if self.config_entry is None:
+            self.config_entry = entry
+            entry.async_on_unload(self.async_shutdown)
         self.entry = entry
         self.host = host
         self.port = port
@@ -88,6 +91,11 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             logger=self.logger.debug,
             verify_ssl=self.verify_ssl,
         )
+        self._stopping = False
+        self._connection_task: asyncio.Task[None] | None = None
+        self._rediscovery_task: asyncio.Task[str | None] | None = None
+        self._shutdown_lock = asyncio.Lock()
+        self._shutdown_complete = False
         self.device_info: dict[str, Any] | None = None
         self._issue_lock = asyncio.Lock()
         self.extended_discovery = bool(extended_discovery)
@@ -355,12 +363,12 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.hass.async_create_task(_async_logbook())
 
     async def _ensure_connected(self) -> None:
+        if self._stopping:
+            raise asyncio.CancelledError
         if self.client.connected:
             return
         try:
-            await self.client.connect()
-            await self.client.login(self.username, self.password)
-            await self.client.start_heartbeat(self.heartbeat_interval)
+            await self._async_connect_client()
         except AuthenticationError as exc:
             await self._disconnect_after_connection_failure()
             raise ConfigEntryAuthFailed from exc
@@ -371,6 +379,63 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self._disconnect_after_connection_failure()
             self.logger.debug("Unexpected ensure_connected failure: %s", exc)
             raise UpdateFailed(exc) from exc
+
+    async def _async_connect_client(self) -> None:
+        """Open and authenticate one connection owned by the coordinator."""
+        if self._stopping:
+            raise asyncio.CancelledError
+
+        task = self._connection_task
+        if task is None or task.done():
+            task = asyncio.create_task(
+                self._async_open_client(),
+                name=f"{DOMAIN}-connect",
+            )
+            self._connection_task = task
+        try:
+            await task
+        finally:
+            if self._connection_task is task and task.done():
+                self._connection_task = None
+
+    async def _async_open_client(self) -> None:
+        """Connect, authenticate, and start heartbeat unless shutdown wins."""
+        await self.client.connect()
+        if self._stopping:
+            raise asyncio.CancelledError
+        await self.client.login(self.username, self.password)
+        if self._stopping:
+            raise asyncio.CancelledError
+        await self.client.start_heartbeat(self.heartbeat_interval)
+        if self._stopping:
+            raise asyncio.CancelledError
+
+    async def async_shutdown(self) -> None:
+        """Stop coordinator refreshes, connections, and rediscovery."""
+        self._stopping = True
+        async with self._shutdown_lock:
+            await super().async_shutdown()
+            if self._shutdown_complete:
+                return
+
+            current = asyncio.current_task()
+            connection_task = self._connection_task
+            rediscovery_task = self._rediscovery_task
+            tasks = {
+                task
+                for task in (connection_task, rediscovery_task)
+                if task is not None and task is not current
+            }
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            if self._connection_task is connection_task:
+                self._connection_task = None
+            if self._rediscovery_task is rediscovery_task:
+                self._rediscovery_task = None
+            await self.client.disconnect()
+            self._shutdown_complete = True
 
     async def _disconnect_after_connection_failure(self) -> None:
         """Close a partially connected client without hiding the original error."""
@@ -385,6 +450,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         Returns True if a new host was found and set, signalling the caller to retry
         the data update immediately.
         """
+        if self._stopping:
+            return False
         # Auth errors are handled elsewhere
         if not self.auto_discover:
             return False
@@ -398,12 +465,14 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._last_rediscovery = now
         try:
-            new_host = await self._rediscover_host()
+            new_host = await self._async_rediscover_host()
         except Exception as exc:  # noqa: BLE001
             self.logger.debug("Rediscovery failed: %s", exc)
             self._rediscovery_backoff = min(self._rediscovery_backoff * 2, REDISCOVER_BACKOFF_MAX)
             return False
 
+        if self._stopping:
+            return False
         if not new_host or new_host == self.host:
             self._rediscovery_backoff = min(self._rediscovery_backoff * 2, REDISCOVER_BACKOFF_MAX)
             return False
@@ -411,6 +480,24 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         await self._switch_host(new_host)
         self._rediscovery_backoff = REDISCOVER_COOLDOWN_SECONDS
         return True
+
+    async def _async_rediscover_host(self) -> str | None:
+        """Run one rediscovery operation owned by coordinator shutdown."""
+        if self._stopping:
+            raise asyncio.CancelledError
+
+        task = self._rediscovery_task
+        if task is None or task.done():
+            task = asyncio.create_task(
+                self._rediscover_host(),
+                name=f"{DOMAIN}-rediscovery",
+            )
+            self._rediscovery_task = task
+        try:
+            return await task
+        finally:
+            if self._rediscovery_task is task and task.done():
+                self._rediscovery_task = None
 
     def _update_serial(self, serial: str | None) -> None:
         if not serial:
@@ -456,6 +543,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         first match that successfully authenticates (and, if known, matches the
         stored serial number).
         """
+        if self._stopping:
+            return None
         try:
             current_ip = ipaddress.ip_address(self.host)
         except ValueError:
@@ -516,6 +605,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return found
 
     async def _probe_host(self, host: str) -> str | None:
+        if self._stopping:
+            return None
         if not self.serial:
             return None
         client = SiegeniaClient(
@@ -531,6 +622,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await client.connect()
             await client.login(self.username, self.password)
             info = await client.get_device()
+            if self._stopping:
+                return None
             serial = ((info or {}).get("data") or {}).get("serialnr")
             if not serial or (self.serial and serial != self.serial):
                 return None
@@ -552,11 +645,15 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.logger.debug("Probe cleanup failed for %s: %s", host, exc)
 
     async def _switch_host(self, new_host: str) -> None:
+        if self._stopping:
+            return
         self.logger.info("Detected Siegenia IP change: %s -> %s", self.host, new_host)
         try:
             await self.client.disconnect()
         except Exception:
             pass
+        if self._stopping:
+            return
         self.host = new_host
         self.name = f"Siegenia {new_host}"
         # Replace client and preserve push callback
@@ -592,9 +689,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_setup(self) -> None:
         try:
-            await self.client.connect()
-            await self.client.login(self.username, self.password)
-            await self.client.start_heartbeat(self.heartbeat_interval)
+            await self._async_connect_client()
         except AuthenticationError as exc:
             await self._disconnect_after_connection_failure()
             raise ConfigEntryAuthFailed from exc

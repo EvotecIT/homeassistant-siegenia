@@ -5,7 +5,8 @@ from datetime import timedelta
 
 from typing import TYPE_CHECKING
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import asyncio
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -88,6 +89,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator._motion_interval = timedelta(seconds=motion_s)  # type: ignore[attr-defined]
     coordinator._idle_interval = timedelta(seconds=idle_s)      # type: ignore[attr-defined]
 
+    async def _async_shutdown_coordinator() -> None:
+        """Stop connections and background tasks owned by the coordinator."""
+        await coordinator.async_shutdown()
+
+    async def _async_shutdown_on_stop(_: Event) -> None:
+        """Disconnect background client tasks before Home Assistant stops."""
+        await _async_shutdown_coordinator()
+
+    remove_stop_listener = hass.bus.async_listen_once(
+        EVENT_HOMEASSISTANT_STOP,
+        _async_shutdown_on_stop,
+    )
+
+    try:
+        await _async_finish_setup(hass, entry, coordinator)
+    except (asyncio.CancelledError, Exception):
+        remove_stop_listener()
+        try:
+            await _async_shutdown_coordinator()
+        except Exception as err:  # noqa: BLE001 - preserve the setup failure
+            coordinator.logger.warning(
+                "Failed to disconnect Siegenia client after setup error: %s",
+                err,
+            )
+        raise
+
+    entry.async_on_unload(remove_stop_listener)
+    return True
+
+
+async def _async_finish_setup(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: SiegeniaDataUpdateCoordinator,
+) -> None:
+    """Finish setup after early shutdown ownership has been registered."""
+
     try:
         await coordinator.async_setup()
     except ConfigEntryAuthFailed:
@@ -142,13 +180,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             pass
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    coordinator: SiegeniaDataUpdateCoordinator = hass.data[entry.domain].pop(entry.entry_id)
-    await coordinator.client.disconnect()
+    if unload_ok:
+        hass.data[entry.domain].pop(entry.entry_id)
     return unload_ok
 
 
