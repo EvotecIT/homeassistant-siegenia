@@ -65,10 +65,12 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(
             hass,
             logging.getLogger(__name__),
-            config_entry=entry,
             name=f"Siegenia {host}",
             update_interval=timedelta(seconds=poll_interval),
         )
+        if self.config_entry is None:
+            self.config_entry = entry
+            entry.async_on_unload(self.async_shutdown)
         self.entry = entry
         self.host = host
         self.port = port

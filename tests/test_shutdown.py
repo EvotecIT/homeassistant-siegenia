@@ -5,11 +5,56 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.siegenia import async_setup_entry
 from custom_components.siegenia.const import DOMAIN
 from custom_components.siegenia.coordinator import SiegeniaDataUpdateCoordinator
+
+
+async def test_coordinator_preserves_legacy_base_constructor_and_unload(
+    hass,
+    monkeypatch,
+    config_entry_data,
+) -> None:
+    real_init = DataUpdateCoordinator.__init__
+
+    def legacy_init(
+        self,
+        hass,
+        logger,
+        *,
+        name,
+        update_interval,
+    ) -> None:
+        real_init(
+            self,
+            hass,
+            logger,
+            name=name,
+            update_interval=update_interval,
+        )
+
+    monkeypatch.setattr(DataUpdateCoordinator, "__init__", legacy_init)
+    entry = Mock(
+        data=config_entry_data,
+        unique_id="00112233",
+        async_on_unload=Mock(),
+    )
+
+    coordinator = SiegeniaDataUpdateCoordinator(
+        hass,
+        entry=entry,
+        host=config_entry_data["host"],
+        port=config_entry_data["port"],
+        username=config_entry_data["username"],
+        password=config_entry_data["password"],
+        auto_discover=False,
+    )
+
+    assert coordinator.config_entry is entry
+    entry.async_on_unload.assert_called_once_with(coordinator.async_shutdown)
 
 
 async def test_home_assistant_stop_disconnects_client(
