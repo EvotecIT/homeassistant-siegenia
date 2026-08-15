@@ -65,6 +65,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(
             hass,
             logging.getLogger(__name__),
+            config_entry=entry,
             name=f"Siegenia {host}",
             update_interval=timedelta(seconds=poll_interval),
         )
@@ -90,6 +91,9 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._stopping = False
         self._connection_task: asyncio.Task[None] | None = None
+        self._rediscovery_task: asyncio.Task[str | None] | None = None
+        self._shutdown_lock = asyncio.Lock()
+        self._shutdown_complete = False
         self.device_info: dict[str, Any] | None = None
         self._issue_lock = asyncio.Lock()
         self.extended_discovery = bool(extended_discovery)
@@ -405,15 +409,31 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise asyncio.CancelledError
 
     async def async_shutdown(self) -> None:
-        """Prevent new connections and drain any connection already in flight."""
+        """Stop coordinator refreshes, connections, and rediscovery."""
         self._stopping = True
-        task = self._connection_task
-        if task is not None and task is not asyncio.current_task():
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
-            if self._connection_task is task:
+        async with self._shutdown_lock:
+            await super().async_shutdown()
+            if self._shutdown_complete:
+                return
+
+            current = asyncio.current_task()
+            connection_task = self._connection_task
+            rediscovery_task = self._rediscovery_task
+            tasks = {
+                task
+                for task in (connection_task, rediscovery_task)
+                if task is not None and task is not current
+            }
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            if self._connection_task is connection_task:
                 self._connection_task = None
-        await self.client.disconnect()
+            if self._rediscovery_task is rediscovery_task:
+                self._rediscovery_task = None
+            await self.client.disconnect()
+            self._shutdown_complete = True
 
     async def _disconnect_after_connection_failure(self) -> None:
         """Close a partially connected client without hiding the original error."""
@@ -443,7 +463,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._last_rediscovery = now
         try:
-            new_host = await self._rediscover_host()
+            new_host = await self._async_rediscover_host()
         except Exception as exc:  # noqa: BLE001
             self.logger.debug("Rediscovery failed: %s", exc)
             self._rediscovery_backoff = min(self._rediscovery_backoff * 2, REDISCOVER_BACKOFF_MAX)
@@ -458,6 +478,24 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         await self._switch_host(new_host)
         self._rediscovery_backoff = REDISCOVER_COOLDOWN_SECONDS
         return True
+
+    async def _async_rediscover_host(self) -> str | None:
+        """Run one rediscovery operation owned by coordinator shutdown."""
+        if self._stopping:
+            raise asyncio.CancelledError
+
+        task = self._rediscovery_task
+        if task is None or task.done():
+            task = asyncio.create_task(
+                self._rediscover_host(),
+                name=f"{DOMAIN}-rediscovery",
+            )
+            self._rediscovery_task = task
+        try:
+            return await task
+        finally:
+            if self._rediscovery_task is task and task.done():
+                self._rediscovery_task = None
 
     def _update_serial(self, serial: str | None) -> None:
         if not serial:

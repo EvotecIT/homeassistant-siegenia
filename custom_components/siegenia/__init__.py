@@ -115,7 +115,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
         raise
 
-    entry.async_on_unload(_async_shutdown_coordinator)
     entry.async_on_unload(remove_stop_listener)
     return True
 

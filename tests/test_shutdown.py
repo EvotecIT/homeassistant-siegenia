@@ -155,3 +155,85 @@ async def test_shutdown_cancels_inflight_connection_before_tasks_start(
 
     with pytest.raises(asyncio.CancelledError):
         await coordinator._ensure_connected()
+
+
+async def test_shutdown_cancels_inflight_rediscovery_probes(
+    hass,
+    monkeypatch,
+    config_entry_data,
+) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=config_entry_data,
+        title="Siegenia Test",
+    )
+    entry.add_to_hass(hass)
+    coordinator = SiegeniaDataUpdateCoordinator(
+        hass,
+        entry=entry,
+        host=config_entry_data["host"],
+        port=config_entry_data["port"],
+        username=config_entry_data["username"],
+        password=config_entry_data["password"],
+        auto_discover=True,
+    )
+    coordinator.serial = "00112233"
+    coordinator.client.disconnect = AsyncMock()
+    probe_started = asyncio.Event()
+    probe_cancelled = asyncio.Event()
+
+    async def blocked_probe(_host: str) -> None:
+        probe_started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            probe_cancelled.set()
+
+    monkeypatch.setattr(coordinator, "_probe_host", blocked_probe)
+    monkeypatch.setattr(
+        "custom_components.siegenia.coordinator.REDISCOVER_MAX_HOSTS",
+        1,
+    )
+    monkeypatch.setattr(
+        "custom_components.siegenia.coordinator.REDISCOVER_MAX_PER_SUBNET",
+        1,
+    )
+    rediscovery = asyncio.create_task(
+        coordinator._handle_connection_error(OSError("offline"))
+    )
+    await probe_started.wait()
+
+    await asyncio.wait_for(coordinator.async_shutdown(), timeout=1)
+
+    with pytest.raises(asyncio.CancelledError):
+        await rediscovery
+    assert probe_cancelled.is_set()
+    assert coordinator._rediscovery_task is None
+
+
+async def test_shutdown_preserves_base_coordinator_cleanup_and_is_idempotent(
+    hass,
+    config_entry_data,
+) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=config_entry_data,
+        title="Siegenia Test",
+    )
+    entry.add_to_hass(hass)
+    coordinator = SiegeniaDataUpdateCoordinator(
+        hass,
+        entry=entry,
+        host=config_entry_data["host"],
+        port=config_entry_data["port"],
+        username=config_entry_data["username"],
+        password=config_entry_data["password"],
+        auto_discover=False,
+    )
+    coordinator.client.disconnect = AsyncMock()
+
+    await coordinator.async_shutdown()
+    await coordinator.async_shutdown()
+
+    assert coordinator._shutdown_requested is True
+    coordinator.client.disconnect.assert_awaited_once_with()
