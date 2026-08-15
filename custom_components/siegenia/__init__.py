@@ -89,13 +89,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator._motion_interval = timedelta(seconds=motion_s)  # type: ignore[attr-defined]
     coordinator._idle_interval = timedelta(seconds=idle_s)      # type: ignore[attr-defined]
 
-    async def _async_disconnect_client() -> None:
-        """Disconnect whichever client instance the coordinator currently owns."""
-        await coordinator.client.disconnect()
+    async def _async_shutdown_coordinator() -> None:
+        """Stop connections and background tasks owned by the coordinator."""
+        await coordinator.async_shutdown()
 
     async def _async_shutdown_on_stop(_: Event) -> None:
         """Disconnect background client tasks before Home Assistant stops."""
-        await _async_disconnect_client()
+        await _async_shutdown_coordinator()
 
     remove_stop_listener = hass.bus.async_listen_once(
         EVENT_HOMEASSISTANT_STOP,
@@ -107,7 +107,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except (asyncio.CancelledError, Exception):
         remove_stop_listener()
         try:
-            await _async_disconnect_client()
+            await _async_shutdown_coordinator()
         except Exception as err:  # noqa: BLE001 - preserve the setup failure
             coordinator.logger.warning(
                 "Failed to disconnect Siegenia client after setup error: %s",
@@ -115,7 +115,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
         raise
 
-    entry.async_on_unload(_async_disconnect_client)
+    entry.async_on_unload(_async_shutdown_coordinator)
     entry.async_on_unload(remove_stop_listener)
     return True
 
