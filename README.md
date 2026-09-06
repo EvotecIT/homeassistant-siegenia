@@ -1,143 +1,97 @@
 # Siegenia for Home Assistant
 
-![Siegenia for Home Assistant — illustrative artwork](assets/homeassistant-siegenia-social.png)
-
-*Illustrative artwork. Available controls depend on the device and integration support.*
+![Siegenia for Home Assistant](assets/homeassistant-siegenia-social.png)
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://hacs.xyz/)
 [![CI](https://img.shields.io/github/actions/workflow/status/EvotecIT/homeassistant-siegenia/ci.yml?branch=master&style=for-the-badge&label=CI)](https://github.com/EvotecIT/homeassistant-siegenia/actions/workflows/ci.yml)
-[![Hassfest](https://img.shields.io/github/actions/workflow/status/EvotecIT/homeassistant-siegenia/hassfest.yml?branch=master&style=for-the-badge&label=Hassfest)](https://github.com/EvotecIT/homeassistant-siegenia/actions/workflows/hassfest.yml)
+[![License](https://img.shields.io/github/license/EvotecIT/homeassistant-siegenia?style=for-the-badge)](LICENSE)
 
-Local Siegenia support for Home Assistant, focused on MHS-family controllers and a practical, polished Home Assistant experience.
+## Overview
 
-![Siegenia integration overview](assets/screenshots/integration-overview.png)
+Connect supported Siegenia window controllers to Home Assistant over your local
+network. The integration focuses on MHS-family controllers and exposes windows
+as `cover` entities.
+
+- Open, close, stop, gap ventilation, and other supported window modes.
+- Timers, opening-lock behavior, and device settings.
+- Warning events, notifications, dashboard examples, and automation blueprints.
+
+Available modes depend on the controller. Keep moving windows supervised and
+test any automation with the opening area clear.
+
+## Sponsor
+
+Support development and maintenance through
+[GitHub Sponsors](https://github.com/sponsors/PrzemyslawKlys).
+Sponsorship is optional; these projects remain open source.
 
 ## More for your Home Assistant home
 
-Other projects we maintain for the same setup:
+Other integrations and dashboards we maintain:
 
-- [Dreame & MOVA mowers](https://github.com/EvotecIT/homeassistant-dreamelawnmower) — mowing controls, maps, schedules, and supported cameras.
-- [Lawn Mower Card](https://github.com/EvotecIT/lovelace-lawn-mower-card) — a visual dashboard for mower state, maps, and controls.
-- [KEF](https://github.com/EvotecIT/homeassistant-kef) — local control for modern and legacy speaker families.
-- [Devialet](https://github.com/EvotecIT/homeassistant-devialet) — local speaker control, with Dione support.
-- [EasyControlX](https://github.com/EvotecIT/homeassistant-easycontrolx) — connect supported Windows and macOS hosts.
+- [Dreame & MOVA mowers](https://github.com/EvotecIT/homeassistant-dreamelawnmower) — Mowing controls, maps, schedules, and supported cameras.
+- [Lawn Mower Card](https://github.com/EvotecIT/lovelace-lawn-mower-card) — A dashboard for mower state, maps, and controls.
+- [KEF](https://github.com/EvotecIT/homeassistant-kef) — Local control for modern and legacy speaker families.
+- [Devialet](https://github.com/EvotecIT/homeassistant-devialet) — Local speaker control, with Dione support.
+- [EasyControlX](https://github.com/EvotecIT/homeassistant-easycontrolx) — Connect supported Windows and macOS hosts.
 
-Prefer a native app for everyday control? [CasaRay](https://casaray.dev/)
-brings rooms, devices, cameras, and home activity together on iPhone, iPad, and
-Mac. [Tactra Remote](https://tactra.dev/) puts media players, speakers, and TV
-controls in a focused remote for iPhone, iPad, Apple Watch, and Mac.
+For a native app connected to the same Home Assistant setup:
 
-Both connect to your Home Assistant setup. Neither is required to use this
-project.
+- [CasaRay](https://casaray.dev/) — rooms, devices, cameras, and home activity on
+  iPhone, iPad, and Mac.
+- [Tactra Remote](https://tactra.dev/) — media players, speakers, and TV controls
+  on iPhone, iPad, Apple Watch, and Mac.
 
-## 🎯 What This Is
+Neither app is required to use this project.
 
-This custom integration connects Siegenia window controllers to Home Assistant using the local device API.
-
-It is designed to be:
-
-- local and private
-- responsive
-- GUI-configurable
-- friendly for dashboards, automations, and daily use
-
-## ✨ What You Get
-
-- config flow setup
-- cover control for open, close, stop, and mode-style actions
-- sensors, binary sensors, update entity, buttons, numbers, and selects
-- device automations and helpful services
-- diagnostics and push-style behavior where available
-
-## 🏠 Installation
+## Installation
 
 ### HACS
 
-1. Open HACS.
-2. Add this repository as a custom repository of type `Integration`.
-3. Install `Siegenia`.
-4. Restart Home Assistant.
-5. Add `Siegenia` from `Settings -> Devices & services`.
+[![Open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=EvotecIT&repository=homeassistant-siegenia&category=integration)
+
+1. Open the repository with the button above. Alternatively, in HACS choose
+   **Custom repositories**, add `https://github.com/EvotecIT/homeassistant-siegenia`,
+   and select **Integration**.
+2. Download **Siegenia** and restart Home Assistant.
+3. Open **Settings → Devices & services → Add integration**, then choose
+   **Siegenia**.
 
 ### Manual
 
-1. Copy the `custom_components/siegenia` folder into your Home Assistant `config/custom_components` directory.
+1. Download the repository and copy `custom_components/siegenia` into your
+   Home Assistant `config/custom_components` directory.
 2. Restart Home Assistant.
-3. Add the integration from `Settings -> Devices & services`.
+3. Add **Siegenia** from **Settings → Devices & services**.
 
-## ⚙️ Configuration
+## Configuration
 
-You will usually need:
+Enter the controller's host/IP, username, and password. Secure WebSockets
+(`wss`, port **443**) are the default. Use certificate verification when the
+certificate and hostname are trusted; otherwise keep the self-signed controller
+and Home Assistant on a trusted local network.
 
-- host or IP
-- username
-- password
-- default secure WebSocket connection settings
+Open **Configure** to adjust polling, heartbeat, warnings, and optional dashboard
+controls. Start with the defaults, then test the available modes while the
+window area is clear.
 
-The integration also includes options for reconnect behavior, discovery helpers, polling, heartbeat, warnings, and dashboard-oriented behavior.
+## Documentation
 
-### Online, offline, and connection security
+| I want to… | Guide |
+| --- | --- |
+| Configure connection and window behavior | [Configuration](docs/configuration.md) |
+| Add a dashboard, timer, or automation | [Automations and dashboards](docs/automations.md) |
+| Diagnose a connection or command failure | [Support and troubleshooting](docs/SUPPORT.md) |
+| Use the controller from Python | [Python library](docs/python-library.md) |
+| Contribute or release an update | [Development](docs/development.md) · [Releasing](docs/RELEASING.md) |
 
-- When a controller goes offline, its entities become unavailable and recover automatically after the connection returns.
-- Commands made while the controller is unavailable fail clearly in Home Assistant instead of being reported as successful.
-- Debug logging redacts passwords before WebSocket requests are written to the log.
-- Secure WebSockets (`wss`) are the default. Certificate verification is optional because many controllers use a self-signed certificate. Enable verification when the controller certificate and hostname are trusted; otherwise keep the controller and Home Assistant on a trusted local network.
+## Screenshots
 
-## 🪟 Main Features
+![Siegenia integration overview](assets/screenshots/integration-overview.png)
 
-- window control through Home Assistant `cover`
-- extra mode actions such as gap vent, close without lock, and stop over
-- optional opening lock behavior
-- timer support
-- warning events and notifications
-- blueprints and dashboard examples
+## Support
 
-## 🧱 Reusable Python Package
-
-This repository now ships two usable layers:
-
-- `siegenia_client` for direct Python access to the local Siegenia controller API
-- the Home Assistant integration in `custom_components/siegenia`
-
-Library docs: `docs/python-library.md`
-
-Runnable example: `examples/python_client.py`
-
-Example:
-
-```python
-import asyncio
-
-from siegenia_client import SiegeniaClient
-
-
-async def main() -> None:
-    client = SiegeniaClient("192.168.1.30")
-    await client.connect()
-    try:
-        ...
-    finally:
-        await client.disconnect()
-
-
-asyncio.run(main())
-```
-
-That keeps the local protocol layer reusable for scripts or tooling while the Home Assistant integration stays focused on setup, entities, and automations.
-
-## 🛠️ Development
-
-```bash
-python -m pip install -e .[test]
-python -m compileall siegenia_client custom_components tests examples
-pytest
-```
-
-CI validates supported Python lanes and a current Home Assistant stack. Merged
-pull requests are released automatically through the repository release workflow.
-
-## ❤️ Support
-
-- Support notes: `docs/SUPPORT.md`
-- Releasing notes: `docs/RELEASING.md`
-- Source: [GitHub Repository](https://github.com/EvotecIT/homeassistant-siegenia)
+[Report an issue](https://github.com/EvotecIT/homeassistant-siegenia/issues)
+with the controller model, firmware, number of sashes, integration version, and
+steps to reproduce. Attach diagnostics after reviewing them for personal
+information. Never post controller credentials.
