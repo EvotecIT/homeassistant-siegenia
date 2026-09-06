@@ -1,5 +1,9 @@
 # Siegenia for Home Assistant
 
+![Siegenia for Home Assistant — illustrative artwork](assets/homeassistant-siegenia-social.png)
+
+*Illustrative artwork. Available controls depend on the device and integration support.*
+
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://hacs.xyz/)
 [![CI](https://img.shields.io/github/actions/workflow/status/EvotecIT/homeassistant-siegenia/ci.yml?branch=master&style=for-the-badge&label=CI)](https://github.com/EvotecIT/homeassistant-siegenia/actions/workflows/ci.yml)
 [![Hassfest](https://img.shields.io/github/actions/workflow/status/EvotecIT/homeassistant-siegenia/hassfest.yml?branch=master&style=for-the-badge&label=Hassfest)](https://github.com/EvotecIT/homeassistant-siegenia/actions/workflows/hassfest.yml)
@@ -8,34 +12,23 @@ Local Siegenia support for Home Assistant, focused on MHS-family controllers and
 
 ![Siegenia integration overview](assets/screenshots/integration-overview.png)
 
-## 🧩 More from Evotec
+## More for your Home Assistant home
 
-Our Home Assistant projects:
+Other projects we maintain for the same setup:
 
-- [Dreame Lawn Mower](https://github.com/EvotecIT/homeassistant-dreamelawnmower)
-  with its companion
-  [Lawn Mower Card](https://github.com/EvotecIT/lovelace-lawn-mower-card)
-- [Siegenia](https://github.com/EvotecIT/homeassistant-siegenia) for local
-  window control
-- [KEF](https://github.com/EvotecIT/homeassistant-kef) for local speaker control
-- [Devialet](https://github.com/EvotecIT/homeassistant-devialet) for local
-  speaker control
-- [EasyControlX](https://github.com/EvotecIT/homeassistant-easycontrolx) for
-  workstation control
+- [Dreame & MOVA mowers](https://github.com/EvotecIT/homeassistant-dreamelawnmower) — mowing controls, maps, schedules, and supported cameras.
+- [Lawn Mower Card](https://github.com/EvotecIT/lovelace-lawn-mower-card) — a visual dashboard for mower state, maps, and controls.
+- [KEF](https://github.com/EvotecIT/homeassistant-kef) — local control for modern and legacy speaker families.
+- [Devialet](https://github.com/EvotecIT/homeassistant-devialet) — local speaker control, with Dione support.
+- [EasyControlX](https://github.com/EvotecIT/homeassistant-easycontrolx) — connect supported Windows and macOS hosts.
 
-Our Apple apps:
+Prefer a native app for everyday control? [CasaRay](https://casaray.dev/)
+brings rooms, devices, cameras, and home activity together on iPhone, iPad, and
+Mac. [Tactra Remote](https://tactra.dev/) puts media players, speakers, and TV
+controls in a focused remote for iPhone, iPad, Apple Watch, and Mac.
 
-- [CasaRay](https://casaray.dev/) offers a calm whole-home view on iPhone, iPad,
-  and Mac. [View it on the App Store](https://apps.apple.com/us/app/casaray/id6778025328).
-- [Tactra Remote](https://tactra.dev/) focuses on Home Assistant media control
-  across iPhone, iPad, Apple Watch, and Mac.
-  [View it on the App Store](https://apps.apple.com/us/app/tactra-remote/id6775426723).
-
-CasaRay's complete-home Free experience remains genuinely useful. CasaRay Plus
-and Tactra purchases help fund continued work on that free experience and these
-open-source Home Assistant projects. If you prefer to support the open-source
-work directly, [GitHub Sponsors](https://github.com/sponsors/PrzemyslawKlys) is
-another option. None of them is required to use this project.
+Both connect to your Home Assistant setup. Neither is required to use this
+project.
 
 ## 🎯 What This Is
 
