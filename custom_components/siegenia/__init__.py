@@ -116,6 +116,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise
 
     entry.async_on_unload(remove_stop_listener)
+    configured_options = dict(entry.options)
+
+    async def _async_options_updated(
+        hass: HomeAssistant, updated_entry: ConfigEntry
+    ) -> None:
+        """Apply changed options without reloading on discovery data updates."""
+        nonlocal configured_options
+        new_options = dict(updated_entry.options)
+        if new_options == configured_options:
+            return
+        # The opening-lock switch applies immediately without interrupting devices.
+        coordinator.prevent_opening = new_options.get(
+            CONF_PREVENT_OPENING, DEFAULT_PREVENT_OPENING
+        )
+        requires_reload = (
+            {key: value for key, value in new_options.items() if key != CONF_PREVENT_OPENING}
+            != {key: value for key, value in configured_options.items() if key != CONF_PREVENT_OPENING}
+        )
+        configured_options = new_options
+        if requires_reload:
+            await hass.config_entries.async_reload(updated_entry.entry_id)
+        else:
+            coordinator.async_update_listeners()
+
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
 
 
