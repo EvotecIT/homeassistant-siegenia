@@ -60,7 +60,7 @@ async def test_user_flow_success(hass, monkeypatch, mock_client):
     assert result2["data"][CONF_VERIFY_SSL] is DEFAULT_VERIFY_SSL
 
 
-async def test_user_flow_uses_ws_protocol(hass, monkeypatch):
+async def test_user_flow_uses_ws_protocol(hass, monkeypatch, mock_client):
     session = object()
     calls = {}
 
@@ -139,7 +139,7 @@ async def test_user_flow_auth_error(hass, monkeypatch):
     assert result2["errors"]["base"] == "auth"
 
 
-async def test_reauth_uses_ws_protocol(hass, monkeypatch):
+async def test_reauth_uses_ws_protocol(hass, monkeypatch, mock_client):
     session = object()
     calls = {}
 

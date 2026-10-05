@@ -5,12 +5,12 @@ import logging
 import time
 import asyncio
 import ipaddress
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from aiohttp import ClientSession, ClientConnectorError, WSServerHandshakeError
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, Context
+from homeassistant.core import HomeAssistant, Context, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.event import async_call_later
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -106,7 +106,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._motion_interval = timedelta(seconds=max(1, min(2, poll_interval)))
         self._push_idle_timeout = 60
         self._last_push_monotonic: float | None = None
-        self._revert_handle = None
+        self._revert_handle: Callable[[], None] | None = None
         # Warnings tracking
         self._last_warnings: str | None = None
         # Optional logging toggles
@@ -116,7 +116,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Options toggles (set from setup_entry)
         self.warning_notifications: bool = True
         self.warning_events: bool = True
-        self._motion_revert_handle = None
+        self._motion_revert_handle: Callable[[], None] | None = None
         self.prevent_opening: bool = False
         # Last command per sash (shared across entities for better UX during motion)
         self._last_cmd_by_sash: dict[int, str | None] = {}
@@ -413,6 +413,12 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_shutdown(self) -> None:
         """Stop coordinator refreshes, connections, and rediscovery."""
         self._stopping = True
+        if self._revert_handle is not None:
+            self._revert_handle()
+            self._revert_handle = None
+        if self._motion_revert_handle is not None:
+            self._motion_revert_handle()
+            self._motion_revert_handle = None
         async with self._shutdown_lock:
             await super().async_shutdown()
             if self._shutdown_complete:
@@ -739,6 +745,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         raise UpdateFailed("Failed after retry")
 
     def _handle_push_update(self, msg: dict[str, Any]) -> None:
+        if self._stopping:
+            return
         # Mark push as active; slow down poller while push is flowing
         self._last_push_monotonic = time.monotonic()
         # Prefer motion interval if moving; else push interval
@@ -755,7 +763,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._revert_handle()  # cancel
             self._revert_handle = None
 
+        @callback
         def _revert(_now):  # noqa: ANN001
+            if self._stopping:
+                return
             if self._last_push_monotonic and (time.monotonic() - self._last_push_monotonic) >= self._push_idle_timeout:
                 self.update_interval = self._default_interval
                 self._revert_handle = None
@@ -833,6 +844,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             pass
 
     def _adjust_interval(self, payload: dict[str, Any]) -> None:
+        if self._stopping:
+            return
         data = (payload or {}).get("data") or {}
         states = (data.get("states") or {}).values()
         if any(s == "MOVING" for s in states):
@@ -843,7 +856,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._motion_revert_handle()
                 self._motion_revert_handle = None
 
+            @callback
             def _revert(_now):  # noqa: ANN001
+                if self._stopping:
+                    return
                 # If not moving anymore, go to idle interval
                 self.update_interval = self._idle_interval
                 self._motion_revert_handle = None

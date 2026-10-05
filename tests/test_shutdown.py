@@ -282,3 +282,34 @@ async def test_shutdown_preserves_base_coordinator_cleanup_and_is_idempotent(
 
     assert coordinator._shutdown_requested is True
     coordinator.client.disconnect.assert_awaited_once_with()
+
+
+@pytest.mark.parametrize("update_kind", ["push", "motion"])
+async def test_unload_cancels_interval_timers_and_ignores_late_updates(
+    hass, setup_integration, update_kind
+) -> None:
+    entry = setup_integration
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    payload = {"command": "getDeviceParams", "data": {"states": {"0": "MOVING"}}}
+    if update_kind == "push":
+        coordinator._handle_push_update(payload)
+        assert coordinator._revert_handle is not None
+    else:
+        coordinator._adjust_interval(payload)
+        assert coordinator._motion_revert_handle is not None
+    await hass.async_block_till_done()
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert coordinator._revert_handle is None
+    assert coordinator._motion_revert_handle is None
+
+    # A client callback already queued when unloading must not revive the entry.
+    previous_data = coordinator.data
+    previous_interval = coordinator.update_interval
+    coordinator._handle_push_update({"data": {"states": {"0": "CLOSED"}}})
+    coordinator._adjust_interval(payload)
+    assert coordinator.data is previous_data
+    assert coordinator.update_interval == previous_interval
+    assert coordinator._revert_handle is None
+    assert coordinator._motion_revert_handle is None
