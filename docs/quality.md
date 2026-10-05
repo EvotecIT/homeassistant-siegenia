@@ -13,7 +13,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 | Rule | State | Evidence and next acceptance step |
 | --- | --- | --- |
-| action-setup | Partial | Actions register during integration setup before device connection. Tests cover unavailable covers and reject foreign or missing cleanup targets; complete parameter validation remains to qualify. |
+| action-setup | Implemented | Actions register before device connection and validate targets/parameters. WebSocket tests reject invalid inputs without device writes; a script test exercises the documented single-entity target form. |
 | appropriate-polling | Partial | Motion, idle, push, heartbeat, and rediscovery intervals exist; measure request budgets and concurrent-device behaviour. |
 | brands | Partial | Local `brand/` assets exist; verify rendered HACS/HA assets and applicable custom-integration requirements. |
 | common-modules | Partial | Bundled client and coordinator own shared behaviour; consolidate repeated device metadata only where it serves real platform consumers. |
@@ -38,7 +38,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 | Rule | State | Evidence and next acceptance step |
 | --- | --- | --- |
-| action-exceptions | Partial | Coordinator converts client failures into HA errors; audit invalid targets, duration input, and maintenance actions. |
+| action-exceptions | Partial | Coordinator converts client failures into HA errors. Invalid targets, malformed durations, connection fields, and registry boolean flags have regressions; complete translated-error and offline-device qualification. |
 | config-entry-unloading | Partial | Failed unload retains the coordinator; successful unload cancels tasks, timers, and connections. Extend repeated-reload proof. |
 | docs-configuration-parameters | Partial | Configuration guide exists; reconcile all options, defaults, ranges, and effects. |
 | docs-installation-parameters | Partial | Configuration guide exists; reconcile setup fields, credentials, and network prerequisites. |
@@ -85,7 +85,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 ## Qualification beyond the rule ledger
 
-- [x] 67 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 81 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
 - [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.

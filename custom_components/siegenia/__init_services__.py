@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import voluptuous as vol
 from homeassistant.components import persistent_notification
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import slugify as _slug
@@ -21,6 +23,35 @@ from .const import (
 )
 from .cover import SiegeniaWindowCover
 from .device_registry import async_merge_devices
+
+
+def _single_entity_id(value: Any) -> str:
+    """Accept a field or standard HA target containing exactly one entity."""
+    entity_ids = cv.entity_ids(value)
+    if len(entity_ids) != 1:
+        raise vol.Invalid("Select exactly one entity.")
+    return entity_ids[0]
+
+
+_ENTITY_SCHEMA = vol.Schema({vol.Required("entity_id"): _single_entity_id})
+_MODE_SCHEMA = _ENTITY_SCHEMA.extend({vol.Required("mode"): cv.string})
+_CONNECTION_SCHEMA = _ENTITY_SCHEMA.extend({
+    vol.Optional(CONF_HOST): vol.All(cv.string, vol.Length(min=1)),
+    vol.Optional(CONF_PORT): cv.port,
+    vol.Optional(CONF_WS_PROTOCOL): vol.In(("ws", "wss")),
+    # Preserve the explicit actionable error directing credential changes to UI.
+    vol.Optional(CONF_USERNAME): cv.string,
+    vol.Optional(CONF_PASSWORD): cv.string,
+})
+_CLOCK_SCHEMA = _ENTITY_SCHEMA.extend({vol.Optional("timezone"): cv.string})
+_TIMER_SCHEMA = _ENTITY_SCHEMA.extend({vol.Required("duration"): vol.Any(int, str)})
+_CLEANUP_SCHEMA = vol.Schema({vol.Optional("entity_id"): _single_entity_id})
+_REPAIR_SCHEMA = vol.Schema({
+    vol.Optional("rename_entity_ids", default=False): cv.boolean,
+    vol.Optional("dry_run", default=True): cv.boolean,
+    vol.Optional("only_suffix_none", default=True): cv.boolean,
+    vol.Optional("scheme", default="device_entity"): vol.In(("device_entity", "brand_type_place")),
+})
 
 
 def _cover_for_call(hass: HomeAssistant, call: ServiceCall) -> SiegeniaWindowCover:
@@ -90,8 +121,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         )
         await coordinator.async_request_refresh()
 
-    hass.services.async_register(DOMAIN, "set_mode", _handle_set_mode)
-    hass.services.async_register(DOMAIN, "set_connection", _handle_set_connection)
+    hass.services.async_register(DOMAIN, "set_mode", _handle_set_mode, schema=_MODE_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_connection", _handle_set_connection, schema=_CONNECTION_SCHEMA)
 
     async def _cleanup_devices(call: ServiceCall) -> None:
         """Merge duplicate devices for a specific entry and remove empty leftovers.
@@ -118,7 +149,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         serial = entry.data.get(CONF_SERIAL) if entry else None
         await async_merge_devices(hass, target_entry_id, serial=serial, host=host)
 
-    hass.services.async_register(DOMAIN, "cleanup_devices", _cleanup_devices)
+    hass.services.async_register(DOMAIN, "cleanup_devices", _cleanup_devices, schema=_CLEANUP_SCHEMA)
 
     async def _reboot(call: ServiceCall) -> None:
         await _wrap_entity(call, "reboot_device")
@@ -129,9 +160,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     async def _renew(call: ServiceCall) -> None:
         await _wrap_entity(call, "renew_cert")
 
-    hass.services.async_register(DOMAIN, "reboot_device", _reboot)
-    hass.services.async_register(DOMAIN, "reset_device", _reset)
-    hass.services.async_register(DOMAIN, "renew_cert", _renew)
+    hass.services.async_register(DOMAIN, "reboot_device", _reboot, schema=_ENTITY_SCHEMA)
+    hass.services.async_register(DOMAIN, "reset_device", _reset, schema=_ENTITY_SCHEMA)
+    hass.services.async_register(DOMAIN, "renew_cert", _renew, schema=_ENTITY_SCHEMA)
 
     async def _sync_clock(call: ServiceCall) -> None:
         from homeassistant.util import (
@@ -159,17 +190,26 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         )
         await coordinator.async_request_refresh()
 
-    hass.services.async_register(DOMAIN, "sync_clock", _sync_clock)
+    hass.services.async_register(DOMAIN, "sync_clock", _sync_clock, schema=_CLOCK_SCHEMA)
 
     def _parse_duration(text: object) -> tuple[int, int]:
-        # Accept minutes as integer or HH:MM
-        text = str(text).strip()
-        if ":" in text:
-            hh, mm = text.split(":", 1)
-            return int(hh), int(mm)
-        # minutes-only
-        mins = int(text)
-        return mins // 60, mins % 60
+        """Accept nonnegative whole minutes or hours with a 0-59 minute field."""
+        value = str(text).strip()
+        try:
+            if ":" in value:
+                hours_text, minutes_text = value.split(":", 1)
+                hours, minutes = int(hours_text), int(minutes_text)
+                if hours < 0 or not 0 <= minutes < 60:
+                    raise ValueError
+                return hours, minutes
+            total_minutes = int(value)
+            if total_minutes < 0:
+                raise ValueError
+            return divmod(total_minutes, 60)
+        except ValueError as err:
+            raise ServiceValidationError(
+                "Duration must be nonnegative whole minutes or HH:MM with minutes from 00 to 59."
+            ) from err
 
     async def _timer_start(call: ServiceCall) -> None:
         duration = call.data.get("duration")
@@ -202,9 +242,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         )
         await coordinator.async_request_refresh()
 
-    hass.services.async_register(DOMAIN, "timer_start", _timer_start)
-    hass.services.async_register(DOMAIN, "timer_stop", _timer_stop)
-    hass.services.async_register(DOMAIN, "timer_set_duration", _timer_set_duration)
+    hass.services.async_register(DOMAIN, "timer_start", _timer_start, schema=_TIMER_SCHEMA)
+    hass.services.async_register(DOMAIN, "timer_stop", _timer_stop, schema=_ENTITY_SCHEMA)
+    hass.services.async_register(DOMAIN, "timer_set_duration", _timer_set_duration, schema=_TIMER_SCHEMA)
 
     async def _repair_names(call: ServiceCall) -> None:
         """Repair entity names and (optionally) entity_ids for this integration.
@@ -315,4 +355,4 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         except Exception:
             pass
 
-    hass.services.async_register(DOMAIN, "repair_names", _repair_names)
+    hass.services.async_register(DOMAIN, "repair_names", _repair_names, schema=_REPAIR_SCHEMA)
