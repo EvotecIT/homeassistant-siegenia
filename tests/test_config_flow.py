@@ -208,6 +208,17 @@ async def test_options_flow_uses_framework_config_entry(hass, config_entry_data)
     assert result["type"] == "form"
     assert result["step_id"] == "general"
 
+    # Individually valid values can still contradict the slider ordering.
+    invalid_options = result["data_schema"]({})
+    invalid_options[CONF_SLIDER_GAP_MAX] = 60
+    invalid_options[CONF_SLIDER_CWOL_MAX] = 50
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input=invalid_options
+    )
+    assert result["type"] == "form"
+    assert result["errors"]["base"] == "invalid_thresholds"
+    assert not entry.options
+
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         user_input={
@@ -231,3 +242,35 @@ async def test_options_flow_uses_framework_config_entry(hass, config_entry_data)
     )
     assert result["type"] == "create_entry"
     assert entry.options[CONF_PREVENT_OPENING] is True
+
+    reopened = await hass.config_entries.options.async_init(entry.entry_id)
+    reopened = await hass.config_entries.options.async_configure(
+        reopened["flow_id"], user_input={"next_step_id": "general"}
+    )
+    defaults = reopened["data_schema"]({})
+    assert defaults[CONF_POLL_INTERVAL] == 10
+    assert defaults[CONF_HEARTBEAT_INTERVAL] == 20
+
+
+async def test_connection_options_update_the_selected_entry(hass, config_entry_data, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    entry = MockConfigEntry(domain=DOMAIN, data=config_entry_data, title="Siegenia Test")
+    entry.add_to_hass(hass)
+    reload_entry = AsyncMock(return_value=True)
+    monkeypatch.setattr(hass.config_entries, "async_reload", reload_entry)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input={"next_step_id": "connection"}
+    )
+    assert result["type"] == "form"
+    options = result["data_schema"]({"password": "new-password"})
+    options["host"] = "192.0.2.22"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input=options
+    )
+    assert result["type"] == "abort"
+    assert result["reason"] == "reconfigured"
+    assert entry.data["host"] == "192.0.2.22"
+    assert entry.data["password"] == "new-password"
+    reload_entry.assert_awaited_once_with(entry.entry_id)

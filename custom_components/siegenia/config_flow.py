@@ -194,26 +194,25 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         return await self.async_step_general()
 
     async def async_step_general(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
+        entry = self.hass.config_entries.async_get_entry(self.handler)
+        assert entry is not None
         data = {
-            CONF_POLL_INTERVAL: self.config_entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
-            CONF_HEARTBEAT_INTERVAL: self.config_entry.data.get(CONF_HEARTBEAT_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL),
-            CONF_ENABLE_POSITION_SLIDER: self.config_entry.options.get(CONF_ENABLE_POSITION_SLIDER, True),
-            CONF_ENABLE_OPEN_COUNT: self.config_entry.options.get(CONF_ENABLE_OPEN_COUNT, True),
-            CONF_ENABLE_STATE_SENSOR: self.config_entry.options.get(CONF_ENABLE_STATE_SENSOR, True),
-            CONF_DEBUG: self.config_entry.options.get(CONF_DEBUG, False),
-            CONF_INFORMATIONAL: self.config_entry.options.get(CONF_INFORMATIONAL, False),
-            CONF_WARNING_NOTIFICATIONS: self.config_entry.options.get(CONF_WARNING_NOTIFICATIONS, True),
-            CONF_WARNING_EVENTS: self.config_entry.options.get(CONF_WARNING_EVENTS, True),
-            CONF_ENABLE_BUTTONS: self.config_entry.options.get(CONF_ENABLE_BUTTONS, False),
-            CONF_MOTION_INTERVAL: self.config_entry.options.get(CONF_MOTION_INTERVAL, DEFAULT_MOTION_INTERVAL),
-            CONF_IDLE_INTERVAL: self.config_entry.options.get(CONF_IDLE_INTERVAL, DEFAULT_IDLE_INTERVAL),
-            CONF_PREVENT_OPENING: self.config_entry.options.get(CONF_PREVENT_OPENING, DEFAULT_PREVENT_OPENING),
-            CONF_SLIDER_GAP_MAX: self.config_entry.options.get(CONF_SLIDER_GAP_MAX, DEFAULT_GAP_MAX),
-            CONF_SLIDER_CWOL_MAX: self.config_entry.options.get(CONF_SLIDER_CWOL_MAX, DEFAULT_CWOL_MAX),
-            CONF_SLIDER_STOP_OVER_DISPLAY: self.config_entry.options.get(CONF_SLIDER_STOP_OVER_DISPLAY, DEFAULT_STOP_OVER_DISPLAY),
+            CONF_POLL_INTERVAL: entry.options.get(CONF_POLL_INTERVAL, entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)),
+            CONF_HEARTBEAT_INTERVAL: entry.options.get(CONF_HEARTBEAT_INTERVAL, entry.data.get(CONF_HEARTBEAT_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL)),
+            CONF_ENABLE_POSITION_SLIDER: entry.options.get(CONF_ENABLE_POSITION_SLIDER, True),
+            CONF_ENABLE_OPEN_COUNT: entry.options.get(CONF_ENABLE_OPEN_COUNT, True),
+            CONF_ENABLE_STATE_SENSOR: entry.options.get(CONF_ENABLE_STATE_SENSOR, True),
+            CONF_DEBUG: entry.options.get(CONF_DEBUG, False),
+            CONF_INFORMATIONAL: entry.options.get(CONF_INFORMATIONAL, False),
+            CONF_WARNING_NOTIFICATIONS: entry.options.get(CONF_WARNING_NOTIFICATIONS, True),
+            CONF_WARNING_EVENTS: entry.options.get(CONF_WARNING_EVENTS, True),
+            CONF_ENABLE_BUTTONS: entry.options.get(CONF_ENABLE_BUTTONS, False),
+            CONF_MOTION_INTERVAL: entry.options.get(CONF_MOTION_INTERVAL, DEFAULT_MOTION_INTERVAL),
+            CONF_IDLE_INTERVAL: entry.options.get(CONF_IDLE_INTERVAL, DEFAULT_IDLE_INTERVAL),
+            CONF_PREVENT_OPENING: entry.options.get(CONF_PREVENT_OPENING, DEFAULT_PREVENT_OPENING),
+            CONF_SLIDER_GAP_MAX: entry.options.get(CONF_SLIDER_GAP_MAX, DEFAULT_GAP_MAX),
+            CONF_SLIDER_CWOL_MAX: entry.options.get(CONF_SLIDER_CWOL_MAX, DEFAULT_CWOL_MAX),
+            CONF_SLIDER_STOP_OVER_DISPLAY: entry.options.get(CONF_SLIDER_STOP_OVER_DISPLAY, DEFAULT_STOP_OVER_DISPLAY),
         }
 
         schema = vol.Schema(
@@ -249,8 +248,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(step_id="general", data_schema=schema)
 
     async def async_step_connection(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        entry = self.hass.config_entries.async_get_entry(self.handler)
+        assert entry is not None
         # Allow changing connection params + credentials
-        d = self.config_entry.data
+        d = entry.data
         if user_input is None:
             schema = vol.Schema(
                 {
@@ -267,7 +268,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_show_form(step_id="connection", data_schema=schema)
 
         # Update entry.data and reload
-        new_data = dict(self.config_entry.data)
+        new_data = dict(entry.data)
         new_data.update(
             {
                 CONF_HOST: user_input[CONF_HOST],
@@ -282,6 +283,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         )
         if not new_data.get(CONF_AUTO_DISCOVER, False):
             new_data[CONF_EXTENDED_DISCOVERY] = False
-        self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
-        await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+        self.hass.config_entries.async_update_entry(entry, data=new_data)
+        await self.hass.config_entries.async_reload(entry.entry_id)
         return self.async_abort(reason="reconfigured")

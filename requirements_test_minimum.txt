@@ -1,0 +1,4 @@
+-r requirements_test.txt
+homeassistant==2024.8.0
+# HA 2024.8's ACME client uses ComparableX509, removed in josepy 2.
+josepy<2
