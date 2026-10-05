@@ -43,7 +43,7 @@ async def test_set_connection_updates_host(hass, setup_integration):
 
 async def test_handle_connection_error_rediscovery(hass, setup_integration):
     entry = setup_integration
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     coordinator.auto_discover = True
     coordinator.serial = "00112233"
     coordinator._rediscovery_backoff = 0  # noqa: SLF001
@@ -59,7 +59,7 @@ async def test_handle_connection_error_rediscovery(hass, setup_integration):
 
 async def test_issue_registry_raise_and_clear(hass, setup_integration):
     entry = setup_integration
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     await coordinator._raise_issue()  # noqa: SLF001
     issue = ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_UNREACHABLE)
     assert issue is not None

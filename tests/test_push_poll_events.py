@@ -3,7 +3,7 @@ import asyncio
 
 async def test_push_slows_poll_and_fires_event(hass, setup_integration):
     entry = setup_integration
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
 
     # Initially default interval
     default_int = coordinator._default_interval  # noqa: SLF001

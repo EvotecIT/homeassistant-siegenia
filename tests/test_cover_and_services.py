@@ -26,7 +26,7 @@ async def test_cover_commands(hass, setup_integration):
 
     # Verify client calls via coordinator
     entry = setup_integration
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     client = coordinator.client
     client.open_close.assert_any_call(0, "OPEN")
     client.open_close.assert_any_call(0, "CLOSE")
@@ -37,7 +37,7 @@ async def test_set_position_maps_to_stop_over(hass, setup_integration):
     eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
     await hass.services.async_call("cover", "set_cover_position", {ATTR_ENTITY_ID: eid, "position": 50}, blocking=True)
     entry = setup_integration
-    client = hass.data[entry.domain][entry.entry_id].client
+    client = entry.runtime_data.client
     client.open_close.assert_any_call(0, "STOP_OVER")
 
 
@@ -46,7 +46,7 @@ async def test_integration_services(hass, setup_integration):
 
     # set_mode service
     await hass.services.async_call("siegenia", "set_mode", {"entity_id": eid, "mode": "GAP_VENT"}, blocking=True)
-    client = hass.data[setup_integration.domain][setup_integration.entry_id].client
+    client = setup_integration.runtime_data.client
     client.open_close.assert_any_call(0, "GAP_VENT")
 
     # maintenance services
@@ -101,14 +101,14 @@ async def test_prevent_opening_blocks_open(hass, mock_client, config_entry_data)
         {"entity_id": cover_eid, "mode": CMD_CLOSE_WO_LOCK},
         blocking=True,
     )
-    client = hass.data[entry.domain][entry.entry_id].client
+    client = entry.runtime_data.client
     client.open_close.assert_any_call(0, CMD_CLOSE)
     client.open_close.assert_any_call(0, CMD_CLOSE_WO_LOCK)
 
 
 async def test_command_event_and_logbook_include_context(hass, setup_integration, monkeypatch):
     entry = setup_integration
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     coordinator.informational_logging = True
     cover_eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
 
@@ -175,7 +175,7 @@ async def test_command_event_and_logbook_include_context(hass, setup_integration
 
 async def test_blocked_command_emits_blocked_event(hass, setup_integration):
     entry = setup_integration
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     coordinator.prevent_opening = True
     cover_eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
 
@@ -195,7 +195,7 @@ async def test_blocked_command_emits_blocked_event(hass, setup_integration):
 
 async def test_offline_command_raises_home_assistant_error(hass, setup_integration):
     entry = setup_integration
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     coordinator.client.open_close.side_effect = SiegeniaError("Not connected")
     cover_eid = next(
         state.entity_id
@@ -214,7 +214,7 @@ async def test_offline_command_raises_home_assistant_error(hass, setup_integrati
 
 async def test_entity_unavailable_during_outage_and_recovers(hass, setup_integration):
     entry = setup_integration
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     coordinator.auto_discover = False
     cover_eid = next(
         state.entity_id

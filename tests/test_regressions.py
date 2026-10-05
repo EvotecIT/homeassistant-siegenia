@@ -37,7 +37,7 @@ async def test_close_wo_lock_mapping(hass, setup_integration):
         {ATTR_ENTITY_ID: cover_eid, "position": 30},
         blocking=True,
     )
-    client = hass.data[entry.domain][entry.entry_id].client
+    client = entry.runtime_data.client
     client.open_close.assert_any_call(0, CMD_CLOSE_WO_LOCK)
 
     await hass.services.async_call(
@@ -52,7 +52,7 @@ async def test_close_wo_lock_mapping(hass, setup_integration):
 async def test_unknown_state_not_closed(hass, setup_integration):
     entry = setup_integration
     cover_eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     coordinator.async_set_updated_data({"data": {"states": {"0": "MOVING"}}})
     await hass.async_block_till_done()
 
@@ -102,7 +102,7 @@ async def test_options_override_intervals(hass, mock_client, config_entry_data, 
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     assert coordinator.update_interval == timedelta(seconds=12)
     assert coordinator.heartbeat_interval == 33
 

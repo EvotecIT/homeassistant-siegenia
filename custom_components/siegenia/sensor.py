@@ -5,16 +5,16 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .models import SiegeniaConfigEntry
 from .const import DOMAIN, resolve_model, STATE_TO_LOWER
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+    coordinator = entry.runtime_data
     serial = coordinator.device_serial()
     entities = []
     if entry.options.get("enable_state_sensor", True):
@@ -35,7 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 class _BaseSiegeniaEntity(CoordinatorEntity):
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
+    def __init__(self, coordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial
@@ -220,7 +220,7 @@ class SiegeniaOpenCountSensor(_BaseSiegeniaEntity, RestoreEntity, SensorEntity):
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     # Keep unit None for LTS compatibility
 
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
+    def __init__(self, coordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator, entry, serial)
         self._count: int = 0
         self._last_was_open = False

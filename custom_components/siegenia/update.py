@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 from homeassistant.components.update import UpdateEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .models import SiegeniaConfigEntry
 from .const import DOMAIN, device_configuration_url, resolve_model
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+    coordinator = entry.runtime_data
     async_add_entities([SiegeniaFirmwareUpdate(coordinator, entry)])
 
 
@@ -20,7 +20,7 @@ class SiegeniaFirmwareUpdate(CoordinatorEntity, UpdateEntity):
     _attr_translation_key = "firmware"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator, entry: SiegeniaConfigEntry) -> None:
         super().__init__(coordinator)
         self._entry = entry
         serial = coordinator.device_serial()

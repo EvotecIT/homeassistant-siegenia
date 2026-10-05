@@ -278,7 +278,7 @@ async def test_connection_options_update_the_selected_entry(hass, config_entry_d
 
 async def test_saved_general_options_reload_the_running_entry(hass, setup_integration):
     entry = setup_integration
-    previous = hass.data[DOMAIN][entry.entry_id]
+    previous = entry.runtime_data
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], user_input={"next_step_id": "general"}
@@ -290,7 +290,7 @@ async def test_saved_general_options_reload_the_running_entry(hass, setup_integr
         result["flow_id"], user_input=options
     )
     await hass.async_block_till_done()
-    current = hass.data[DOMAIN][entry.entry_id]
+    current = entry.runtime_data
     assert result["type"] == "create_entry"
     assert current is not previous
     assert previous._stopping is True
@@ -300,4 +300,4 @@ async def test_saved_general_options_reload_the_running_entry(hass, setup_integr
     # Host/identity data updates must not cause a second reload from this listener.
     hass.config_entries.async_update_entry(entry, data={**entry.data, "host": "192.0.2.33"})
     await hass.async_block_till_done()
-    assert hass.data[DOMAIN][entry.entry_id] is current
+    assert entry.runtime_data is current

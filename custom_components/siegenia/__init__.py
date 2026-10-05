@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from datetime import timedelta
 
-from typing import TYPE_CHECKING
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -44,18 +42,10 @@ from .const import (
 from .coordinator import SiegeniaDataUpdateCoordinator
 from .device_registry import async_merge_devices
 from .__init_services__ import async_setup_services
+from .models import SiegeniaConfigEntry
 
 
-# Compatible type alias across HA versions (ConfigEntry may be non-generic)
-if TYPE_CHECKING:
-    # During type checking use the generic form
-    from homeassistant.config_entries import ConfigEntry as _Cfg
-    SiegeniaConfigEntry = _Cfg[SiegeniaDataUpdateCoordinator]  # type: ignore[misc]
-else:  # runtime: fall back to non-parameterized
-    SiegeniaConfigEntry = ConfigEntry  # type: ignore[assignment]
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> bool:
     data = entry.data
     from .const import DEFAULT_POLL_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL
 
@@ -119,7 +109,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     configured_options = dict(entry.options)
 
     async def _async_options_updated(
-        hass: HomeAssistant, updated_entry: ConfigEntry
+        hass: HomeAssistant, updated_entry: SiegeniaConfigEntry
     ) -> None:
         """Apply changed options without reloading on discovery data updates."""
         nonlocal configured_options
@@ -146,7 +136,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_finish_setup(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: SiegeniaConfigEntry,
     coordinator: SiegeniaDataUpdateCoordinator,
 ) -> None:
     """Finish setup after early shutdown ownership has been registered."""
@@ -181,7 +171,7 @@ async def _async_finish_setup(
             except Exception as exc:  # noqa: BLE001
                 coordinator.logger.debug("Device migration skipped: %s", exc)
 
-    hass.data.setdefault(entry.domain, {})[entry.entry_id] = coordinator
+    entry.runtime_data = coordinator
 
     # Register services once per HA instance using a marker
     marker = f"{DOMAIN}_services_registered"
@@ -207,14 +197,11 @@ async def _async_finish_setup(
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok:
-        hass.data[entry.domain].pop(entry.entry_id)
-    return unload_ok
+async def async_unload_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> bool:
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def _async_migrate_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def _async_migrate_devices(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> None:
     serial = entry.data.get(CONF_SERIAL) or entry.unique_id
     host = entry.data.get(CONF_HOST)
     await async_merge_devices(hass, entry.entry_id, serial=serial, host=host)

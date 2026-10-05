@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .models import SiegeniaConfigEntry
 from .const import (
     DOMAIN,
     CONF_PREVENT_OPENING,
@@ -15,8 +15,8 @@ from .const import (
 )
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+    coordinator = entry.runtime_data
     serial = coordinator.device_serial()
     async_add_entities([SiegeniaOpeningLockSwitch(coordinator, entry, serial)])
 
@@ -27,7 +27,7 @@ class SiegeniaOpeningLockSwitch(CoordinatorEntity, SwitchEntity):
     _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:lock"
 
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
+    def __init__(self, coordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial

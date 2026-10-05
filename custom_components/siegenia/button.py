@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .models import SiegeniaConfigEntry
 from .const import (
     DOMAIN,
     DEVICE_TYPE_MAP,
@@ -30,11 +30,11 @@ _ACTIONS = [
 ]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
     # Respect option: buttons disabled by default
     if not entry.options.get(CONF_ENABLE_BUTTONS, False):
         return
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     serial = coordinator.device_serial()
     entities: list[ButtonEntity] = []
     for key, mode in _ACTIONS:
@@ -43,7 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str, key: str, mode: str) -> None:
+    def __init__(self, coordinator, entry: SiegeniaConfigEntry, serial: str, key: str, mode: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial

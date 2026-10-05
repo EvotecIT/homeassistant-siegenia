@@ -7,12 +7,11 @@ from homeassistant.components.cover import (
     CoverEntity,
     CoverEntityFeature,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import SiegeniaConfigEntry
+from .models import SiegeniaConfigEntry
 from .const import (
     CMD_CLOSE,
     DOMAIN,
@@ -32,8 +31,8 @@ from .const import (
 )
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+    coordinator = entry.runtime_data
     known_sashes: set[int] = set()
 
     def _current_sashes() -> list[int]:

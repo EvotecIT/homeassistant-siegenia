@@ -24,6 +24,18 @@ tests exercise connection tasks, discovery tasks, push-idle and motion timers,
 and late updates after unload. Unit tests do not establish device-connected
 shutdown or full quality qualification.
 
+Each config entry owns its coordinator through typed `runtime_data`. Platforms
+and diagnostics use that same object; successful unload stops its background
+work, while a failed platform unload retains the running coordinator. Device
+registry migration uses HA's supported registry helpers on both the minimum
+and current test stacks.
+
+Diagnostics redact credentials, host address, device identifiers, names, and
+location fields while retaining model, firmware, and operating state. Tests
+verify that redaction leaves the runtime snapshot and saved settings unchanged.
+Review downloaded diagnostics before sharing them; source tests do not establish
+privacy for every possible firmware payload.
+
 Merged pull requests use the repository release workflow; see the
 [release guide](RELEASING.md) for maintainer procedures.
 

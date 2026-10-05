@@ -4,17 +4,26 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.components.diagnostics import async_redact_data
-from homeassistant.config_entries import ConfigEntry
 
-from .const import CONF_PASSWORD, CONF_USERNAME, DOMAIN
+from .models import SiegeniaConfigEntry
+from .const import CONF_HOST, CONF_PASSWORD, CONF_SERIAL, CONF_USERNAME
 
-TO_REDACT = {CONF_USERNAME, CONF_PASSWORD}
+TO_REDACT = {
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    CONF_HOST,
+    CONF_SERIAL,
+    "serialnr",
+    "devicename",
+    "devicelocation",
+    "devicefloor",
+}
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ConfigEntry
+    hass: HomeAssistant, entry: SiegeniaConfigEntry
 ) -> dict[str, Any]:
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     return async_redact_data(
         {
             "entry": {
@@ -26,4 +35,3 @@ async def async_get_config_entry_diagnostics(
         },
         TO_REDACT,
     )
-
