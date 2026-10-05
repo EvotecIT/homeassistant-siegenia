@@ -119,8 +119,8 @@ async def test_failed_setup_disconnects_client(
     config_entry_data,
 ) -> None:
     monkeypatch.setattr(
-        "custom_components.siegenia.async_setup_services",
-        AsyncMock(side_effect=RuntimeError("service setup failed")),
+        hass.config_entries, "async_forward_entry_setups",
+        AsyncMock(side_effect=RuntimeError("platform setup failed")),
     )
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -143,7 +143,7 @@ async def test_cancelled_setup_disconnects_client(
     config_entry_data,
 ) -> None:
     monkeypatch.setattr(
-        "custom_components.siegenia.async_setup_services",
+        hass.config_entries, "async_forward_entry_setups",
         AsyncMock(side_effect=asyncio.CancelledError()),
     )
     entry = MockConfigEntry(

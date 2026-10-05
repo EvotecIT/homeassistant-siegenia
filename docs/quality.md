@@ -13,7 +13,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 | Rule | State | Evidence and next acceptance step |
 | --- | --- | --- |
-| action-setup | Gap | Services are registered after entry setup; move registration to integration setup and verify unavailable or invalid targets. |
+| action-setup | Partial | Actions register during integration setup before device connection. Tests cover unavailable covers and reject foreign or missing cleanup targets; complete parameter validation remains to qualify. |
 | appropriate-polling | Partial | Motion, idle, push, heartbeat, and rediscovery intervals exist; measure request budgets and concurrent-device behaviour. |
 | brands | Partial | Local `brand/` assets exist; verify rendered HACS/HA assets and applicable custom-integration requirements. |
 | common-modules | Partial | Bundled client and coordinator own shared behaviour; consolidate repeated device metadata only where it serves real platform consumers. |
@@ -47,7 +47,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | log-when-unavailable | Review | Exercise one disconnect/reconnect cycle and inspect logs for useful, non-repeating messages. |
 | parallel-updates | Gap | Platform concurrency limits are not explicitly declared; select and test limits against client serialization. |
 | reauthentication-flow | Partial | Reauthentication flow exists; test wrong credentials, successful replacement, and unchanged identity. |
-| test-coverage | Gap | Current measured coverage is 79%; full flow coverage and above 95% module coverage remain targets. |
+| test-coverage | Gap | Current measured coverage is 80%; full flow coverage and above 95% module coverage remain targets. |
 
 ## Gold
 
@@ -85,9 +85,9 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 ## Qualification beyond the rule ledger
 
-- [x] 55 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 67 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
-- [ ] Qualify dashboard icon packaging: the optional static path currently looks outside the HACS component directory and skips registration during tests.
+- [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.
 - [ ] Record release version, commit, artifact identity, environment, and evidence date.
 

@@ -10,6 +10,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 
 from .__init_services__ import async_setup_services
 from .const import (
@@ -45,6 +46,17 @@ from .const import (
 from .coordinator import SiegeniaDataUpdateCoordinator
 from .device_registry import async_merge_devices
 from .models import SiegeniaConfigEntry
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register integration actions and installed dashboard icons once."""
+    await async_setup_services(hass)
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(
+            "/siegenia-static/icons", str(Path(__file__).parent / "icons"), True,
+        ),
+    ])
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> bool:
@@ -174,29 +186,6 @@ async def _async_finish_setup(
                 coordinator.logger.debug("Device migration skipped: %s", exc)
 
     entry.runtime_data = coordinator
-
-    # Register services once per HA instance using a marker
-    marker = f"{DOMAIN}_services_registered"
-    if not hass.data.get(marker):
-        await async_setup_services(hass)
-        hass.data[marker] = True
-
-    # Serve bundled dashboard icons so users can reference them without copying to /local.
-    # Integration branding is provided natively via custom_components/siegenia/brand/.
-    static_marker = f"{DOMAIN}_static_paths"
-    if not hass.data.get(static_marker):
-        try:
-            import os
-            testing = os.environ.get("PYTEST_CURRENT_TEST") is not None
-            icons_path = Path(__file__).resolve().parents[2] / "assets" / "icons"
-            if icons_path.exists() and not testing:
-                await hass.http.async_register_static_paths([
-                    StaticPathConfig("/siegenia-static/icons", str(icons_path), True),
-                ])
-                hass.data[static_marker] = True
-        except Exception:  # noqa: BLE001
-            # If HTTP component is not ready or API changed, skip silently; HA branding still works natively.
-            pass
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
