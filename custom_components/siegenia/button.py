@@ -1,24 +1,24 @@
 from __future__ import annotations
 
-from typing import Any
-
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .models import SiegeniaConfigEntry
 from .const import (
-    DOMAIN,
-    DEVICE_TYPE_MAP,
-    CONF_ENABLE_BUTTONS,
     CMD_CLOSE,
     CMD_CLOSE_WO_LOCK,
     CMD_STOP,
+    CONF_ENABLE_BUTTONS,
+    DEVICE_TYPE_MAP,
+    DOMAIN,
     STATE_GAP_VENT,
     STATE_OPEN,
     STATE_STOP_OVER,
 )
+from .coordinator import SiegeniaDataUpdateCoordinator
+from .models import SiegeniaConfigEntry
 
 _ACTIONS = [
     ("open", STATE_OPEN),
@@ -30,7 +30,7 @@ _ACTIONS = [
 ]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     # Respect option: buttons disabled by default
     if not entry.options.get(CONF_ENABLE_BUTTONS, False):
         return
@@ -42,8 +42,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, asy
     async_add_entities(entities)
 
 
-class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
-    def __init__(self, coordinator, entry: SiegeniaConfigEntry, serial: str, key: str, mode: str) -> None:
+class SiegeniaModeButton(CoordinatorEntity[SiegeniaDataUpdateCoordinator], ButtonEntity):
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str, key: str, mode: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial

@@ -1,27 +1,31 @@
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.entity import DeviceInfo
 
-from .models import SiegeniaConfigEntry
 from .const import (
     CMD_STOP,
-    DOMAIN,
-    SELECT_OPTIONS,
-    STATE_TO_SELECT,
-    STATE_MOVING,
-    OPTION_TO_CMD,
     CMD_TO_OPTION,
+    DOMAIN,
+    OPTION_TO_CMD,
+    SELECT_OPTIONS,
+    STATE_MOVING,
+    STATE_TO_SELECT,
 )
+from .coordinator import SiegeniaDataUpdateCoordinator
+from .models import SiegeniaConfigEntry
 
 # Friendly labels for options (fallback English)
 # We expose raw options (OPEN/CLOSE/…) and let HA translate via
 # translations: entity.select.mode.state.*
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
     known_sashes: set[int] = set()
 
@@ -46,13 +50,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, asy
     entry.async_on_unload(coordinator.async_add_listener(_add_missing))
 
 
-class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
+class SiegeniaModeSelect(CoordinatorEntity[SiegeniaDataUpdateCoordinator], SelectEntity):
     _attr_has_entity_name = True
     # Raw options; frontend shows translated labels
     _attr_options = SELECT_OPTIONS
     _attr_translation_key = "mode"
 
-    def __init__(self, coordinator, entry: SiegeniaConfigEntry, sash: int) -> None:
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, sash: int) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._sash = sash
@@ -65,7 +69,7 @@ class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
         params = self.coordinator.data or {}
         data = params.get("data") or {}
         state = (data.get("states") or {}).get(str(self._sash))
-        raw = STATE_TO_SELECT.get(state)
+        raw = STATE_TO_SELECT.get(state) if isinstance(state, str) else None
         # If device reports MOVING or an unmapped state, keep last commanded option
         if raw is None or state == STATE_MOVING:
             try:
@@ -77,7 +81,7 @@ class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
                         if last_opt in self._attr_options:
                             return last_opt
                 stable = self.coordinator.get_last_stable_state(self._sash)
-                fallback = STATE_TO_SELECT.get(stable)
+                fallback = STATE_TO_SELECT.get(stable) if stable is not None else None
                 if fallback in self._attr_options:
                     return fallback
             except Exception:
@@ -97,7 +101,7 @@ class SiegeniaModeSelect(CoordinatorEntity, SelectEntity):
         await self.coordinator.async_request_refresh()
 
     @property
-    def extra_state_attributes(self) -> dict | None:
+    def extra_state_attributes(self) -> dict[str, Any] | None:
         try:
             params = self.coordinator.data or {}
             data = params.get("data") or {}

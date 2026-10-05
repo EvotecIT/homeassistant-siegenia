@@ -1,18 +1,22 @@
 from __future__ import annotations
 
+from typing import Any
+
+from homeassistant.components import persistent_notification
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import entity_registry as er, device_registry as dr
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import slugify as _slug
 
 from .const import (
-    DOMAIN,
     CONF_HOST,
+    CONF_PASSWORD,
     CONF_PORT,
-    CONF_WS_PROTOCOL,
     CONF_SERIAL,
     CONF_USERNAME,
-    CONF_PASSWORD,
+    CONF_WS_PROTOCOL,
+    DOMAIN,
     VALID_COMMANDS,
 )
 from .device_registry import async_merge_devices
@@ -25,10 +29,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         if mode not in VALID_COMMANDS:
             raise ServiceValidationError(f"Invalid mode '{mode}' for siegenia.set_mode")
         # Resolve entity to platform entity
-        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
+        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)
         if entity is None:
             return
-        coordinator = entity.coordinator  # type: ignore[attr-defined]
+        coordinator = entity.coordinator
         sash = getattr(entity, "_sash", 0)
         await coordinator.async_send_command(
             sash,
@@ -41,7 +45,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def _handle_set_connection(call: ServiceCall) -> None:
         entity_id: str = call.data["entity_id"]
-        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
+        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)
         if entity is None:
             raise ServiceValidationError(f"Entity {entity_id} not found for siegenia.set_connection")
         coordinator = getattr(entity, "coordinator", None)
@@ -70,12 +74,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Reload to apply new connection details cleanly
         await hass.config_entries.async_reload(entry.entry_id)
 
-    async def _wrap_entity(call: ServiceCall, coro_name: str):
+    async def _wrap_entity(call: ServiceCall, coro_name: str) -> None:
         entity_id: str = call.data["entity_id"]
-        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
+        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)
         if entity is None:
             return
-        coordinator = entity.coordinator  # type: ignore[attr-defined]
+        coordinator = entity.coordinator
         func = getattr(coordinator.client, coro_name)
         await coordinator.async_run_device_action(
             func(),
@@ -110,13 +114,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     hass.services.async_register(DOMAIN, "cleanup_devices", _cleanup_devices)
 
-    async def _reboot(call):
+    async def _reboot(call: ServiceCall) -> None:
         await _wrap_entity(call, "reboot_device")
 
-    async def _reset(call):
+    async def _reset(call: ServiceCall) -> None:
         await _wrap_entity(call, "reset_device")
 
-    async def _renew(call):
+    async def _renew(call: ServiceCall) -> None:
         await _wrap_entity(call, "renew_cert")
 
     hass.services.async_register(DOMAIN, "reboot_device", _reboot)
@@ -124,16 +128,18 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, "renew_cert", _renew)
 
     async def _sync_clock(call: ServiceCall) -> None:
-        from homeassistant.util import dt as dt_util  # local import to avoid startup overhead
+        from homeassistant.util import (
+            dt as dt_util,  # local import to avoid startup overhead
+        )
 
         entity_id: str = call.data["entity_id"]
         tz: str | None = call.data.get("timezone")
-        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
+        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)
         if entity is None:
             return
-        coordinator = entity.coordinator  # type: ignore[attr-defined]
+        coordinator = entity.coordinator
         now = dt_util.now()
-        payload = {
+        payload: dict[str, Any] = {
             "clock": {
                 "year": now.year,
                 "month": now.month,
@@ -152,7 +158,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     hass.services.async_register(DOMAIN, "sync_clock", _sync_clock)
 
-    def _parse_duration(text: str) -> tuple[int, int]:
+    def _parse_duration(text: object) -> tuple[int, int]:
         # Accept minutes as integer or HH:MM
         text = str(text).strip()
         if ":" in text:
@@ -166,10 +172,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         entity_id: str = call.data["entity_id"]
         duration = call.data.get("duration")
         h, m = _parse_duration(duration)
-        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
+        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)
         if entity is None:
             return
-        coordinator = entity.coordinator  # type: ignore[attr-defined]
+        coordinator = entity.coordinator
         await coordinator.async_set_device_params(
             {"timer": {"duration": {"hour": h, "minute": m}, "enabled": True}},
             action_name="start the timer",
@@ -178,10 +184,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def _timer_stop(call: ServiceCall) -> None:
         entity_id: str = call.data["entity_id"]
-        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
+        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)
         if entity is None:
             return
-        coordinator = entity.coordinator  # type: ignore[attr-defined]
+        coordinator = entity.coordinator
         await coordinator.async_set_device_params(
             {"timer": {"enabled": False}},
             action_name="stop the timer",
@@ -192,10 +198,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         entity_id: str = call.data["entity_id"]
         duration = call.data.get("duration")
         h, m = _parse_duration(duration)
-        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)  # type: ignore[index]
+        entity = hass.data["entity_components"]["cover"].get_entity(entity_id)
         if entity is None:
             return
-        coordinator = entity.coordinator  # type: ignore[attr-defined]
+        coordinator = entity.coordinator
         await coordinator.async_set_device_params(
             {"timer": {"duration": {"hour": h, "minute": m}}},
             action_name="set the timer duration",
@@ -311,7 +317,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         note = "\n".join(planned) if planned else "No issues found."
         title = "Siegenia: Name repair (dry-run)" if dry_run else f"Siegenia: Repaired {changed} entries"
         try:
-            hass.components.persistent_notification.async_create(note, title=title, notification_id="siegenia_repair_names")
+            persistent_notification.async_create(hass, note, title=title, notification_id="siegenia_repair_names")
         except Exception:
             pass
 

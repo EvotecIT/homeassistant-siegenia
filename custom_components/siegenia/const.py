@@ -1,3 +1,5 @@
+from typing import Any
+
 DOMAIN = "siegenia"
 
 DEFAULT_PORT = 443
@@ -188,10 +190,10 @@ MHS_MODEL_MAP = {
     (1, 0): "MHS400 Schema A",
 }
 
-def resolve_model(device_info: dict) -> str:
+def resolve_model(device_info: dict[str, Any]) -> str:
     """Resolve a friendly model string from device info."""
     t = device_info.get("type")
-    base = DEVICE_TYPE_MAP.get(t, t)
+    base = DEVICE_TYPE_MAP.get(t, str(t)) if isinstance(t, int) else str(t)
     if t == 6:  # MHS Family
         v = device_info.get("variant")
         sv = device_info.get("subvariant")

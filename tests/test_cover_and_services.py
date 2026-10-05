@@ -1,6 +1,6 @@
 import pytest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from homeassistant.core import Context, Event
 from homeassistant.exceptions import HomeAssistantError
@@ -231,3 +231,20 @@ async def test_entity_unavailable_during_outage_and_recovers(hass, setup_integra
     coordinator.client.get_device_params.return_value = successful_response
     await coordinator.async_refresh()
     assert hass.states.get(cover_eid).state != "unavailable"
+
+
+async def test_name_repair_reports_its_result(hass, setup_integration, monkeypatch):
+    """A completed repair dry run must show the user its report."""
+    notify = Mock()
+    monkeypatch.setattr(
+        "homeassistant.components.persistent_notification.async_create",
+        notify,
+    )
+    await hass.services.async_call(
+        DOMAIN, "repair_names", {"dry_run": True}, blocking=True,
+    )
+    notify.assert_called_once()
+    assert notify.call_args.args[0] is hass
+    assert isinstance(notify.call_args.args[1], str)
+    assert notify.call_args.kwargs["title"] == "Siegenia: Name repair (dry-run)"
+    assert notify.call_args.kwargs["notification_id"] == "siegenia_repair_names"

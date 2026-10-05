@@ -4,34 +4,37 @@ from typing import Any
 
 from homeassistant.components.cover import (
     ATTR_POSITION,
+    CoverDeviceClass,
     CoverEntity,
     CoverEntityFeature,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .models import SiegeniaConfigEntry
 from .const import (
     CMD_CLOSE,
-    DOMAIN,
-    STATE_MOVING,
-    state_to_position,
-    position_to_command,
-    resolve_model,
     CMD_CLOSE_WO_LOCK,
     CMD_STOP,
-    CONF_SLIDER_GAP_MAX,
     CONF_SLIDER_CWOL_MAX,
+    CONF_SLIDER_GAP_MAX,
     CONF_SLIDER_STOP_OVER_DISPLAY,
-    DEFAULT_GAP_MAX,
     DEFAULT_CWOL_MAX,
+    DEFAULT_GAP_MAX,
     DEFAULT_STOP_OVER_DISPLAY,
+    DOMAIN,
+    STATE_MOVING,
     device_configuration_url,
+    position_to_command,
+    resolve_model,
+    state_to_position,
 )
+from .coordinator import SiegeniaDataUpdateCoordinator
+from .models import SiegeniaConfigEntry
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
     known_sashes: set[int] = set()
 
@@ -56,14 +59,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, asy
     entry.async_on_unload(coordinator.async_add_listener(_add_missing))
 
 
-class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
+class SiegeniaWindowCover(CoordinatorEntity[SiegeniaDataUpdateCoordinator], CoverEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "window"
-    _attr_device_class = "window"
+    _attr_device_class = CoverDeviceClass.WINDOW
     _base_features = CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
     _with_slider = _base_features | CoverEntityFeature.SET_POSITION
 
-    def __init__(self, coordinator, entry: SiegeniaConfigEntry, sash: int = 0) -> None:
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, sash: int = 0) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._sash = sash
@@ -152,7 +155,7 @@ class SiegeniaWindowCover(CoordinatorEntity, CoverEntity):
         return True if last in {CMD_CLOSE, CMD_CLOSE_WO_LOCK} else None
 
     @property
-    def extra_state_attributes(self) -> dict | None:
+    def extra_state_attributes(self) -> dict[str, Any] | None:
         try:
             state = self._current_state()
             moving = state == STATE_MOVING

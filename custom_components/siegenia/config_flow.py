@@ -4,52 +4,51 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import SiegeniaClient, AuthenticationError
+from .api import AuthenticationError, SiegeniaClient
 from .const import (
+    CONF_AUTO_DISCOVER,
+    CONF_DEBUG,
+    CONF_ENABLE_BUTTONS,
+    CONF_ENABLE_OPEN_COUNT,
+    CONF_ENABLE_POSITION_SLIDER,
+    CONF_ENABLE_STATE_SENSOR,
+    CONF_EXTENDED_DISCOVERY,
     CONF_HEARTBEAT_INTERVAL,
     CONF_HOST,
+    CONF_IDLE_INTERVAL,
+    CONF_INFORMATIONAL,
+    CONF_MOTION_INTERVAL,
     CONF_PASSWORD,
     CONF_POLL_INTERVAL,
     CONF_PORT,
-    CONF_AUTO_DISCOVER,
-    CONF_EXTENDED_DISCOVERY,
+    CONF_PREVENT_OPENING,
+    CONF_SERIAL,
+    CONF_SLIDER_CWOL_MAX,
+    CONF_SLIDER_GAP_MAX,
+    CONF_SLIDER_STOP_OVER_DISPLAY,
     CONF_USERNAME,
+    CONF_VERIFY_SSL,
+    CONF_WARNING_EVENTS,
+    CONF_WARNING_NOTIFICATIONS,
+    CONF_WS_PROTOCOL,
+    DEFAULT_AUTO_DISCOVER,
+    DEFAULT_CWOL_MAX,
+    DEFAULT_EXTENDED_DISCOVERY,
+    DEFAULT_GAP_MAX,
     DEFAULT_HEARTBEAT_INTERVAL,
+    DEFAULT_IDLE_INTERVAL,
+    DEFAULT_MOTION_INTERVAL,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_PORT,
+    DEFAULT_PREVENT_OPENING,
+    DEFAULT_STOP_OVER_DISPLAY,
+    DEFAULT_VERIFY_SSL,
     DEFAULT_WS_PROTOCOL,
     DOMAIN,
-    CONF_WS_PROTOCOL,
-    CONF_VERIFY_SSL,
-    DEFAULT_VERIFY_SSL,
-    CONF_ENABLE_POSITION_SLIDER,
-    CONF_ENABLE_OPEN_COUNT,
-    CONF_ENABLE_STATE_SENSOR,
-    CONF_DEBUG,
-    CONF_INFORMATIONAL,
-    CONF_WARNING_NOTIFICATIONS,
-    CONF_WARNING_EVENTS,
-    CONF_SLIDER_GAP_MAX,
-    CONF_SLIDER_CWOL_MAX,
-    CONF_SLIDER_STOP_OVER_DISPLAY,
-    DEFAULT_GAP_MAX,
-    DEFAULT_CWOL_MAX,
-    DEFAULT_STOP_OVER_DISPLAY,
-    CONF_ENABLE_BUTTONS,
-    CONF_MOTION_INTERVAL,
-    CONF_IDLE_INTERVAL,
-    DEFAULT_MOTION_INTERVAL,
-    DEFAULT_IDLE_INTERVAL,
-    DEFAULT_AUTO_DISCOVER,
-    DEFAULT_EXTENDED_DISCOVERY,
-    CONF_SERIAL,
-    CONF_PREVENT_OPENING,
-    DEFAULT_PREVENT_OPENING,
 )
-
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
@@ -76,7 +75,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.OptionsFlow:
         return OptionsFlowHandler()
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
 
         if user_input is None:
@@ -125,17 +124,17 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         title = (info.get("data") or {}).get("devicename") or f"Siegenia {host}"
         return self.async_create_entry(title=title, data=data)
 
-    async def async_step_import(self, import_config: dict[str, Any]) -> FlowResult:  # For YAML import (not used)
+    async def async_step_import(self, import_config: dict[str, Any]) -> ConfigFlowResult:  # For YAML import (not used)
         return await self.async_step_user(import_config)
 
-    async def async_step_reauth(self, data: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_reauth(self, data: dict[str, Any] | None = None) -> ConfigFlowResult:
         # Store existing
-        self._reauth_entry = self.hass.config_entries.async_get_entry(self.context.get("entry_id"))
+        self._reauth_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         return await self.async_step_reauth_confirm()
 
-    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
-        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])  # type: ignore[index]
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         assert entry is not None
         if user_input is None:
             schema = vol.Schema(
@@ -183,7 +182,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         # Show a simple menu to pick what to configure
         if user_input is None:
             return self.async_show_menu(
@@ -193,7 +192,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # Fallback
         return await self.async_step_general()
 
-    async def async_step_general(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_general(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         entry = self.hass.config_entries.async_get_entry(self.handler)
         assert entry is not None
         data = {
@@ -247,7 +246,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(step_id="general", data_schema=schema)
 
-    async def async_step_connection(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_connection(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         entry = self.hass.config_entries.async_get_entry(self.handler)
         assert entry is not None
         # Allow changing connection params + credentials

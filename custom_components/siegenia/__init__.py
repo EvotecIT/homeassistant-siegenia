@@ -1,53 +1,55 @@
 from __future__ import annotations
 
-from pathlib import Path
+import asyncio
 from datetime import timedelta
+from pathlib import Path
 
+# Public import works on minimum and current HA; current HA omits a typed re-export.
+from homeassistant.components.http import StaticPathConfig  # type: ignore[attr-defined]
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-import asyncio
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .__init_services__ import async_setup_services
 from .const import (
-    DOMAIN,
+    CONF_AUTO_DISCOVER,
+    CONF_DEBUG,
+    CONF_EXTENDED_DISCOVERY,
     CONF_HEARTBEAT_INTERVAL,
+    CONF_HOST,
+    CONF_IDLE_INTERVAL,
+    CONF_INFORMATIONAL,
+    CONF_MOTION_INTERVAL,
     CONF_PASSWORD,
     CONF_POLL_INTERVAL,
     CONF_PORT,
+    CONF_PREVENT_OPENING,
+    CONF_SERIAL,
     CONF_USERNAME,
-    CONF_HOST,
-    CONF_AUTO_DISCOVER,
-    CONF_EXTENDED_DISCOVERY,
-    CONF_WS_PROTOCOL,
-    DEFAULT_WS_PROTOCOL,
     CONF_VERIFY_SSL,
-    DEFAULT_VERIFY_SSL,
+    CONF_WARNING_EVENTS,
+    CONF_WARNING_NOTIFICATIONS,
+    CONF_WS_PROTOCOL,
     DEFAULT_AUTO_DISCOVER,
     DEFAULT_EXTENDED_DISCOVERY,
-    CONF_SERIAL,
+    DEFAULT_IDLE_INTERVAL,
+    DEFAULT_MOTION_INTERVAL,
+    DEFAULT_PREVENT_OPENING,
+    DEFAULT_VERIFY_SSL,
+    DEFAULT_WS_PROTOCOL,
+    DOMAIN,
     MIGRATION_DEVICES_V2,
     PLATFORMS,
-    CONF_WARNING_NOTIFICATIONS,
-    CONF_WARNING_EVENTS,
-    CONF_DEBUG,
-    CONF_INFORMATIONAL,
-    CONF_MOTION_INTERVAL,
-    CONF_IDLE_INTERVAL,
-    DEFAULT_MOTION_INTERVAL,
-    DEFAULT_IDLE_INTERVAL,
-    CONF_PREVENT_OPENING,
-    DEFAULT_PREVENT_OPENING,
 )
 from .coordinator import SiegeniaDataUpdateCoordinator
 from .device_registry import async_merge_devices
-from .__init_services__ import async_setup_services
 from .models import SiegeniaConfigEntry
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> bool:
     data = entry.data
-    from .const import DEFAULT_POLL_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL
+    from .const import DEFAULT_HEARTBEAT_INTERVAL, DEFAULT_POLL_INTERVAL
 
     poll_interval = entry.options.get(CONF_POLL_INTERVAL, data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL))
     heartbeat_interval = entry.options.get(CONF_HEARTBEAT_INTERVAL, data.get(CONF_HEARTBEAT_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL))
@@ -76,8 +78,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> 
     # Advanced intervals
     motion_s = entry.options.get(CONF_MOTION_INTERVAL, DEFAULT_MOTION_INTERVAL)
     idle_s = entry.options.get(CONF_IDLE_INTERVAL, DEFAULT_IDLE_INTERVAL)
-    coordinator._motion_interval = timedelta(seconds=motion_s)  # type: ignore[attr-defined]
-    coordinator._idle_interval = timedelta(seconds=idle_s)      # type: ignore[attr-defined]
+    coordinator._motion_interval = timedelta(seconds=motion_s)
+    coordinator._idle_interval = timedelta(seconds=idle_s)
 
     async def _async_shutdown_coordinator() -> None:
         """Stop connections and background tasks owned by the coordinator."""
@@ -188,7 +190,9 @@ async def _async_finish_setup(
             testing = os.environ.get("PYTEST_CURRENT_TEST") is not None
             icons_path = Path(__file__).resolve().parents[2] / "assets" / "icons"
             if icons_path.exists() and not testing:
-                hass.http.register_static_path("/siegenia-static/icons", str(icons_path), cache_headers=True)  # type: ignore[attr-defined]
+                await hass.http.async_register_static_paths([
+                    StaticPathConfig("/siegenia-static/icons", str(icons_path), True),
+                ])
                 hass.data[static_marker] = True
         except Exception:  # noqa: BLE001
             # If HTTP component is not ready or API changed, skip silently; HA branding still works natively.

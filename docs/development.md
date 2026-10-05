@@ -49,3 +49,18 @@ The [Python library guide](python-library.md) includes direct-use examples; a
 Keep protocol notes and release procedures in docs. The README should introduce
 the integration, explain installation and first setup, and link to the relevant
 configuration, automation, and troubleshooting guides.
+
+## Strict typing
+
+The current-stable CI lane pins HA 2026.9.4 and its matching fixture release.
+Install `requirements_test_latest.txt`, then run
+`python -m mypy --strict custom_components/siegenia`. Mypy 2.4.0 checks all 21
+production modules, including the bundled client. The only import exception is
+HA's public `StaticPathConfig` re-export: it works on both supported endpoints,
+but current HA does not explicitly expose it to strict type checkers. The minimum
+lane proves runtime compatibility separately.
+
+Device automation tests evaluate conditions and attach state-change triggers
+through HA's own helpers. Name-repair tests verify that a completed dry run
+produces its notification. These checks do not qualify device-connected actions.
+The [rule ledger](quality.md) tracks remaining requirements.

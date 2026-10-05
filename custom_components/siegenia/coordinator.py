@@ -1,46 +1,46 @@
 from __future__ import annotations
 
-from datetime import timedelta
-import logging
-import time
 import asyncio
 import ipaddress
+import logging
+import time
 from collections.abc import Awaitable, Callable
+from datetime import datetime, timedelta
 from typing import Any
 
-from aiohttp import ClientSession, ClientConnectorError, WSServerHandshakeError
+from aiohttp import ClientConnectorError, ClientSession, WSServerHandshakeError
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, Context, callback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers.event import async_call_later
+from homeassistant.core import Context, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import AuthenticationError, SiegeniaClient, SiegeniaError
 from .const import (
+    CONF_AUTO_DISCOVER,
+    CONF_HOST,
+    CONF_PASSWORD,
+    CONF_PORT,
+    CONF_SERIAL,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
+    CONF_WS_PROTOCOL,
+    DEFAULT_AUTO_DISCOVER,
     DEFAULT_HEARTBEAT_INTERVAL,
     DEFAULT_POLL_INTERVAL,
-    DOMAIN,
-    DEFAULT_WS_PROTOCOL,
     DEFAULT_VERIFY_SSL,
-    CONF_HOST,
-    CONF_PORT,
-    CONF_USERNAME,
-    CONF_PASSWORD,
-    CONF_WS_PROTOCOL,
-    CONF_VERIFY_SSL,
-    CONF_AUTO_DISCOVER,
-    CONF_SERIAL,
-    DEFAULT_AUTO_DISCOVER,
-    is_opening_command,
+    DEFAULT_WS_PROTOCOL,
+    DOMAIN,
     ISSUE_UNREACHABLE,
-    REDISCOVER_COOLDOWN_SECONDS,
-    REDISCOVER_BACKOFF_MAX,
-    REDISCOVER_MAX_SUBNETS,
-    REDISCOVER_MAX_PER_SUBNET,
-    REDISCOVER_MAX_HOSTS,
-    REDISCOVER_CONCURRENCY,
     PROBE_TIMEOUT,
+    REDISCOVER_BACKOFF_MAX,
+    REDISCOVER_CONCURRENCY,
+    REDISCOVER_COOLDOWN_SECONDS,
+    REDISCOVER_MAX_HOSTS,
+    REDISCOVER_MAX_PER_SUBNET,
+    REDISCOVER_MAX_SUBNETS,
+    is_opening_command,
 )
 
 
@@ -254,12 +254,12 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._log_command(cmd, sash, source, entity_id, blocked=False, user_name=user_name)
 
-    async def async_run_device_action(
+    async def async_run_device_action[T](
         self,
-        action: Awaitable[Any],
+        action: Awaitable[T],
         *,
         action_name: str,
-    ) -> Any:
+    ) -> T:
         """Run a device action with a consistent Home Assistant error surface."""
         try:
             return await action
@@ -560,18 +560,18 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return None
 
         # Build subnets to probe: previous /24 plus optional common home nets if extended
-        nets: list[ipaddress.IPv4Network] = [ipaddress.ip_network(f"{self.host}/24", strict=False)]
+        nets: list[ipaddress.IPv4Network] = [ipaddress.IPv4Network(f"{self.host}/24", strict=False)]
         if self.extended_discovery:
             common = ["192.168.0.0/24", "192.168.1.0/24", "10.0.0.0/24", "172.16.0.0/24"]
             for n in common[: REDISCOVER_MAX_SUBNETS - 1]:
-                net = ipaddress.ip_network(n)
+                net = ipaddress.IPv4Network(n)
                 if net not in nets:
                     nets.append(net)
 
         candidates: list[ipaddress.IPv4Address] = []
         for net in nets:
             hosts = list(net.hosts())
-            if net.supernet_of(ipaddress.ip_network(f"{self.host}/32")):
+            if net.supernet_of(ipaddress.IPv4Network(f"{self.host}/32")):
                 center = int(current_ip)
                 hosts = sorted(hosts, key=lambda ip: abs(int(ip) - center))
             candidates.extend(hosts[:REDISCOVER_MAX_PER_SUBNET])
@@ -586,7 +586,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         semaphore = asyncio.Semaphore(REDISCOVER_CONCURRENCY)
 
-        async def _runner(ip_obj: ipaddress.IPv4Address):
+        async def _runner(ip_obj: ipaddress.IPv4Address) -> str | None:
             async with semaphore:
                 return await self._probe_host(str(ip_obj))
 
@@ -671,11 +671,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             logger=self.logger.debug,
             verify_ssl=self.verify_ssl,
         )
-        if self._push_callback:
-            try:
-                self.client.set_push_callback(self._push_callback)
-            except Exception:
-                self.logger.debug("Failed to rebind push callback after host switch")
+        self.client.set_push_callback(self._push_callback)
         # Ensure we still have a serial cached
         if self.serial:
             self._update_serial(self.serial)
@@ -764,7 +760,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._revert_handle = None
 
         @callback
-        def _revert(_now):  # noqa: ANN001
+        def _revert(_now: datetime) -> None:
             if self._stopping:
                 return
             if self._last_push_monotonic and (time.monotonic() - self._last_push_monotonic) >= self._push_idle_timeout:
@@ -857,7 +853,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._motion_revert_handle = None
 
             @callback
-            def _revert(_now):  # noqa: ANN001
+            def _revert(_now: datetime) -> None:
                 if self._stopping:
                     return
                 # If not moving anymore, go to idle interval

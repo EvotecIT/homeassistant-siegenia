@@ -1,22 +1,24 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
-from homeassistant.helpers.entity import EntityCategory
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .const import DOMAIN, STATE_TO_LOWER, resolve_model
+from .coordinator import SiegeniaDataUpdateCoordinator
 from .models import SiegeniaConfigEntry
-from .const import DOMAIN, resolve_model, STATE_TO_LOWER
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
     serial = coordinator.device_serial()
-    entities = []
+    entities: list[SensorEntity] = []
     if entry.options.get("enable_state_sensor", True):
         entities.append(SiegeniaStateSensor(coordinator, entry, serial))
     if entry.options.get("enable_open_count", True):
@@ -34,14 +36,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, asy
         async_add_entities(entities)
 
 
-class _BaseSiegeniaEntity(CoordinatorEntity):
-    def __init__(self, coordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
+class _BaseSiegeniaEntity(CoordinatorEntity[SiegeniaDataUpdateCoordinator]):
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial
 
     @property
-    def device_info(self):  # noqa: D401 - Home Assistant style
+    def device_info(self) -> DeviceInfo:  # noqa: D401 - Home Assistant style
         info = (self.coordinator.device_info or {}).get("data", {})
         ident = self.coordinator.device_identifier()
         return {
@@ -68,7 +70,7 @@ class SiegeniaStateSensor(_BaseSiegeniaEntity, SensorEntity):
         data = params.get("data") or {}
         states = data.get("states") or {}
         raw = states.get("0")
-        return STATE_TO_LOWER.get(raw, None)
+        return STATE_TO_LOWER.get(raw) if isinstance(raw, str) else None
 
 
 class SiegeniaWarningsCountSensor(_BaseSiegeniaEntity, SensorEntity):
@@ -203,7 +205,7 @@ class SiegeniaOperationSourceSensor(_BaseSiegeniaEntity, SensorEntity):
         return "idle"
 
     @property
-    def extra_state_attributes(self) -> dict | None:
+    def extra_state_attributes(self) -> dict[str, Any] | None:
         try:
             return {
                 "last_command": self.coordinator.get_last_cmd(0),
@@ -220,7 +222,7 @@ class SiegeniaOpenCountSensor(_BaseSiegeniaEntity, RestoreEntity, SensorEntity):
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     # Keep unit None for LTS compatibility
 
-    def __init__(self, coordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator, entry, serial)
         self._count: int = 0
         self._last_was_open = False

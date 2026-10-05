@@ -1,1 +1,5 @@
-git+https://github.com/MatthewFlamm/pytest-homeassistant-custom-component.git@ad804509e88cc03fafcd2ef7be950cef967d485d
+# Reproducible current-stable qualification lane.
+homeassistant==2026.9.4
+pytest-homeassistant-custom-component==0.13.367
+pytest-cov>=4.1
+mypy==2.4.0

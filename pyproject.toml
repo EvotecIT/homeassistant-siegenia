@@ -17,7 +17,8 @@ test = [
   "pytest>=7.4",
   "pytest-asyncio>=0.23",
   "pytest-cov>=4.1",
-  "pytest-homeassistant-custom-component>=0.13"
+  "pytest-homeassistant-custom-component>=0.13",
+  "mypy==2.4.0"
 ]
 
 [tool.setuptools.packages.find]
@@ -31,3 +32,7 @@ exclude = ["tests*"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.mypy]
+strict = true
+files = ["custom_components/siegenia"]

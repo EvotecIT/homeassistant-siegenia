@@ -1,33 +1,38 @@
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo, EntityCategory
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .models import SiegeniaConfigEntry
 from .const import (
-    DOMAIN,
     CONF_PREVENT_OPENING,
     DEFAULT_PREVENT_OPENING,
+    DOMAIN,
     device_configuration_url,
     resolve_model,
 )
+from .coordinator import SiegeniaDataUpdateCoordinator
+from .models import SiegeniaConfigEntry
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
     serial = coordinator.device_serial()
     async_add_entities([SiegeniaOpeningLockSwitch(coordinator, entry, serial)])
 
 
-class SiegeniaOpeningLockSwitch(CoordinatorEntity, SwitchEntity):
+class SiegeniaOpeningLockSwitch(CoordinatorEntity[SiegeniaDataUpdateCoordinator], SwitchEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "opening_lock"
     _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:lock"
 
-    def __init__(self, coordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial
@@ -55,10 +60,10 @@ class SiegeniaOpeningLockSwitch(CoordinatorEntity, SwitchEntity):
             ),
         )
 
-    async def async_turn_on(self, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    async def async_turn_on(self, **kwargs: Any) -> None:
         self._set_lock(True)
 
-    async def async_turn_off(self, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    async def async_turn_off(self, **kwargs: Any) -> None:
         self._set_lock(False)
 
     def _set_lock(self, enabled: bool) -> None:

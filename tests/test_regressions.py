@@ -22,7 +22,7 @@ from custom_components.siegenia.const import (
     CONF_VERIFY_SSL,
     DOMAIN,
 )
-from custom_components.siegenia.device_condition import CONDITION_TYPES, async_get_conditions
+from custom_components.siegenia.device_condition import CONDITION_TYPES, async_get_conditions, async_condition_from_config
 from custom_components.siegenia.device_trigger import TRIGGER_TYPES, async_get_triggers, async_attach_trigger
 
 
@@ -242,3 +242,22 @@ async def test_device_trigger_fires_on_state_change(hass, setup_integration):
     await hass.async_block_till_done()
     await asyncio.wait_for(fired.wait(), timeout=2.0)
     unsub()
+
+
+async def test_device_condition_tracks_state(hass, setup_integration):
+    """Device conditions evaluate the selected entity through HA's state helper."""
+    registry = er.async_get(hass)
+    state_eid = next(
+        state.entity_id for state in hass.states.async_all("sensor")
+        if state.entity_id.endswith("_window_state")
+    )
+    entry = registry.async_get(state_eid)
+    checker = await async_condition_from_config(hass, {
+        "condition": "device", CONF_DOMAIN: DOMAIN,
+        CONF_DEVICE_ID: entry.device_id, CONF_ENTITY_ID: state_eid,
+        CONF_TYPE: "is_open",
+    })
+    hass.states.async_set(state_eid, "closed")
+    assert checker(hass, {}) is False
+    hass.states.async_set(state_eid, "open")
+    assert checker(hass, {}) is True
