@@ -345,7 +345,7 @@
       "message": "Select a loaded Siegenia cover entity."
     },
     "invalid_mode": {
-      "message": "Invalid mode '{mode}' for siegenia.set_mode"
+      "message": "Invalid mode {mode} for siegenia.set_mode"
     },
     "entry_unavailable": {
       "message": "Coordinator missing on entity for siegenia.set_connection"

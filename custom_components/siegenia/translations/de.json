@@ -265,7 +265,7 @@
       "message": "Wähle eine geladene Siegenia-Fensterentität aus."
     },
     "invalid_mode": {
-      "message": "Ungültiger Modus '{mode}' für siegenia.set_mode"
+      "message": "Ungültiger Modus {mode} für siegenia.set_mode"
     },
     "entry_unavailable": {
       "message": "Der Siegenia-Konfigurationseintrag ist für diese Entität nicht verfügbar."

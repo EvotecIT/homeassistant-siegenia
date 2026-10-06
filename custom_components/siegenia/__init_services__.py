@@ -74,7 +74,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         mode: str = str(call.data["mode"]).strip().upper()
         if mode not in VALID_COMMANDS:
             raise ServiceValidationError(
-                f"Invalid mode '{mode}' for siegenia.set_mode",
+                f"Invalid mode {mode} for siegenia.set_mode",
                 translation_domain=DOMAIN,
                 translation_key="invalid_mode",
                 translation_placeholders={"mode": mode},

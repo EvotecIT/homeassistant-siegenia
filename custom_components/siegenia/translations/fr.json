@@ -265,7 +265,7 @@
       "message": "Sélectionnez une entité de fermeture Siegenia chargée."
     },
     "invalid_mode": {
-      "message": "Mode '{mode}' non valide pour siegenia.set_mode"
+      "message": "Mode {mode} non valide pour siegenia.set_mode"
     },
     "entry_unavailable": {
       "message": "L'entrée de configuration Siegenia est indisponible pour cette entité."

@@ -297,7 +297,7 @@
       "message": "Wybierz załadowaną encję osłony Siegenia."
     },
     "invalid_mode": {
-      "message": "Nieprawidłowy tryb '{mode}' dla siegenia.set_mode"
+      "message": "Nieprawidłowy tryb {mode} dla siegenia.set_mode"
     },
     "entry_unavailable": {
       "message": "Konfiguracja Siegenia jest niedostępna dla tej encji."
