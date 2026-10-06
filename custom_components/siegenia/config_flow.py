@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ipaddress import ip_address
 from typing import Any
 
 import voluptuous as vol
@@ -118,6 +119,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         data.setdefault(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)
         data.setdefault(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY)
         data.setdefault(CONF_SERIAL, serial)
+        data["host_based_identity"] = serial == host
         if not data.get(CONF_AUTO_DISCOVER, False):
             data[CONF_EXTENDED_DISCOVERY] = False
 
@@ -290,13 +292,23 @@ async def _async_connection_step(
         verify_ssl=user_input[CONF_VERIFY_SSL],
     )
     errors: dict[str, str] = {}
+    expected_serial = entry.data.get(CONF_SERIAL) or entry.unique_id
+    host_based_identity = bool(entry.data.get("host_based_identity")) and expected_serial == entry.unique_id
+    if expected_serial == entry.data[CONF_HOST]:
+        host_based_identity = True
+    elif expected_serial:
+        # Recognize old IP fallbacks even after the address was changed by a service.
+        try:
+            ip_address(expected_serial)
+        except ValueError:
+            pass
+        else:
+            host_based_identity = True
     try:
         await client.connect()
         await client.login(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
         info = await client.get_device()
-        expected_serial = entry.data.get(CONF_SERIAL) or entry.unique_id
-        # Older entries may use the original host as their fallback identity.
-        if expected_serial and expected_serial != entry.data[CONF_HOST]:
+        if expected_serial and not host_based_identity:
             if (info.get("data") or {}).get("serialnr") != expected_serial:
                 errors["base"] = "wrong_device"
     except AuthenticationError:
@@ -310,6 +322,7 @@ async def _async_connection_step(
 
     # Update entry.data and reload
     new_data = dict(entry.data)
+    new_data["host_based_identity"] = host_based_identity
     new_data.update(
         {
             CONF_HOST: user_input[CONF_HOST],

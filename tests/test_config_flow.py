@@ -431,3 +431,41 @@ async def test_connection_options_validate_before_replacing_working_settings(
         assert entry.unique_id == "00112233"
         assert client.disconnect.await_count == 2
         reload_entry.assert_awaited_once_with(entry.entry_id)
+
+
+@pytest.mark.parametrize("route", ["options", "reconfigure"])
+@pytest.mark.parametrize("identity,current_host", [
+    ("192.0.2.1", "192.0.2.1"), ("192.0.2.1", "192.0.2.2"),
+    ("window.local", "window.local"),
+])
+async def test_host_identity_survives_repeated_validated_edits(hass, route, identity, current_host):
+    entry = MockConfigEntry(domain=DOMAIN, unique_id=identity, data={
+        "host": current_host, "serial": identity, "port": 443,
+        "username": "admin", "password": "old",
+    })
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.get_device.return_value = {"data": {}}
+    with patch("custom_components.siegenia.config_flow.SiegeniaClient", return_value=client), patch.object(
+        hass.config_entries, "async_reload", new_callable=AsyncMock,
+    ) as reload_entry:
+        for host in ("192.0.2.3", "192.0.2.4"):
+            if route == "options":
+                manager = hass.config_entries.options
+                result = await manager.async_init(entry.entry_id)
+                result = await manager.async_configure(result["flow_id"], {"next_step_id": "connection"})
+            else:
+                manager = hass.config_entries.flow
+                result = await manager.async_init(
+                    DOMAIN, context={"source": "reconfigure", "entry_id": entry.entry_id},
+                )
+            submitted = result["data_schema"]({"password": "new"})
+            submitted["host"] = host
+            result = await manager.async_configure(result["flow_id"], submitted)
+            assert result["type"] == "abort"
+            assert result["reason"] == "reconfigured"
+            assert entry.data["host"] == host
+            assert entry.unique_id == identity
+            assert entry.data["serial"] == identity
+        assert reload_entry.await_count == 2
+        assert client.disconnect.await_count == 2
