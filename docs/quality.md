@@ -81,7 +81,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | --- | --- | --- |
 | async-dependency | Partial | Bundled WebSocket client is async; inspect connection, heartbeat, cancellation, and reconnect ownership. |
 | inject-websession | Partial | Coordinator and flow inject HA sessions; verify shared-session lifetime through reconnect and discovery. |
-| strict-typing | Partial | Strict mypy 2.4.0 covers all 21 production modules and bundled client. A documented exception covers the HA StaticPathConfig typed re-export only. |
+| strict-typing | Partial | Strict mypy 2.4.0 covers all 21 production modules and bundled client. A documented exception covers the HA StaticPathConfig typed re-export only. PEP 561 markers and thin type re-exports expose the standalone client to installed consumers. Strict consumer checks and HA-free runtime imports pass on Python 3.12/3.14; CI checks the installed contract in every lane. Published-release qualification remains open. |
 
 ## Qualification beyond the rule ledger
 

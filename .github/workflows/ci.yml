@@ -36,6 +36,15 @@ jobs:
         run: |
           pytest
 
+      - name: Installed standalone type contract
+        run: |
+          python -m pip wheel --no-deps . --wheel-dir "$RUNNER_TEMP/siegenia-wheel"
+          python -m venv "$RUNNER_TEMP/siegenia-consumer"
+          "$RUNNER_TEMP/siegenia-consumer/bin/python" -m pip install "$RUNNER_TEMP"/siegenia-wheel/*.whl
+          cp tests/typing/siegenia_consumer.py "$RUNNER_TEMP/siegenia_consumer.py"
+          cd "$RUNNER_TEMP"
+          python -m mypy --strict --python-executable "$RUNNER_TEMP/siegenia-consumer/bin/python" siegenia_consumer.py
+
   tests-latest-ha:
     runs-on: ubuntu-latest
     steps:
@@ -54,3 +63,12 @@ jobs:
 
       - name: Strict typing against current stable HA
         run: python -m mypy --strict custom_components/siegenia
+
+      - name: Installed standalone type contract
+        run: |
+          python -m pip wheel --no-deps . --wheel-dir "$RUNNER_TEMP/siegenia-wheel"
+          python -m venv "$RUNNER_TEMP/siegenia-consumer"
+          "$RUNNER_TEMP/siegenia-consumer/bin/python" -m pip install "$RUNNER_TEMP"/siegenia-wheel/*.whl
+          cp tests/typing/siegenia_consumer.py "$RUNNER_TEMP/siegenia_consumer.py"
+          cd "$RUNNER_TEMP"
+          python -m mypy --strict --python-executable "$RUNNER_TEMP/siegenia-consumer/bin/python" siegenia_consumer.py
