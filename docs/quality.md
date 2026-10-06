@@ -47,7 +47,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | log-when-unavailable | Implemented | The real HA coordinator outage test verifies three failed refreshes emit one fetch error, mark the cover unavailable, and emit one recovery message after successful refresh. Physical connection timing remains part of device qualification. |
 | parallel-updates | Implemented | All eight platforms explicitly set `PARALLEL_UPDATES = 0`. The coordinator centralizes state updates; the WebSocket client correlates overlapping action/read responses by request ID. `test_concurrent_requests_receive_their_own_out_of_order_responses` exercises the actual request and receiver paths with reversed replies. Actions remain concurrent so a pending request does not delay a cover stop. Physical-device request budgets remain tracked under appropriate-polling. |
 | reauthentication-flow | Partial | Real HA flow tests cover authentication/connection failures, wrong or missing known serials, unchanged saved credentials on failure, cleanup, and successful retry with one reload. Reauthentication shares the reconfiguration host-fallback identity policy. Historical hostname-fallback ambiguity and installed UI/device proof remain open. |
-| test-coverage | Gap | The 115-test suite covers 1,812 of 2,158 production statements (84.0%; 80% combined statement/branch coverage). Config flow and optional buttons have full statement and branch coverage. Services, coordinator recovery/discovery, and client failure paths remain below the above-95% module target. |
+| test-coverage | Gap | The 120-test coverage baseline covers 1,843 of 2,160 production statements (85.3%; 81% combined statement/branch coverage). The subsequent handshake-cancellation regression is validated separately. Config flow and optional buttons have full statement and branch coverage. Services, coordinator recovery/discovery, and client failure paths remain below the above-95% module target. |
 
 ## Gold
 
@@ -80,12 +80,12 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | Rule | State | Evidence and next acceptance step |
 | --- | --- | --- |
 | async-dependency | Partial | Bundled WebSocket client is async; inspect connection, heartbeat, cancellation, and reconnect ownership. |
-| inject-websession | Partial | Coordinator and flow inject HA sessions. Four real local WebSocket tests in `tests/test_client_transport.py` verify pending-request failure on disconnect and session ownership after disconnect or a rejected handshake: owned sessions close, borrowed sessions remain open. Reconnect and discovery lifetime qualification remains open. |
+| inject-websession | Partial | Coordinator and flow inject HA sessions. Six real local WebSocket tests in `tests/test_client_transport.py` verify pending-request failure on disconnect and session ownership after disconnect, a rejected handshake, or handshake cancellation: owned sessions close, borrowed sessions remain open. Reconnect and discovery lifetime qualification remains open. |
 | strict-typing | Partial | Strict mypy 2.4.0 covers all 21 production modules and bundled client. A documented exception covers the HA StaticPathConfig typed re-export only. PEP 561 markers and thin type re-exports expose the standalone client to installed consumers. Strict consumer checks and HA-free runtime imports pass on Python 3.12/3.14; CI checks the installed contract in every lane. Published-release qualification remains open. |
 
 ## Qualification beyond the rule ledger
 
-- [x] 120 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 122 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
 - [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.
