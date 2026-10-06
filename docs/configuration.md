@@ -20,9 +20,17 @@ Enable certificate verification when the controller certificate and hostname
 are trusted. Without verification, keep the controller and Home Assistant on
 a trusted local network. Do not expose the controller API to the internet.
 
-If credentials change, use Home Assistant's reauthentication flow. The
-`siegenia.set_connection` action can update the host, port, or protocol;
-it does not replace the credential flow.
+Use **Reconfigure** on the integration entry to change the controller address,
+port, protocol, or credentials. The **Connection** options use the same checks:
+the integration connects and authenticates before saving, and verifies the
+controller's serial number when the entry has a known serial. Failed validation
+preserves the saved settings. Entries created with only a host-based identity
+cannot verify that a new address belongs to the same physical controller.
+
+Home Assistant's reauthentication flow is also available after an authentication
+failure. The `siegenia.set_connection` action can update the host, port, or
+protocol without a connection probe; use Reconfigure for validated changes.
+The action does not accept credentials.
 
 ## Window controls
 

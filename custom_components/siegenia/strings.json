@@ -14,11 +14,28 @@
           "poll_interval": "Poll interval (s)",
           "heartbeat_interval": "Heartbeat interval (s)"
         }
+      },
+      "reconfigure": {
+        "title": "Siegenia Connection",
+        "data": {
+          "host": "Host/IP",
+          "port": "Port",
+          "ws_protocol": "WS Protocol",
+          "verify_ssl": "Verify TLS certificate",
+          "username": "Username",
+          "password": "Password",
+          "auto_discover": "Auto-detect IP changes on your network",
+          "extended_discovery": "Scan common home subnets (broader, slower; may trigger security alerts on corporate networks)"
+        }
       }
     },
     "error": {
       "auth": "Authentication failed. Check username/password.",
-      "cannot_connect": "Failed to connect to the device."
+      "cannot_connect": "Failed to connect to the device.",
+      "wrong_device": "The connection belongs to a different device or its serial number could not be verified."
+    },
+    "abort": {
+      "reconfigured": "Connection settings have been updated."
     }
   },
   "issues": {

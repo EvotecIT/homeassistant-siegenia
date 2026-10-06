@@ -382,6 +382,7 @@ async def test_setup_rejects_same_serial_at_another_address(hass, config_entry_d
     client.disconnect.assert_awaited_once()
 
 
+@pytest.mark.parametrize("route", ["options", "reconfigure"])
 @pytest.mark.parametrize("failure,serial,error", [
     (AuthenticationError("bad password"), "00112233", "auth"),
     (OSError("offline"), "00112233", "cannot_connect"),
@@ -389,7 +390,7 @@ async def test_setup_rejects_same_serial_at_another_address(hass, config_entry_d
     (None, None, "wrong_device"),
 ])
 async def test_connection_options_validate_before_replacing_working_settings(
-    hass, config_entry_data, failure, serial, error,
+    hass, config_entry_data, failure, serial, error, route,
 ):
     entry = MockConfigEntry(domain=DOMAIN, data=config_entry_data, unique_id="00112233")
     entry.add_to_hass(hass)
@@ -400,13 +401,21 @@ async def test_connection_options_validate_before_replacing_working_settings(
     with patch("custom_components.siegenia.config_flow.SiegeniaClient", return_value=client), patch.object(
         hass.config_entries, "async_reload", new_callable=AsyncMock,
     ) as reload_entry:
-        result = await hass.config_entries.options.async_init(entry.entry_id)
-        result = await hass.config_entries.options.async_configure(
-            result["flow_id"], {"next_step_id": "connection"},
-        )
+        if route == "options":
+            manager = hass.config_entries.options
+            result = await manager.async_init(entry.entry_id)
+            result = await manager.async_configure(
+                result["flow_id"], {"next_step_id": "connection"},
+            )
+        else:
+            manager = hass.config_entries.flow
+            result = await manager.async_init(
+                DOMAIN, context={"source": "reconfigure", "entry_id": entry.entry_id},
+            )
+        assert result["step_id"] == ("connection" if route == "options" else "reconfigure")
         submitted = result["data_schema"]({"password": "new-password"})
         submitted["host"] = "192.0.2.99"
-        result = await hass.config_entries.options.async_configure(result["flow_id"], submitted)
+        result = await manager.async_configure(result["flow_id"], submitted)
         assert result["type"] == "form"
         assert result["errors"] == {"base": error}
         assert entry.data == original
@@ -415,7 +424,7 @@ async def test_connection_options_validate_before_replacing_working_settings(
 
         client.login.side_effect = None
         client.get_device.return_value = {"data": {"serialnr": "00112233"}}
-        result = await hass.config_entries.options.async_configure(result["flow_id"], submitted)
+        result = await manager.async_configure(result["flow_id"], submitted)
         assert result["reason"] == "reconfigured"
         assert entry.data["host"] == "192.0.2.99"
         assert entry.data["password"] == "new-password"

@@ -14,11 +14,28 @@
           "poll_interval": "Intervalle d'actualisation (s)",
           "heartbeat_interval": "Intervalle de keep‑alive (s)"
         }
+      },
+      "reconfigure": {
+        "title": "Connexion Siegenia",
+        "data": {
+          "host": "Hôte/adresse IP",
+          "port": "Port",
+          "ws_protocol": "Protocole WebSocket",
+          "verify_ssl": "Vérifier le certificat TLS",
+          "username": "Nom d’utilisateur",
+          "password": "Mot de passe",
+          "auto_discover": "Détecter automatiquement les changements d’adresse IP",
+          "extended_discovery": "Analyser les sous-réseaux domestiques courants (plus lent ; peut déclencher des alertes de sécurité)"
+        }
       }
     },
     "error": {
       "auth": "Échec d'authentification. Vérifiez l'utilisateur/mot de passe.",
-      "cannot_connect": "Impossible de se connecter à l'appareil."
+      "cannot_connect": "Impossible de se connecter à l'appareil.",
+      "wrong_device": "La connexion correspond à un autre appareil ou son numéro de série n’a pas pu être vérifié."
+    },
+    "abort": {
+      "reconfigured": "Les paramètres de connexion ont été mis à jour."
     }
   },
   "options": {

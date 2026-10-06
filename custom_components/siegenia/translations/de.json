@@ -14,11 +14,28 @@
           "poll_interval": "Abfrageintervall (s)",
           "heartbeat_interval": "Heartbeat-Intervall (s)"
         }
+      },
+      "reconfigure": {
+        "title": "Siegenia-Verbindung",
+        "data": {
+          "host": "Host/IP-Adresse",
+          "port": "Port",
+          "ws_protocol": "WebSocket-Protokoll",
+          "verify_ssl": "TLS-Zertifikat prüfen",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "auto_discover": "IP-Änderungen automatisch erkennen",
+          "extended_discovery": "Übliche Heimnetz-Subnetze durchsuchen (langsamer; kann Sicherheitswarnungen auslösen)"
+        }
       }
     },
     "error": {
       "auth": "Authentifizierung fehlgeschlagen. Prüfen Sie Benutzer/Passwort.",
-      "cannot_connect": "Verbindung zum Gerät fehlgeschlagen."
+      "cannot_connect": "Verbindung zum Gerät fehlgeschlagen.",
+      "wrong_device": "Die Verbindung gehört zu einem anderen Gerät oder seine Seriennummer konnte nicht überprüft werden."
+    },
+    "abort": {
+      "reconfigured": "Die Verbindungseinstellungen wurden aktualisiert."
     }
   },
   "options": {

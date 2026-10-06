@@ -14,11 +14,28 @@
           "poll_interval": "Interwał odświeżania (s)",
           "heartbeat_interval": "Interwał podtrzymania (s)"
         }
+      },
+      "reconfigure": {
+        "title": "Połączenie Siegenia",
+        "data": {
+          "host": "Host / adres IP",
+          "port": "Port",
+          "ws_protocol": "Protokół WebSocket",
+          "verify_ssl": "Weryfikuj certyfikat TLS",
+          "username": "Nazwa użytkownika",
+          "password": "Hasło",
+          "auto_discover": "Automatycznie wykrywaj zmiany adresu IP",
+          "extended_discovery": "Skanuj typowe podsieci domowe (wolniejsze; może wywołać alerty bezpieczeństwa)"
+        }
       }
     },
     "error": {
       "auth": "Błąd uwierzytelnienia. Sprawdź nazwę użytkownika/hasło.",
-      "cannot_connect": "Nie udało się połączyć z urządzeniem."
+      "cannot_connect": "Nie udało się połączyć z urządzeniem.",
+      "wrong_device": "Połączenie prowadzi do innego urządzenia lub nie można zweryfikować jego numeru seryjnego."
+    },
+    "abort": {
+      "reconfigured": "Ustawienia połączenia zostały zaktualizowane."
     }
   },
   "options": {

@@ -124,6 +124,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         title = (info.get("data") or {}).get("devicename") or f"Siegenia {host}"
         return self.async_create_entry(title=title, data=data)
 
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        assert entry is not None
+        return await _async_connection_step(self, entry, user_input, step_id="reconfigure")
+
     async def async_step_import(self, import_config: dict[str, Any]) -> ConfigFlowResult:  # For YAML import (not used)
         return await self.async_step_user(import_config)
 
@@ -249,65 +254,76 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_connection(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         entry = self.hass.config_entries.async_get_entry(self.handler)
         assert entry is not None
-        # Allow changing connection params + credentials
-        d = entry.data
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_HOST, default=d.get(CONF_HOST)): str,
-                vol.Required(CONF_PORT, default=d.get(CONF_PORT, DEFAULT_PORT)): int,
-                vol.Required(CONF_WS_PROTOCOL, default=d.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL)): vol.In(["wss", "ws"]),
-                vol.Required(CONF_VERIFY_SSL, default=d.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)): bool,
-                vol.Required(CONF_USERNAME, default=d.get(CONF_USERNAME)): str,
-                vol.Required(CONF_PASSWORD): str,
-                vol.Required(CONF_AUTO_DISCOVER, default=d.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)): bool,
-                vol.Required(CONF_EXTENDED_DISCOVERY, default=d.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY)): bool,
-            }
-        )
-        if user_input is None:
-            return self.async_show_form(step_id="connection", data_schema=schema)
+        return await _async_connection_step(self, entry, user_input, step_id="connection")
 
-        client = SiegeniaClient(
-            user_input[CONF_HOST],
-            port=user_input[CONF_PORT],
-            ws_protocol=user_input[CONF_WS_PROTOCOL],
-            session=async_get_clientsession(self.hass),
-            verify_ssl=user_input[CONF_VERIFY_SSL],
-        )
-        errors: dict[str, str] = {}
-        try:
-            await client.connect()
-            await client.login(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
-            info = await client.get_device()
-            expected_serial = entry.data.get(CONF_SERIAL) or entry.unique_id
-            # Older entries may use the original host as their fallback identity.
-            if expected_serial and expected_serial != entry.data[CONF_HOST]:
-                if (info.get("data") or {}).get("serialnr") != expected_serial:
-                    errors["base"] = "wrong_device"
-        except AuthenticationError:
-            errors["base"] = "auth"
-        except Exception:  # noqa: BLE001
-            errors["base"] = "cannot_connect"
-        finally:
-            await client.disconnect()
-        if errors:
-            return self.async_show_form(step_id="connection", data_schema=schema, errors=errors)
 
-        # Update entry.data and reload
-        new_data = dict(entry.data)
-        new_data.update(
-            {
-                CONF_HOST: user_input[CONF_HOST],
-                CONF_PORT: user_input[CONF_PORT],
-                CONF_WS_PROTOCOL: user_input[CONF_WS_PROTOCOL],
-                CONF_VERIFY_SSL: user_input[CONF_VERIFY_SSL],
-                CONF_USERNAME: user_input[CONF_USERNAME],
-                CONF_PASSWORD: user_input[CONF_PASSWORD],
-                CONF_AUTO_DISCOVER: user_input.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER),
-                CONF_EXTENDED_DISCOVERY: user_input.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY),
-            }
-        )
-        if not new_data.get(CONF_AUTO_DISCOVER, False):
-            new_data[CONF_EXTENDED_DISCOVERY] = False
-        self.hass.config_entries.async_update_entry(entry, data=new_data)
-        await self.hass.config_entries.async_reload(entry.entry_id)
-        return self.async_abort(reason="reconfigured")
+async def _async_connection_step(
+    flow: config_entries.ConfigFlow | config_entries.OptionsFlow,
+    entry: config_entries.ConfigEntry,
+    user_input: dict[str, Any] | None,
+    *,
+    step_id: str,
+) -> ConfigFlowResult:
+    """Validate and save the connection for both HA configuration entry points."""
+    # Allow changing connection params + credentials
+    d = entry.data
+    schema = vol.Schema(
+        {
+            vol.Required(CONF_HOST, default=d.get(CONF_HOST)): str,
+            vol.Required(CONF_PORT, default=d.get(CONF_PORT, DEFAULT_PORT)): int,
+            vol.Required(CONF_WS_PROTOCOL, default=d.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL)): vol.In(["wss", "ws"]),
+            vol.Required(CONF_VERIFY_SSL, default=d.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)): bool,
+            vol.Required(CONF_USERNAME, default=d.get(CONF_USERNAME)): str,
+            vol.Required(CONF_PASSWORD): str,
+            vol.Required(CONF_AUTO_DISCOVER, default=d.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)): bool,
+            vol.Required(CONF_EXTENDED_DISCOVERY, default=d.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY)): bool,
+        }
+    )
+    if user_input is None:
+        return flow.async_show_form(step_id=step_id, data_schema=schema)
+
+    client = SiegeniaClient(
+        user_input[CONF_HOST],
+        port=user_input[CONF_PORT],
+        ws_protocol=user_input[CONF_WS_PROTOCOL],
+        session=async_get_clientsession(flow.hass),
+        verify_ssl=user_input[CONF_VERIFY_SSL],
+    )
+    errors: dict[str, str] = {}
+    try:
+        await client.connect()
+        await client.login(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
+        info = await client.get_device()
+        expected_serial = entry.data.get(CONF_SERIAL) or entry.unique_id
+        # Older entries may use the original host as their fallback identity.
+        if expected_serial and expected_serial != entry.data[CONF_HOST]:
+            if (info.get("data") or {}).get("serialnr") != expected_serial:
+                errors["base"] = "wrong_device"
+    except AuthenticationError:
+        errors["base"] = "auth"
+    except Exception:  # noqa: BLE001
+        errors["base"] = "cannot_connect"
+    finally:
+        await client.disconnect()
+    if errors:
+        return flow.async_show_form(step_id=step_id, data_schema=schema, errors=errors)
+
+    # Update entry.data and reload
+    new_data = dict(entry.data)
+    new_data.update(
+        {
+            CONF_HOST: user_input[CONF_HOST],
+            CONF_PORT: user_input[CONF_PORT],
+            CONF_WS_PROTOCOL: user_input[CONF_WS_PROTOCOL],
+            CONF_VERIFY_SSL: user_input[CONF_VERIFY_SSL],
+            CONF_USERNAME: user_input[CONF_USERNAME],
+            CONF_PASSWORD: user_input[CONF_PASSWORD],
+            CONF_AUTO_DISCOVER: user_input.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER),
+            CONF_EXTENDED_DISCOVERY: user_input.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY),
+        }
+    )
+    if not new_data.get(CONF_AUTO_DISCOVER, False):
+        new_data[CONF_EXTENDED_DISCOVERY] = False
+    flow.hass.config_entries.async_update_entry(entry, data=new_data)
+    await flow.hass.config_entries.async_reload(entry.entry_id)
+    return flow.async_abort(reason="reconfigured")
