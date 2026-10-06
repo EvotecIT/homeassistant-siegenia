@@ -131,9 +131,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         assert entry is not None
         return await _async_connection_step(self, entry, user_input, step_id="reconfigure")
 
-    async def async_step_import(self, import_config: dict[str, Any]) -> ConfigFlowResult:  # For YAML import (not used)
-        return await self.async_step_user(import_config)
-
     async def async_step_reauth(self, data: dict[str, Any] | None = None) -> ConfigFlowResult:
         # Store existing
         self._reauth_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
@@ -195,14 +192,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        # Show a simple menu to pick what to configure
-        if user_input is None:
-            return self.async_show_menu(
-                step_id="init",
-                menu_options=["general", "connection"],
-            )
-        # Fallback
-        return await self.async_step_general()
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["general", "connection"],
+        )
 
     async def async_step_general(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         entry = self.hass.config_entries.async_get_entry(self.handler)

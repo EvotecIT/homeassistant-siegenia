@@ -17,7 +17,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | appropriate-polling | Partial | Motion, idle, push, heartbeat, and rediscovery intervals exist; measure request budgets and concurrent-device behaviour. |
 | brands | Partial | Local `brand/` assets exist; verify rendered HACS/HA assets and applicable custom-integration requirements. |
 | common-modules | Partial | Bundled client and coordinator own shared behaviour; consolidate repeated device metadata only where it serves real platform consumers. |
-| config-flow-test-coverage | Gap | Flow tests exist; reach full measured coverage of setup, reauthentication, options, and failures. |
+| config-flow-test-coverage | Implemented | 29 real HA flow tests cover all 149 executable statements and 32 branches in `config_flow.py`: setup, duplicate identity, authentication/connection failures, retry, reauthentication identity, both connection-change routes, legacy host identities, and discovery/options persistence. Unused YAML-import and menu-fallback paths were removed. Installed UI qualification remains separate. |
 | config-flow | Partial | Manual setup, options, and reauthentication exist; prove the installed UI path and discovery applicability. |
 | dependency-transparency | Review | Document bundled client ownership, transport, and requirements from the shipped manifest. |
 | docs-actions | Partial | services.yaml and automation documentation exist; exercise each action and explain failure behaviour. |
@@ -85,7 +85,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 ## Qualification beyond the rule ledger
 
-- [x] 107 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 109 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
 - [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.

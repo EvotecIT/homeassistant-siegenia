@@ -36,7 +36,8 @@ from custom_components.siegenia.const import (
 from custom_components.siegenia.api import AuthenticationError
 
 
-async def test_user_flow_success(hass, monkeypatch, mock_client):
+@pytest.mark.parametrize("auto_discover", [False, True])
+async def test_user_flow_success(hass, monkeypatch, mock_client, auto_discover):
     # Mock client factory in conftest creates a working client
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -46,6 +47,8 @@ async def test_user_flow_success(hass, monkeypatch, mock_client):
 
     user_input = {
         "host": "192.0.2.1",
+        "auto_discover": auto_discover,
+        "extended_discovery": True,
         "username": "admin",
         "password": "pw",
         "port": 443,
@@ -61,6 +64,7 @@ async def test_user_flow_success(hass, monkeypatch, mock_client):
     assert result2["title"] == "Siegenia Test"
     assert result2["data"]["host"] == "192.0.2.1"
     assert result2["data"][CONF_VERIFY_SSL] is DEFAULT_VERIFY_SSL
+    assert result2["data"]["extended_discovery"] is auto_discover
 
 
 async def test_user_flow_uses_ws_protocol(hass, monkeypatch, mock_client):
@@ -256,7 +260,8 @@ async def test_options_flow_uses_framework_config_entry(hass, config_entry_data)
     assert defaults[CONF_HEARTBEAT_INTERVAL] == 20
 
 
-async def test_connection_options_update_the_selected_entry(hass, config_entry_data, monkeypatch, mock_client):
+@pytest.mark.parametrize("auto_discover", [False, True])
+async def test_connection_options_update_the_selected_entry(hass, config_entry_data, monkeypatch, mock_client, auto_discover):
     from unittest.mock import AsyncMock
 
     entry = MockConfigEntry(domain=DOMAIN, data=config_entry_data, title="Siegenia Test")
@@ -270,6 +275,8 @@ async def test_connection_options_update_the_selected_entry(hass, config_entry_d
     assert result["type"] == "form"
     options = result["data_schema"]({"password": "new-password"})
     options["host"] = "192.0.2.22"
+    options["auto_discover"] = auto_discover
+    options["extended_discovery"] = True
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], user_input=options
     )
@@ -277,6 +284,7 @@ async def test_connection_options_update_the_selected_entry(hass, config_entry_d
     assert result["reason"] == "reconfigured"
     assert entry.data["host"] == "192.0.2.22"
     assert entry.data["password"] == "new-password"
+    assert entry.data["extended_discovery"] is auto_discover
     reload_entry.assert_awaited_once_with(entry.entry_id)
 
 
