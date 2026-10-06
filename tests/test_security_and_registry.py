@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.exceptions import ServiceValidationError
@@ -55,6 +55,43 @@ async def test_handle_connection_error_rediscovery(hass, setup_integration):
     recovered = await coordinator._handle_connection_error(Exception("boom"))  # noqa: BLE001
     assert recovered is True
     coordinator._switch_host.assert_called_once_with("192.0.2.99")
+
+
+@pytest.mark.parametrize("outcome", ["match", "wrong_serial", "missing_serial", "offline"])
+async def test_rediscovery_probe_preserves_identity_and_cleans_up(
+    hass, setup_integration, monkeypatch, outcome,
+):
+    coordinator = setup_integration.runtime_data
+    original_info = coordinator.device_info
+    original_data = dict(setup_integration.data)
+    coordinator.serial = "00112233"
+    serial = {"match": "00112233", "wrong_serial": "other"}.get(outcome)
+    candidate_info = {"data": {"serialnr": serial, "devicename": "Candidate"}}
+    client = Mock()
+    client.connect = AsyncMock(side_effect=OSError("offline") if outcome == "offline" else None)
+    client.login = AsyncMock()
+    client.get_device = AsyncMock(return_value=candidate_info)
+    client.disconnect = AsyncMock()
+    factory = Mock(return_value=client)
+    monkeypatch.setattr("custom_components.siegenia.coordinator.SiegeniaClient", factory)
+
+    result = await coordinator._probe_host("192.0.2.99")
+
+    assert factory.call_args.kwargs["session"] is coordinator.session
+    assert coordinator.session is not None and not coordinator.session.closed
+    client.disconnect.assert_awaited_once_with()
+    assert dict(setup_integration.data) == original_data
+    if outcome == "match":
+        assert result == "192.0.2.99"
+        assert coordinator.device_info == candidate_info
+    else:
+        assert result is None
+        assert coordinator.device_info == original_info
+    if outcome == "offline":
+        client.login.assert_not_awaited()
+        client.get_device.assert_not_awaited()
+    else:
+        client.login.assert_awaited_once_with(coordinator.username, coordinator.password)
 
 
 async def test_issue_registry_raise_and_clear(hass, setup_integration):

@@ -55,7 +55,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | --- | --- | --- |
 | devices | Partial | Typed metadata and supported registry helpers group entities; verify model variants and migration on installed artifacts. |
 | diagnostics | Partial | Privacy and nonmutation tests pass; inspect the downloaded artifact and all supported model payloads. |
-| discovery-update-info | Partial | Opt-in network rediscovery updates the host while preserving serial identity; prove bounded scanning and cancellation. |
+| discovery-update-info | Partial | Opt-in network rediscovery updates the host while preserving serial identity. Probe tests cover matching, wrong/missing serial, and offline candidates: shared-session injection, disconnect, and preservation of saved configuration/rejected device metadata. Shutdown cancellation has separate tests; scan budgets and physical-network discovery remain open. |
 | discovery | Review | Assess applicability of protocol-native discovery versus the opt-in subnet rediscovery path. |
 | docs-data-update | Review | Document polling, push updates, motion/idle changes, heartbeat, and rediscovery delays. |
 | docs-examples | Partial | Automation guide exists; validate examples against current entities/actions. |
@@ -85,7 +85,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 ## Qualification beyond the rule ledger
 
-- [x] 116 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 120 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
 - [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.
