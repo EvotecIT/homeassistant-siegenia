@@ -77,7 +77,7 @@ class SiegeniaClient:
             connect_kwargs["ssl"] = ssl_ctx
         try:
             self._ws = await self._session.ws_connect(url, **connect_kwargs)
-        except Exception:
+        except (Exception, asyncio.CancelledError):
             if self._own_session:
                 await self._session.close()
                 self._session = None

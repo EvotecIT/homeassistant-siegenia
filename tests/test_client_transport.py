@@ -11,6 +11,41 @@ from custom_components.siegenia.siegenia_client.client import SiegeniaClient, Si
 pytestmark = pytest.mark.usefixtures("socket_enabled")
 
 
+@pytest.mark.parametrize("borrowed", [False, True])
+async def test_cancelled_handshake_releases_only_owned_session(borrowed):
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def handler(request):
+        entered.set()
+        await release.wait()
+        return web.Response(status=503)
+
+    async with local_server(handler) as port:
+        supplied = ClientSession() if borrowed else None
+        client = SiegeniaClient("127.0.0.1", port=port, ws_protocol="ws", session=supplied)
+        connecting = asyncio.create_task(client.connect())
+        session = None
+        try:
+            async with asyncio.timeout(5):
+                await entered.wait()
+                session = client._session
+                assert session is not None
+                connecting.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await connecting
+            assert not client.connected
+            assert session.closed is (not borrowed)
+            assert client._session is supplied
+        finally:
+            release.set()
+            connecting.cancel()
+            await asyncio.gather(connecting, return_exceptions=True)
+            await client.disconnect()
+            if supplied is not None:
+                await supplied.close()
+
+
 @asynccontextmanager
 async def local_server(handler):
     app = web.Application()
