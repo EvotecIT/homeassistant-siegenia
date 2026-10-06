@@ -26,6 +26,9 @@ the integration connects and authenticates before saving, and verifies the
 controller's serial number when the entry has a known serial. Failed validation
 preserves the saved settings. Entries created with only a host-based identity
 cannot verify that a new address belongs to the same physical controller.
+An older hostname-based entry whose address was changed before this identity
+metadata was recorded may report a device mismatch; its saved identity needs
+to be checked before another validated change.
 
 Home Assistant's reauthentication flow is also available after an authentication
 failure. The `siegenia.set_connection` action can update the host, port, or
