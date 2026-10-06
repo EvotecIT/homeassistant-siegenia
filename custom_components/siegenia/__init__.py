@@ -9,6 +9,7 @@ from homeassistant.components.http import StaticPathConfig  # type: ignore[attr-
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
@@ -46,6 +47,8 @@ from .const import (
 from .coordinator import SiegeniaDataUpdateCoordinator
 from .device_registry import async_merge_devices
 from .models import SiegeniaConfigEntry
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
