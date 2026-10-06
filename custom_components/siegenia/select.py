@@ -25,6 +25,10 @@ from .models import SiegeniaConfigEntry
 # translations: entity.select.mode.state.*
 
 
+# The WebSocket client correlates concurrent requests by ID; do not delay actions.
+PARALLEL_UPDATES = 0
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
     known_sashes: set[int] = set()

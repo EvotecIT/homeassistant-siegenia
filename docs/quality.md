@@ -45,7 +45,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | entity-unavailable | Partial | Coordinator drives availability; verify offline startup, disconnect, recovery, and dependent entities. |
 | integration-owner | Partial | Manifest names maintainers and issue tracker; confirm support and security-reporting paths. |
 | log-when-unavailable | Review | Exercise one disconnect/reconnect cycle and inspect logs for useful, non-repeating messages. |
-| parallel-updates | Gap | Platform concurrency limits are not explicitly declared; select and test limits against client serialization. |
+| parallel-updates | Implemented | All eight platforms explicitly set `PARALLEL_UPDATES = 0`. The coordinator centralizes state updates; the WebSocket client correlates overlapping action/read responses by request ID. `test_concurrent_requests_receive_their_own_out_of_order_responses` exercises the actual request and receiver paths with reversed replies. Actions remain concurrent so a pending request does not delay a cover stop. Physical-device request budgets remain tracked under appropriate-polling. |
 | reauthentication-flow | Partial | Reauthentication flow exists; test wrong credentials, successful replacement, and unchanged identity. |
 | test-coverage | Gap | Current measured coverage is 80%; full flow coverage and above 95% module coverage remain targets. |
 

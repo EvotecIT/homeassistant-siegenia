@@ -30,6 +30,10 @@ _ACTIONS = [
 ]
 
 
+# The WebSocket client correlates concurrent requests by ID; do not delay actions.
+PARALLEL_UPDATES = 0
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     # Respect option: buttons disabled by default
     if not entry.options.get(CONF_ENABLE_BUTTONS, False):
