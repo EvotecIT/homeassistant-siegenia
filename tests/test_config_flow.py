@@ -157,6 +157,7 @@ async def test_reauth_uses_ws_protocol(hass, monkeypatch, mock_client):
             connect = AsyncMock()
             disconnect = AsyncMock()
             login = AsyncMock()
+            get_device = AsyncMock(return_value={"data": {"serialnr": "00112233"}})
 
         return _C()
 
@@ -317,6 +318,7 @@ async def test_reauth_failure_preserves_entry_and_allows_retry(
     entry.add_to_hass(hass)
     original = dict(entry.data)
     client = AsyncMock()
+    client.get_device.return_value = {"data": {"serialnr": "00112233"}}
     client.login.side_effect = failure
     with patch("custom_components.siegenia.config_flow.SiegeniaClient", return_value=client), patch.object(
         hass.config_entries, "async_reload", new_callable=AsyncMock,
@@ -468,4 +470,33 @@ async def test_host_identity_survives_repeated_validated_edits(hass, route, iden
             assert entry.unique_id == identity
             assert entry.data["serial"] == identity
         assert reload_entry.await_count == 2
+        assert client.disconnect.await_count == 2
+
+
+@pytest.mark.parametrize("reported_serial", ["different-controller", None])
+async def test_reauth_rejects_changed_or_unverifiable_controller(hass, config_entry_data, reported_serial):
+    entry = MockConfigEntry(domain=DOMAIN, data=config_entry_data, unique_id="00112233")
+    entry.add_to_hass(hass)
+    original = dict(entry.data)
+    client = AsyncMock()
+    client.get_device.return_value = {"data": {"serialnr": reported_serial}}
+    with patch("custom_components.siegenia.config_flow.SiegeniaClient", return_value=client), patch.object(
+        hass.config_entries, "async_reload", new_callable=AsyncMock,
+    ) as reload_entry:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_REAUTH, "entry_id": entry.entry_id},
+        )
+        submitted = {"username": "admin", "password": "replacement"}
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], submitted)
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "wrong_device"}
+        assert entry.data == original
+        reload_entry.assert_not_awaited()
+        client.disconnect.assert_awaited_once()
+        client.get_device.return_value = {"data": {"serialnr": "00112233"}}
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], submitted)
+        assert result["reason"] == "reauth_successful"
+        assert entry.data["password"] == "replacement"
+        assert entry.unique_id == "00112233"
+        reload_entry.assert_awaited_once_with(entry.entry_id)
         assert client.disconnect.await_count == 2

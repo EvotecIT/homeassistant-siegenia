@@ -46,7 +46,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | integration-owner | Partial | Manifest names maintainers and issue tracker; confirm support and security-reporting paths. |
 | log-when-unavailable | Review | Exercise one disconnect/reconnect cycle and inspect logs for useful, non-repeating messages. |
 | parallel-updates | Implemented | All eight platforms explicitly set `PARALLEL_UPDATES = 0`. The coordinator centralizes state updates; the WebSocket client correlates overlapping action/read responses by request ID. `test_concurrent_requests_receive_their_own_out_of_order_responses` exercises the actual request and receiver paths with reversed replies. Actions remain concurrent so a pending request does not delay a cover stop. Physical-device request budgets remain tracked under appropriate-polling. |
-| reauthentication-flow | Partial | Reauthentication flow exists; test wrong credentials, successful replacement, and unchanged identity. |
+| reauthentication-flow | Partial | Real HA flow tests cover authentication/connection failures, wrong or missing known serials, unchanged saved credentials on failure, cleanup, and successful retry with one reload. Reauthentication shares the reconfiguration host-fallback identity policy. Historical hostname-fallback ambiguity and installed UI/device proof remain open. |
 | test-coverage | Gap | Current measured coverage is 80%; full flow coverage and above 95% module coverage remain targets. |
 
 ## Gold
@@ -85,7 +85,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 ## Qualification beyond the rule ledger
 
-- [x] 105 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 107 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
 - [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.

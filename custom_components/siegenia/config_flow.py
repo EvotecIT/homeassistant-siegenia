@@ -163,6 +163,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             await client.connect()
             await client.login(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
+            info = await client.get_device()
+            expected_serial = entry.data.get(CONF_SERIAL) or entry.unique_id
+            if expected_serial and not _uses_host_identity(entry):
+                if (info.get("data") or {}).get("serialnr") != expected_serial:
+                    errors["base"] = "wrong_device"
         except AuthenticationError:
             errors["base"] = "auth"
         except Exception:
@@ -259,6 +264,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         return await _async_connection_step(self, entry, user_input, step_id="connection")
 
 
+def _uses_host_identity(entry: config_entries.ConfigEntry) -> bool:
+    """Recognize fallback identity without bypassing a subsequently learned serial."""
+    expected_serial = entry.data.get(CONF_SERIAL) or entry.unique_id
+    host_based_identity = bool(entry.data.get("host_based_identity")) and expected_serial == entry.unique_id
+    if expected_serial == entry.data[CONF_HOST]:
+        host_based_identity = True
+    elif expected_serial:
+        # Recognize old IP fallbacks even after the address was changed by a service.
+        try:
+            ip_address(expected_serial)
+        except ValueError:
+            pass
+        else:
+            host_based_identity = True
+    return host_based_identity
+
+
 async def _async_connection_step(
     flow: config_entries.ConfigFlow | config_entries.OptionsFlow,
     entry: config_entries.ConfigEntry,
@@ -293,17 +315,7 @@ async def _async_connection_step(
     )
     errors: dict[str, str] = {}
     expected_serial = entry.data.get(CONF_SERIAL) or entry.unique_id
-    host_based_identity = bool(entry.data.get("host_based_identity")) and expected_serial == entry.unique_id
-    if expected_serial == entry.data[CONF_HOST]:
-        host_based_identity = True
-    elif expected_serial:
-        # Recognize old IP fallbacks even after the address was changed by a service.
-        try:
-            ip_address(expected_serial)
-        except ValueError:
-            pass
-        else:
-            host_based_identity = True
+    host_based_identity = _uses_host_identity(entry)
     try:
         await client.connect()
         await client.login(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
