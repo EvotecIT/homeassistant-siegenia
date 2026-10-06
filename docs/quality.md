@@ -80,7 +80,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | Rule | State | Evidence and next acceptance step |
 | --- | --- | --- |
 | async-dependency | Partial | Bundled WebSocket client is async; inspect connection, heartbeat, cancellation, and reconnect ownership. |
-| inject-websession | Partial | Coordinator and flow inject HA sessions. Six real local WebSocket tests in `tests/test_client_transport.py` verify pending-request failure on disconnect and session ownership after disconnect, a rejected handshake, or handshake cancellation: owned sessions close, borrowed sessions remain open. Reconnect and discovery lifetime qualification remains open. |
+| inject-websession | Partial | Coordinator and flow inject HA sessions. Six real local WebSocket tests in `tests/test_client_transport.py` verify pending-request failure on disconnect and session ownership after disconnect, a rejected handshake, or handshake cancellation: owned sessions close, borrowed sessions remain open. The same client completes a device read after a rejected handshake and after disconnecting a pending request, reusing borrowed sessions and replacing closed owned sessions. Automatic coordinator reconnect and discovery lifetime qualification remain open. |
 | strict-typing | Partial | Strict mypy 2.4.0 covers all 21 production modules and bundled client. A documented exception covers the HA StaticPathConfig typed re-export only. PEP 561 markers and thin type re-exports expose the standalone client to installed consumers. Strict consumer checks and HA-free runtime imports pass on Python 3.12/3.14; CI checks the installed contract in every lane. Published-release qualification remains open. |
 
 ## Qualification beyond the rule ledger

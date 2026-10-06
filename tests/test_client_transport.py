@@ -99,6 +99,15 @@ async def test_disconnect_fails_pending_request_and_respects_session_owner(borro
             assert session.closed is (not borrowed)
             assert commands == ["login", "getDevice", "getDeviceParams"]
             assert not client._awaiting
+            async with asyncio.timeout(5):
+                await client.connect()
+                assert (await client.get_device())["data"]["serialnr"] == "12345"
+            assert client.connected
+            if borrowed:
+                assert client._session is session
+            else:
+                assert client._session is not session
+            assert not client._awaiting
         finally:
             if pending is not None:
                 pending.cancel()
@@ -109,9 +118,20 @@ async def test_disconnect_fails_pending_request_and_respects_session_owner(borro
 
 
 @pytest.mark.parametrize("borrowed", [False, True])
-async def test_failed_handshake_releases_only_owned_session(borrowed):
+async def test_failed_handshake_can_retry_with_correct_session_ownership(borrowed):
+    accepting = False
+
     async def handler(request):
-        return web.Response(status=503)
+        if not accepting:
+            return web.Response(status=503)
+        websocket = web.WebSocketResponse()
+        await websocket.prepare(request)
+        async for message in websocket:
+            payload = message.json()
+            await websocket.send_json({
+                "id": payload["id"], "status": "ok", "data": {"serialnr": "12345"},
+            })
+        return websocket
 
     async with local_server(handler) as port:
         supplied = ClientSession() if borrowed else None
@@ -127,6 +147,17 @@ async def test_failed_handshake_releases_only_owned_session(borrowed):
             else:
                 assert client._session is supplied
                 assert not supplied.closed
+            accepting = True
+            async with asyncio.timeout(5):
+                await client.connect()
+                assert (await client.get_device())["data"]["serialnr"] == "12345"
+                recovered_session = client._session
+                assert recovered_session is not None
+                if borrowed:
+                    assert recovered_session is supplied
+                await client.disconnect()
+            assert recovered_session.closed is (not borrowed)
+            assert not client._awaiting
         finally:
             await client.disconnect()
             if supplied is not None:
