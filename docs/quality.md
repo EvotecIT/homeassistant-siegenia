@@ -47,7 +47,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | log-when-unavailable | Review | Exercise one disconnect/reconnect cycle and inspect logs for useful, non-repeating messages. |
 | parallel-updates | Implemented | All eight platforms explicitly set `PARALLEL_UPDATES = 0`. The coordinator centralizes state updates; the WebSocket client correlates overlapping action/read responses by request ID. `test_concurrent_requests_receive_their_own_out_of_order_responses` exercises the actual request and receiver paths with reversed replies. Actions remain concurrent so a pending request does not delay a cover stop. Physical-device request budgets remain tracked under appropriate-polling. |
 | reauthentication-flow | Partial | Real HA flow tests cover authentication/connection failures, wrong or missing known serials, unchanged saved credentials on failure, cleanup, and successful retry with one reload. Reauthentication shares the reconfiguration host-fallback identity policy. Historical hostname-fallback ambiguity and installed UI/device proof remain open. |
-| test-coverage | Gap | The 113-test suite covers 1,791 of 2,158 production statements (83.0%; 79% combined statement/branch coverage). Config flow has full statement and branch coverage. Services, optional buttons, coordinator recovery/discovery, and client failure paths remain below the above-95% module target. |
+| test-coverage | Gap | The 115-test suite covers 1,812 of 2,158 production statements (84.0%; 80% combined statement/branch coverage). Config flow and optional buttons have full statement and branch coverage. Services, coordinator recovery/discovery, and client failure paths remain below the above-95% module target. |
 
 ## Gold
 
@@ -67,7 +67,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | dynamic-devices | Review | Verify applicability for one local device/system per entry and document any permitted exemption. |
 | entity-category | Partial | Entity metadata exists; audit configuration and diagnostic categories across platforms. |
 | entity-device-class | Partial | Sensor metadata exists; audit classes, units, and state classes across models. |
-| entity-disabled-by-default | Partial | Options control optional controls and diagnostic sensors; verify useful defaults and user opt-in. |
+| entity-disabled-by-default | Partial | Real HA button-service tests verify controls are absent by default, opt-in exposes all six commands, and the opening lock blocks opening while preserving stop. Diagnostic sensor defaults and installed UI qualification remain open. |
 | entity-translations | Partial | Platform translation keys and four locale files exist; audit completeness and rendered fallback behaviour. |
 | exception-translations | Implemented | All 11 integration-owned action exceptions carry HA translation metadata, with English, Polish, German, and French messages. Real HA translation-loader tests cover every key; WebSocket action tests verify invalid-mode placeholders and duration error metadata before device writes. Installed frontend rendering remains part of runtime qualification. |
 | icon-translations | Review | Audit state-aware icons and current HA translation metadata. |
@@ -85,7 +85,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 ## Qualification beyond the rule ledger
 
-- [x] 113 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 115 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
 - [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.
