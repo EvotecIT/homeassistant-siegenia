@@ -212,7 +212,7 @@ async def test_offline_command_raises_home_assistant_error(hass, setup_integrati
         )
 
 
-async def test_entity_unavailable_during_outage_and_recovers(hass, setup_integration):
+async def test_entity_unavailable_during_outage_and_recovers(hass, setup_integration, caplog):
     entry = setup_integration
     coordinator = entry.runtime_data
     coordinator.auto_discover = False
@@ -223,14 +223,31 @@ async def test_entity_unavailable_during_outage_and_recovers(hass, setup_integra
     )
     successful_response = coordinator.client.get_device_params.return_value
 
+    caplog.clear()
+    caplog.set_level("INFO", logger=coordinator.logger.name)
     coordinator.client.get_device_params.side_effect = SiegeniaError("offline")
-    await coordinator.async_refresh()
+    for _ in range(3):
+        await coordinator.async_refresh()
     assert hass.states.get(cover_eid).state == "unavailable"
+    failures = [
+        record for record in caplog.records
+        if record.name == coordinator.logger.name
+        and record.levelname == "ERROR"
+        and "Error fetching" in record.getMessage()
+    ]
+    assert len(failures) == 1
 
     coordinator.client.get_device_params.side_effect = None
     coordinator.client.get_device_params.return_value = successful_response
     await coordinator.async_refresh()
     assert hass.states.get(cover_eid).state != "unavailable"
+    recoveries = [
+        record for record in caplog.records
+        if record.name == coordinator.logger.name
+        and "Fetching" in record.getMessage()
+        and "recovered" in record.getMessage()
+    ]
+    assert len(recoveries) == 1
 
 
 async def test_name_repair_reports_its_result(hass, setup_integration, monkeypatch):

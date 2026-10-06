@@ -44,7 +44,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | docs-installation-parameters | Partial | Configuration guide exists; reconcile setup fields, credentials, and network prerequisites. |
 | entity-unavailable | Partial | Coordinator drives availability; verify offline startup, disconnect, recovery, and dependent entities. |
 | integration-owner | Partial | Manifest names maintainers and issue tracker; confirm support and security-reporting paths. |
-| log-when-unavailable | Review | Exercise one disconnect/reconnect cycle and inspect logs for useful, non-repeating messages. |
+| log-when-unavailable | Implemented | The real HA coordinator outage test verifies three failed refreshes emit one fetch error, mark the cover unavailable, and emit one recovery message after successful refresh. Physical connection timing remains part of device qualification. |
 | parallel-updates | Implemented | All eight platforms explicitly set `PARALLEL_UPDATES = 0`. The coordinator centralizes state updates; the WebSocket client correlates overlapping action/read responses by request ID. `test_concurrent_requests_receive_their_own_out_of_order_responses` exercises the actual request and receiver paths with reversed replies. Actions remain concurrent so a pending request does not delay a cover stop. Physical-device request budgets remain tracked under appropriate-polling. |
 | reauthentication-flow | Partial | Real HA flow tests cover authentication/connection failures, wrong or missing known serials, unchanged saved credentials on failure, cleanup, and successful retry with one reload. Reauthentication shares the reconfiguration host-fallback identity policy. Historical hostname-fallback ambiguity and installed UI/device proof remain open. |
 | test-coverage | Gap | The 115-test suite covers 1,812 of 2,158 production statements (84.0%; 80% combined statement/branch coverage). Config flow and optional buttons have full statement and branch coverage. Services, coordinator recovery/discovery, and client failure paths remain below the above-95% module target. |
@@ -85,7 +85,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 ## Qualification beyond the rule ledger
 
-- [x] 115 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 116 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
 - [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.
