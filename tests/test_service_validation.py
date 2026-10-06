@@ -66,6 +66,45 @@ async def test_false_rename_flag_does_not_rename_registry_entries(hass, setup_in
     assert registry.async_get(entity.entity_id) is not None
 
 
+async def test_name_repair_preview_and_apply_preserve_custom_and_foreign_names(
+    hass, setup_integration,
+):
+    registry = er.async_get(hass)
+    broken = registry.async_get_or_create(
+        "sensor", DOMAIN, "repair-state", config_entry=setup_integration,
+        suggested_object_id="repair_none", original_name="State",
+    )
+    custom = registry.async_get_or_create(
+        "sensor", DOMAIN, "custom-state", config_entry=setup_integration,
+        suggested_object_id="custom_state",
+    )
+    foreign = registry.async_get_or_create(
+        "sensor", "other_integration", "foreign-state",
+        suggested_object_id="foreign_none",
+    )
+    registry.async_update_entity(broken.entity_id, name="None")
+    registry.async_update_entity(custom.entity_id, name="My window")
+    registry.async_update_entity(foreign.entity_id, name="None")
+
+    # The default preview must leave both names and IDs untouched.
+    before = dict(registry.entities)
+    await hass.services.async_call(
+        DOMAIN, "repair_names", {"rename_entity_ids": True}, blocking=True,
+    )
+    assert dict(registry.entities) == before
+
+    await hass.services.async_call(
+        DOMAIN, "repair_names",
+        {"rename_entity_ids": True, "dry_run": False}, blocking=True,
+    )
+    repaired_id = registry.async_get_entity_id("sensor", DOMAIN, "repair-state")
+    assert repaired_id == "sensor.siegenia_window_state"
+    assert registry.async_get(repaired_id).name is None
+    assert registry.async_get(broken.entity_id) is None
+    assert registry.async_get(custom.entity_id).name == "My window"
+    assert registry.async_get(foreign.entity_id).name == "None"
+
+
 async def test_timer_normalizes_whole_minutes(hass, setup_integration):
     entity_id = next(state.entity_id for state in hass.states.async_all("cover"))
     client = setup_integration.runtime_data.client
