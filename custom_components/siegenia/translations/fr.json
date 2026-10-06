@@ -23,7 +23,10 @@
   },
   "options": {
     "error": {
-      "invalid_thresholds": "Seuils invalides : assurez‑vous que max aération < max fermeture sans verrou < 100."
+      "invalid_thresholds": "Seuils invalides : assurez‑vous que max aération < max fermeture sans verrou < 100.",
+      "auth": "Échec d'authentification. Vérifiez l'utilisateur/mot de passe.",
+      "cannot_connect": "Impossible de se connecter à l'appareil.",
+      "wrong_device": "La connexion correspond à un autre appareil ou son numéro de série n’a pas pu être vérifié."
     },
     "step": {
       "init": {

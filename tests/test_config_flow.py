@@ -1,3 +1,6 @@
+import pytest
+from unittest.mock import AsyncMock, patch
+
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant import config_entries
@@ -252,7 +255,7 @@ async def test_options_flow_uses_framework_config_entry(hass, config_entry_data)
     assert defaults[CONF_HEARTBEAT_INTERVAL] == 20
 
 
-async def test_connection_options_update_the_selected_entry(hass, config_entry_data, monkeypatch):
+async def test_connection_options_update_the_selected_entry(hass, config_entry_data, monkeypatch, mock_client):
     from unittest.mock import AsyncMock
 
     entry = MockConfigEntry(domain=DOMAIN, data=config_entry_data, title="Siegenia Test")
@@ -301,3 +304,121 @@ async def test_saved_general_options_reload_the_running_entry(hass, setup_integr
     hass.config_entries.async_update_entry(entry, data={**entry.data, "host": "192.0.2.33"})
     await hass.async_block_till_done()
     assert entry.runtime_data is current
+
+
+@pytest.mark.parametrize("failure,error", [
+    (AuthenticationError("invalid credentials"), "auth"),
+    (OSError("connection refused"), "cannot_connect"),
+])
+async def test_reauth_failure_preserves_entry_and_allows_retry(
+    hass, config_entry_data, failure, error,
+):
+    entry = MockConfigEntry(domain=DOMAIN, data=config_entry_data, unique_id="00112233")
+    entry.add_to_hass(hass)
+    original = dict(entry.data)
+    client = AsyncMock()
+    client.login.side_effect = failure
+    with patch("custom_components.siegenia.config_flow.SiegeniaClient", return_value=client), patch.object(
+        hass.config_entries, "async_reload", new_callable=AsyncMock,
+    ) as reload_entry:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_REAUTH, "entry_id": entry.entry_id},
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"username": "new-admin", "password": "new-password"},
+        )
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": error}
+        assert dict(entry.data) == original
+        client.disconnect.assert_awaited_once()
+        reload_entry.assert_not_awaited()
+
+        client.login.side_effect = None
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"username": "new-admin", "password": "new-password"},
+        )
+        assert result["reason"] == "reauth_successful"
+        assert entry.data == {**original, "username": "new-admin", "password": "new-password"}
+        assert entry.unique_id == "00112233"
+        assert client.disconnect.await_count == 2
+        reload_entry.assert_awaited_once_with(entry.entry_id)
+
+
+async def test_setup_connection_failure_can_retry_without_leaking_probe(hass):
+    client = AsyncMock()
+    client.connect.side_effect = OSError("connection refused")
+    client.get_device.return_value = {"data": {"serialnr": "00112233", "devicename": "Window"}}
+    data = {"host": "192.0.2.1", "port": 443, "username": "admin", "password": "password"}
+    with patch("custom_components.siegenia.config_flow.SiegeniaClient", return_value=client), patch(
+        "custom_components.siegenia.async_setup_entry", return_value=True,
+    ):
+        result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], data)
+        assert result["errors"] == {"base": "cannot_connect"}
+        assert not hass.config_entries.async_entries(DOMAIN)
+        client.disconnect.assert_awaited_once()
+        client.login.assert_not_awaited()
+        client.connect.side_effect = None
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], data)
+        assert result["type"] == "create_entry"
+        assert result["result"].unique_id == "00112233"
+        assert client.disconnect.await_count == 2
+        await hass.async_block_till_done()
+
+
+async def test_setup_rejects_same_serial_at_another_address(hass, config_entry_data):
+    entry = MockConfigEntry(domain=DOMAIN, data=config_entry_data, unique_id="00112233")
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.get_device.return_value = {"data": {"serialnr": "00112233"}}
+    with patch("custom_components.siegenia.config_flow.SiegeniaClient", return_value=client):
+        result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {
+            "host": "192.0.2.99", "port": 443, "username": "admin", "password": "password",
+        })
+    assert result["reason"] == "already_configured"
+    assert len(hass.config_entries.async_entries(DOMAIN)) == 1
+    assert entry.data == config_entry_data
+    client.disconnect.assert_awaited_once()
+
+
+@pytest.mark.parametrize("failure,serial,error", [
+    (AuthenticationError("bad password"), "00112233", "auth"),
+    (OSError("offline"), "00112233", "cannot_connect"),
+    (None, "different-controller", "wrong_device"),
+    (None, None, "wrong_device"),
+])
+async def test_connection_options_validate_before_replacing_working_settings(
+    hass, config_entry_data, failure, serial, error,
+):
+    entry = MockConfigEntry(domain=DOMAIN, data=config_entry_data, unique_id="00112233")
+    entry.add_to_hass(hass)
+    original = dict(entry.data)
+    client = AsyncMock()
+    client.login.side_effect = failure
+    client.get_device.return_value = {"data": {"serialnr": serial}}
+    with patch("custom_components.siegenia.config_flow.SiegeniaClient", return_value=client), patch.object(
+        hass.config_entries, "async_reload", new_callable=AsyncMock,
+    ) as reload_entry:
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"next_step_id": "connection"},
+        )
+        submitted = result["data_schema"]({"password": "new-password"})
+        submitted["host"] = "192.0.2.99"
+        result = await hass.config_entries.options.async_configure(result["flow_id"], submitted)
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": error}
+        assert entry.data == original
+        reload_entry.assert_not_awaited()
+        client.disconnect.assert_awaited_once()
+
+        client.login.side_effect = None
+        client.get_device.return_value = {"data": {"serialnr": "00112233"}}
+        result = await hass.config_entries.options.async_configure(result["flow_id"], submitted)
+        assert result["reason"] == "reconfigured"
+        assert entry.data["host"] == "192.0.2.99"
+        assert entry.data["password"] == "new-password"
+        assert entry.unique_id == "00112233"
+        assert client.disconnect.await_count == 2
+        reload_entry.assert_awaited_once_with(entry.entry_id)

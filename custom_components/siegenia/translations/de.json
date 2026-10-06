@@ -23,7 +23,10 @@
   },
   "options": {
     "error": {
-      "invalid_thresholds": "Ungültige Schwellenwerte: Gap max < Close w/o lock max < 100."
+      "invalid_thresholds": "Ungültige Schwellenwerte: Gap max < Close w/o lock max < 100.",
+      "auth": "Authentifizierung fehlgeschlagen. Prüfen Sie Benutzer/Passwort.",
+      "cannot_connect": "Verbindung zum Gerät fehlgeschlagen.",
+      "wrong_device": "Die Verbindung gehört zu einem anderen Gerät oder seine Seriennummer konnte nicht überprüft werden."
     },
     "step": {
       "init": {

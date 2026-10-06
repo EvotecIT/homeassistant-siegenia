@@ -29,7 +29,10 @@
   },
   "options": {
     "error": {
-      "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."
+      "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100.",
+      "auth": "Authentication failed. Check username/password.",
+      "cannot_connect": "Failed to connect to the device.",
+      "wrong_device": "The connection belongs to a different device or its serial number could not be verified."
     },
     "step": {
       "general": {

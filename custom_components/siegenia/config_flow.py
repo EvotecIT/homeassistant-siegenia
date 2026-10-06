@@ -251,20 +251,46 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         assert entry is not None
         # Allow changing connection params + credentials
         d = entry.data
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_HOST, default=d.get(CONF_HOST)): str,
+                vol.Required(CONF_PORT, default=d.get(CONF_PORT, DEFAULT_PORT)): int,
+                vol.Required(CONF_WS_PROTOCOL, default=d.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL)): vol.In(["wss", "ws"]),
+                vol.Required(CONF_VERIFY_SSL, default=d.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)): bool,
+                vol.Required(CONF_USERNAME, default=d.get(CONF_USERNAME)): str,
+                vol.Required(CONF_PASSWORD): str,
+                vol.Required(CONF_AUTO_DISCOVER, default=d.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)): bool,
+                vol.Required(CONF_EXTENDED_DISCOVERY, default=d.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY)): bool,
+            }
+        )
         if user_input is None:
-            schema = vol.Schema(
-                {
-                    vol.Required(CONF_HOST, default=d.get(CONF_HOST)): str,
-                    vol.Required(CONF_PORT, default=d.get(CONF_PORT, DEFAULT_PORT)): int,
-                    vol.Required(CONF_WS_PROTOCOL, default=d.get(CONF_WS_PROTOCOL, DEFAULT_WS_PROTOCOL)): vol.In(["wss", "ws"]),
-                    vol.Required(CONF_VERIFY_SSL, default=d.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)): bool,
-                    vol.Required(CONF_USERNAME, default=d.get(CONF_USERNAME)): str,
-                    vol.Required(CONF_PASSWORD): str,
-                    vol.Required(CONF_AUTO_DISCOVER, default=d.get(CONF_AUTO_DISCOVER, DEFAULT_AUTO_DISCOVER)): bool,
-                    vol.Required(CONF_EXTENDED_DISCOVERY, default=d.get(CONF_EXTENDED_DISCOVERY, DEFAULT_EXTENDED_DISCOVERY)): bool,
-                }
-            )
             return self.async_show_form(step_id="connection", data_schema=schema)
+
+        client = SiegeniaClient(
+            user_input[CONF_HOST],
+            port=user_input[CONF_PORT],
+            ws_protocol=user_input[CONF_WS_PROTOCOL],
+            session=async_get_clientsession(self.hass),
+            verify_ssl=user_input[CONF_VERIFY_SSL],
+        )
+        errors: dict[str, str] = {}
+        try:
+            await client.connect()
+            await client.login(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
+            info = await client.get_device()
+            expected_serial = entry.data.get(CONF_SERIAL) or entry.unique_id
+            # Older entries may use the original host as their fallback identity.
+            if expected_serial and expected_serial != entry.data[CONF_HOST]:
+                if (info.get("data") or {}).get("serialnr") != expected_serial:
+                    errors["base"] = "wrong_device"
+        except AuthenticationError:
+            errors["base"] = "auth"
+        except Exception:  # noqa: BLE001
+            errors["base"] = "cannot_connect"
+        finally:
+            await client.disconnect()
+        if errors:
+            return self.async_show_form(step_id="connection", data_schema=schema, errors=errors)
 
         # Update entry.data and reload
         new_data = dict(entry.data)

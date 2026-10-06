@@ -23,7 +23,10 @@
   },
   "options": {
     "error": {
-      "invalid_thresholds": "Nieprawidłowe progi: upewnij się, że Maks. szczelina < Maks. zamknięcie bez blokady < 100."
+      "invalid_thresholds": "Nieprawidłowe progi: upewnij się, że Maks. szczelina < Maks. zamknięcie bez blokady < 100.",
+      "auth": "Błąd uwierzytelnienia. Sprawdź nazwę użytkownika/hasło.",
+      "cannot_connect": "Nie udało się połączyć z urządzeniem.",
+      "wrong_device": "Połączenie prowadzi do innego urządzenia lub nie można zweryfikować jego numeru seryjnego."
     },
     "step": {
       "init": {
