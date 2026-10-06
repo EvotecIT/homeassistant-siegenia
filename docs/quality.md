@@ -69,7 +69,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | entity-device-class | Partial | Sensor metadata exists; audit classes, units, and state classes across models. |
 | entity-disabled-by-default | Partial | Options control optional controls and diagnostic sensors; verify useful defaults and user opt-in. |
 | entity-translations | Partial | Platform translation keys and four locale files exist; audit completeness and rendered fallback behaviour. |
-| exception-translations | Review | Audit user-facing action exceptions and translation keys. |
+| exception-translations | Implemented | All 11 integration-owned action exceptions carry HA translation metadata, with English, Polish, German, and French messages. Real HA translation-loader tests cover every key; WebSocket action tests verify invalid-mode placeholders and duration error metadata before device writes. Installed frontend rendering remains part of runtime qualification. |
 | icon-translations | Review | Audit state-aware icons and current HA translation metadata. |
 | reconfiguration-flow | Review | Connection options and service exist; assess the dedicated reconfiguration flow contract and validation. |
 | repair-issues | Partial | Coordinator uses HA repair issues; verify create, recover, dismiss, and user guidance. |
@@ -85,7 +85,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 ## Qualification beyond the rule ledger
 
-- [x] 81 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 87 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
 - [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.

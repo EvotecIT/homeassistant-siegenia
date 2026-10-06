@@ -60,7 +60,11 @@ def _cover_for_call(hass: HomeAssistant, call: ServiceCall) -> SiegeniaWindowCov
     component = hass.data.get("entity_components", {}).get("cover")
     entity = component.get_entity(entity_id) if component and isinstance(entity_id, str) else None
     if not isinstance(entity, SiegeniaWindowCover):
-        raise ServiceValidationError("Select a loaded Siegenia cover entity.")
+        raise ServiceValidationError(
+            "Select a loaded Siegenia cover entity.",
+            translation_domain=DOMAIN,
+            translation_key="loaded_cover_required",
+        )
     return entity
 
 
@@ -69,7 +73,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         entity_id: str = call.data["entity_id"]
         mode: str = str(call.data["mode"]).strip().upper()
         if mode not in VALID_COMMANDS:
-            raise ServiceValidationError(f"Invalid mode '{mode}' for siegenia.set_mode")
+            raise ServiceValidationError(
+                f"Invalid mode '{mode}' for siegenia.set_mode",
+                translation_domain=DOMAIN,
+                translation_key="invalid_mode",
+                translation_placeholders={"mode": mode},
+            )
         # Resolve entity to platform entity
         entity = _cover_for_call(hass, call)
         coordinator = entity.coordinator
@@ -88,12 +97,18 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         coordinator = getattr(entity, "coordinator", None)
         entry = getattr(coordinator, "entry", None) if coordinator else None
         if entry is None:
-            raise ServiceValidationError("Coordinator missing on entity for siegenia.set_connection")
+            raise ServiceValidationError(
+                "Coordinator missing on entity for siegenia.set_connection",
+                translation_domain=DOMAIN,
+                translation_key="entry_unavailable",
+            )
 
         if CONF_USERNAME in call.data or CONF_PASSWORD in call.data:
             raise ServiceValidationError(
                 "Credentials must be updated via the UI options. "
-                "siegenia.set_connection does not accept username/password."
+                "siegenia.set_connection does not accept username/password.",
+                translation_domain=DOMAIN,
+                translation_key="credentials_in_options",
             )
 
         new_data = dict(entry.data)
@@ -134,17 +149,29 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         if entity_id is not None:
             ent = er.async_get(hass).async_get(entity_id) if isinstance(entity_id, str) else None
             if ent is None or ent.platform != DOMAIN or not ent.config_entry_id:
-                raise ServiceValidationError("Select a Siegenia entity for cleanup.")
+                raise ServiceValidationError(
+                    "Select a Siegenia entity for cleanup.",
+                    translation_domain=DOMAIN,
+                    translation_key="cleanup_target_required",
+                )
             target_entry_id = ent.config_entry_id
         else:
             entries = hass.config_entries.async_entries(DOMAIN)
             if not entries:
-                raise ServiceValidationError("No Siegenia entries found for cleanup")
+                raise ServiceValidationError(
+                    "No Siegenia entries found for cleanup",
+                    translation_domain=DOMAIN,
+                    translation_key="cleanup_no_entries",
+                )
             target_entry_id = entries[0].entry_id
 
         entry = hass.config_entries.async_get_entry(target_entry_id)
         if entry is None or entry.domain != DOMAIN:
-            raise ServiceValidationError("The Siegenia entry is unavailable for cleanup.")
+            raise ServiceValidationError(
+                "The Siegenia entry is unavailable for cleanup.",
+                translation_domain=DOMAIN,
+                translation_key="cleanup_entry_unavailable",
+            )
         host = entry.data.get(CONF_HOST) if entry else None
         serial = entry.data.get(CONF_SERIAL) if entry else None
         await async_merge_devices(hass, target_entry_id, serial=serial, host=host)
@@ -208,7 +235,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             return divmod(total_minutes, 60)
         except ValueError as err:
             raise ServiceValidationError(
-                "Duration must be nonnegative whole minutes or HH:MM with minutes from 00 to 59."
+                "Duration must be nonnegative whole minutes or HH:MM with minutes from 00 to 59.",
+                translation_domain=DOMAIN,
+                translation_key="invalid_duration",
             ) from err
 
     async def _timer_start(call: ServiceCall) -> None:

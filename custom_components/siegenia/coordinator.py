@@ -238,7 +238,11 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 origin=origin,
             )
             self._log_command(cmd, sash, source, entity_id, blocked=True, user_name=user_name)
-            raise HomeAssistantError("Opening commands are disabled in Siegenia options.")
+            raise HomeAssistantError(
+                "Opening commands are disabled in Siegenia options.",
+                translation_domain=DOMAIN,
+                translation_key="opening_disabled",
+            )
         action = self.client.stop(sash) if cmd == "STOP" else self.client.open_close(sash, cmd)
         await self.async_run_device_action(action, action_name=f"send {cmd}")
         self.set_last_cmd(sash, cmd)
@@ -265,7 +269,9 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return await action
         except AuthenticationError as err:
             raise HomeAssistantError(
-                "Siegenia authentication failed. Reauthenticate the integration."
+                "Siegenia authentication failed. Reauthenticate the integration.",
+                translation_domain=DOMAIN,
+                translation_key="authentication_failed",
             ) from err
         except (
             SiegeniaError,
@@ -276,7 +282,9 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             OSError,
         ) as err:
             raise HomeAssistantError(
-                f"Unable to {action_name}; the Siegenia device may be offline."
+                f"Unable to {action_name}; the Siegenia device may be offline.",
+                translation_domain=DOMAIN,
+                translation_key="device_action_failed",
             ) from err
 
     async def async_set_device_params(

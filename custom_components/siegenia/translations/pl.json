@@ -262,5 +262,40 @@
         "name": "Oprogramowanie"
       }
     }
+  },
+  "exceptions": {
+    "opening_disabled": {
+      "message": "Polecenia otwierania są wyłączone w opcjach Siegenia."
+    },
+    "authentication_failed": {
+      "message": "Uwierzytelnianie Siegenia nie powiodło się. Uwierzytelnij integrację ponownie."
+    },
+    "device_action_failed": {
+      "message": "Nie można wykonać działania. Urządzenie Siegenia może być offline."
+    },
+    "loaded_cover_required": {
+      "message": "Wybierz załadowaną encję osłony Siegenia."
+    },
+    "invalid_mode": {
+      "message": "Nieprawidłowy tryb '{mode}' dla siegenia.set_mode"
+    },
+    "entry_unavailable": {
+      "message": "Konfiguracja Siegenia jest niedostępna dla tej encji."
+    },
+    "credentials_in_options": {
+      "message": "Dane logowania należy zmienić w opcjach interfejsu. siegenia.set_connection nie przyjmuje nazwy użytkownika ani hasła."
+    },
+    "cleanup_target_required": {
+      "message": "Wybierz encję Siegenia do porządkowania urządzeń."
+    },
+    "cleanup_no_entries": {
+      "message": "Nie znaleziono konfiguracji Siegenia do porządkowania urządzeń."
+    },
+    "cleanup_entry_unavailable": {
+      "message": "Konfiguracja Siegenia jest niedostępna do porządkowania urządzeń."
+    },
+    "invalid_duration": {
+      "message": "Czas musi być nieujemną liczbą całkowitą minut lub mieć format HH:MM z minutami od 00 do 59."
+    }
   }
 }

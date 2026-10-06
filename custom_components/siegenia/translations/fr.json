@@ -230,5 +230,40 @@
         "name": "Stop"
       }
     }
+  },
+  "exceptions": {
+    "opening_disabled": {
+      "message": "Les commandes d'ouverture sont désactivées dans les options Siegenia."
+    },
+    "authentication_failed": {
+      "message": "L'authentification Siegenia a échoué. Authentifiez à nouveau l'intégration."
+    },
+    "device_action_failed": {
+      "message": "Impossible d'effectuer l'action. L'appareil Siegenia est peut-être hors ligne."
+    },
+    "loaded_cover_required": {
+      "message": "Sélectionnez une entité de fermeture Siegenia chargée."
+    },
+    "invalid_mode": {
+      "message": "Mode '{mode}' non valide pour siegenia.set_mode"
+    },
+    "entry_unavailable": {
+      "message": "L'entrée de configuration Siegenia est indisponible pour cette entité."
+    },
+    "credentials_in_options": {
+      "message": "Les identifiants doivent être modifiés dans les options de l'interface. siegenia.set_connection n'accepte ni nom d'utilisateur ni mot de passe."
+    },
+    "cleanup_target_required": {
+      "message": "Sélectionnez une entité Siegenia pour le nettoyage des appareils."
+    },
+    "cleanup_no_entries": {
+      "message": "Aucune entrée de configuration Siegenia trouvée pour le nettoyage des appareils."
+    },
+    "cleanup_entry_unavailable": {
+      "message": "L'entrée de configuration Siegenia est indisponible pour le nettoyage des appareils."
+    },
+    "invalid_duration": {
+      "message": "La durée doit être un nombre entier de minutes positif ou nul, ou au format HH:MM avec des minutes de 00 à 59."
+    }
   }
 }

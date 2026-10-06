@@ -17,6 +17,7 @@ from custom_components.siegenia.const import DOMAIN
     ("set_connection", {"port": 65536}),
     ("set_connection", {"ws_protocol": "ftp"}),
     ("set_mode", {}),
+    ("set_mode", {"mode": "UNSUPPORTED"}),
     ("reboot_device", {"entity_id": []}),
     ("reboot_device", {"entity_id": ["cover.first", "cover.second"]}),
 ])
@@ -40,6 +41,12 @@ async def test_invalid_action_input_never_reaches_device(
     assert result["error"]["code"] in {
         "invalid_format", "home_assistant_error", "service_validation_error",
     }
+    if service == "timer_start" or data.get("mode") == "UNSUPPORTED":
+        translation = result["error"]["translation_key"]
+        assert result["error"]["translation_domain"] == DOMAIN
+        assert translation == ("invalid_duration" if service == "timer_start" else "invalid_mode")
+        if translation == "invalid_mode":
+            assert result["error"]["translation_placeholders"] == {"mode": "UNSUPPORTED"}
     client.set_device_params.assert_not_awaited()
     client.open_close.assert_not_awaited()
     client.reboot_device.assert_not_awaited()
@@ -82,3 +89,25 @@ async def test_documented_automation_target_reaches_selected_cover(hass, setup_i
     }], "Siegenia target validation", DOMAIN)
     await script.async_run()
     client.open_close.assert_awaited_once_with(0, "GAP_VENT")
+
+
+@pytest.mark.parametrize("language", ["en", "pl", "de", "fr"])
+async def test_action_errors_load_through_home_assistant_translations(hass, language):
+    """HA must expose usable messages for each action error in supported languages."""
+    from homeassistant.helpers.translation import async_get_translations
+
+    translations = await async_get_translations(hass, language, "exceptions", {DOMAIN})
+    keys = {
+        "opening_disabled", "authentication_failed", "device_action_failed",
+        "loaded_cover_required", "invalid_mode", "entry_unavailable",
+        "credentials_in_options", "cleanup_target_required", "cleanup_no_entries",
+        "cleanup_entry_unavailable", "invalid_duration",
+    }
+    for key in keys:
+        message = translations[f"component.{DOMAIN}.exceptions.{key}.message"]
+        assert message
+        rendered = message.format(mode="UNSUPPORTED")
+        if key == "invalid_mode":
+            assert "UNSUPPORTED" in rendered
+    if language == "pl":
+        assert "wyłączone" in translations[f"component.{DOMAIN}.exceptions.opening_disabled.message"]
