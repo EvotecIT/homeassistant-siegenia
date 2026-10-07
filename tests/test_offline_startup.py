@@ -4,11 +4,13 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.siegenia.const import DOMAIN
 from custom_components.siegenia.coordinator import SiegeniaDataUpdateCoordinator
+from custom_components.siegenia.siegenia_client.client import AuthenticationError
 
 
 async def test_setup_stays_loaded_and_unavailable_while_device_is_offline(
@@ -50,11 +52,20 @@ async def test_setup_stays_loaded_and_unavailable_while_device_is_offline(
     assert cover.state == "unavailable"
 
 
-@pytest.mark.parametrize("cancelled", [False, True])
-async def test_transient_reconnect_login_failure_closes_socket_before_retry(
+@pytest.mark.parametrize(
+    ("failure", "expected_error"),
+    [
+        (OSError("transient login timeout"), UpdateFailed),
+        (asyncio.CancelledError(), asyncio.CancelledError),
+        (AuthenticationError("invalid_credentials"), ConfigEntryAuthFailed),
+        (ValueError("invalid login response"), UpdateFailed),
+    ],
+)
+async def test_reconnect_login_failure_closes_socket_before_retry(
     hass,
     config_entry_data,
-    cancelled,
+    failure,
+    expected_error,
 ) -> None:
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -85,9 +96,7 @@ async def test_transient_reconnect_login_failure_closes_socket_before_retry(
         async def login(self, username: str, password: str) -> None:
             self.login_attempts += 1
             if self.login_attempts == 1:
-                if cancelled:
-                    raise asyncio.CancelledError
-                raise OSError("transient login timeout")
+                raise failure
 
         async def start_heartbeat(self, interval: int) -> None:
             self.heartbeat_calls += 1
@@ -99,7 +108,7 @@ async def test_transient_reconnect_login_failure_closes_socket_before_retry(
     client = _RecoveringClient()
     coordinator.client = client  # type: ignore[assignment]
 
-    with pytest.raises(asyncio.CancelledError if cancelled else UpdateFailed):
+    with pytest.raises(expected_error):
         await coordinator._ensure_connected()
 
     assert client.connected is False
