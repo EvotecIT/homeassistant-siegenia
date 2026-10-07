@@ -139,6 +139,50 @@ async def test_disconnect_fails_pending_request_and_respects_session_owner(borro
                 await supplied.close()
 
 
+@pytest.mark.parametrize("cancel", [False, True])
+async def test_abandoned_request_releases_waiter_and_late_reply_does_not_replace_next(cancel):
+    received = asyncio.Event()
+
+    async def handler(request):
+        websocket = web.WebSocketResponse()
+        await websocket.prepare(request)
+        first = None
+        async for message in websocket:
+            payload = message.json()
+            if first is None:
+                first = payload
+                received.set()
+                continue
+            await websocket.send_json({"id": first["id"], "status": "ok", "data": "late"})
+            await websocket.send_json({"id": payload["id"], "status": "ok", "data": "current"})
+        return websocket
+
+    async with local_server(handler) as port:
+        client = SiegeniaClient("127.0.0.1", port=port, ws_protocol="ws", response_timeout=1)
+        pending = None
+        try:
+            await client.connect()
+            pending = asyncio.create_task(client.get_device())
+            async with asyncio.timeout(5):
+                await received.wait()
+                if cancel:
+                    pending.cancel()
+                    with pytest.raises(asyncio.CancelledError):
+                        await pending
+                else:
+                    with pytest.raises(SiegeniaError, match="Timeout waiting for response"):
+                        await pending
+            assert not client._awaiting
+            assert client.connected
+            assert (await client.get_device())["data"] == "current"
+            assert not client._awaiting
+        finally:
+            if pending is not None:
+                pending.cancel()
+                await asyncio.gather(pending, return_exceptions=True)
+            await client.disconnect()
+
+
 @pytest.mark.parametrize("borrowed", [False, True])
 async def test_failed_handshake_can_retry_with_correct_session_ownership(borrowed):
     accepting = False
