@@ -66,8 +66,9 @@ async def test_false_rename_flag_does_not_rename_registry_entries(hass, setup_in
     assert registry.async_get(entity.entity_id) is not None
 
 
+@pytest.mark.parametrize("conflicting_id", [False, True])
 async def test_name_repair_preview_and_apply_preserve_custom_and_foreign_names(
-    hass, setup_integration,
+    hass, setup_integration, conflicting_id,
 ):
     registry = er.async_get(hass)
     broken = registry.async_get_or_create(
@@ -80,7 +81,7 @@ async def test_name_repair_preview_and_apply_preserve_custom_and_foreign_names(
     )
     foreign = registry.async_get_or_create(
         "sensor", "other_integration", "foreign-state",
-        suggested_object_id="foreign_none",
+        suggested_object_id="siegenia_window_state" if conflicting_id else "foreign_none",
     )
     registry.async_update_entity(broken.entity_id, name="None")
     registry.async_update_entity(custom.entity_id, name="My window")
@@ -98,11 +99,13 @@ async def test_name_repair_preview_and_apply_preserve_custom_and_foreign_names(
         {"rename_entity_ids": True, "dry_run": False}, blocking=True,
     )
     repaired_id = registry.async_get_entity_id("sensor", DOMAIN, "repair-state")
-    assert repaired_id == "sensor.siegenia_window_state"
+    assert repaired_id == (broken.entity_id if conflicting_id else "sensor.siegenia_window_state")
     assert registry.async_get(repaired_id).name is None
-    assert registry.async_get(broken.entity_id) is None
+    if not conflicting_id:
+        assert registry.async_get(broken.entity_id) is None
     assert registry.async_get(custom.entity_id).name == "My window"
     assert registry.async_get(foreign.entity_id).name == "None"
+    assert registry.async_get(foreign.entity_id).unique_id == "foreign-state"
 
 
 async def test_timer_normalizes_whole_minutes(hass, setup_integration):
