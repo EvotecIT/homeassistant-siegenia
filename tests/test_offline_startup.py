@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+import asyncio
+from datetime import timedelta
 from unittest.mock import AsyncMock
 
 import pytest
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.siegenia.const import DOMAIN
 from custom_components.siegenia.coordinator import SiegeniaDataUpdateCoordinator
+from custom_components.siegenia.siegenia_client.client import AuthenticationError
 
 
-async def test_setup_stays_loaded_and_unavailable_while_device_is_offline(
+async def test_offline_setup_recovers_on_scheduled_refresh(
     hass,
     monkeypatch,
     config_entry_data,
@@ -23,6 +28,9 @@ async def test_setup_stays_loaded_and_unavailable_while_device_is_offline(
             self.disconnect = AsyncMock()
             self.login = AsyncMock()
             self.start_heartbeat = AsyncMock()
+            self.get_device_params = AsyncMock(return_value={
+                "status": "ok", "data": {"states": {"0": "CLOSED"}, "warnings": []},
+            })
 
         def set_push_callback(self, callback) -> None:  # noqa: ANN001
             return None
@@ -48,10 +56,39 @@ async def test_setup_stays_loaded_and_unavailable_while_device_is_offline(
     )
     assert cover.state == "unavailable"
 
+    coordinator = entry.runtime_data
+    client = coordinator.client
 
-async def test_transient_reconnect_login_failure_closes_socket_before_retry(
+    async def connect():
+        client.connected = True
+
+    client.connect.side_effect = connect
+    client.login.reset_mock()
+    client.start_heartbeat.reset_mock()
+    assert coordinator.update_interval is not None
+    async_fire_time_changed(hass, dt_util.utcnow() + coordinator.update_interval + timedelta(seconds=1))
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert hass.states.get(cover.entity_id).state == "closed"
+    client.login.assert_awaited_once()
+    client.start_heartbeat.assert_awaited_once()
+    client.get_device_params.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected_error"),
+    [
+        (OSError("transient login timeout"), UpdateFailed),
+        (asyncio.CancelledError(), asyncio.CancelledError),
+        (AuthenticationError("invalid_credentials"), ConfigEntryAuthFailed),
+        (ValueError("invalid login response"), UpdateFailed),
+    ],
+)
+async def test_reconnect_login_failure_closes_socket_before_retry(
     hass,
     config_entry_data,
+    failure,
+    expected_error,
 ) -> None:
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -82,7 +119,7 @@ async def test_transient_reconnect_login_failure_closes_socket_before_retry(
         async def login(self, username: str, password: str) -> None:
             self.login_attempts += 1
             if self.login_attempts == 1:
-                raise OSError("transient login timeout")
+                raise failure
 
         async def start_heartbeat(self, interval: int) -> None:
             self.heartbeat_calls += 1
@@ -94,7 +131,7 @@ async def test_transient_reconnect_login_failure_closes_socket_before_retry(
     client = _RecoveringClient()
     coordinator.client = client  # type: ignore[assignment]
 
-    with pytest.raises(UpdateFailed):
+    with pytest.raises(expected_error):
         await coordinator._ensure_connected()
 
     assert client.connected is False

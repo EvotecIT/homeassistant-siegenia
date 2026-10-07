@@ -3,6 +3,7 @@ set_mode:
   description: Send a discrete mode command to the Siegenia window.
   fields:
     entity_id:
+      required: true
       selector:
         entity:
           integration: siegenia
@@ -25,11 +26,13 @@ set_connection:
   description: "Change host/port/protocol if the device IP changed. Use the UI options to update credentials."
   fields:
     entity_id:
+      required: true
       selector:
         entity:
           integration: siegenia
+          domain: cover
     host:
-      required: true
+      required: false
       example: 192.168.1.50
       selector:
         text:
@@ -54,6 +57,7 @@ reboot_device:
   description: Reboot the Siegenia controller.
   fields:
     entity_id:
+      required: true
       selector:
         entity:
           integration: siegenia
@@ -64,6 +68,7 @@ reset_device:
   description: Reset the Siegenia controller to defaults (use with care).
   fields:
     entity_id:
+      required: true
       selector:
         entity:
           integration: siegenia
@@ -74,6 +79,7 @@ renew_cert:
   description: Renew the device TLS certificate.
   fields:
     entity_id:
+      required: true
       selector:
         entity:
           integration: siegenia
@@ -84,6 +90,7 @@ sync_clock:
   description: Set the device clock to Home Assistant's current local time. Optionally set the timezone string (POSIX/TZ format).
   fields:
     entity_id:
+      required: true
       selector:
         entity:
           integration: siegenia
@@ -99,6 +106,7 @@ timer_start:
   description: Start the device timer with a duration.
   fields:
     entity_id:
+      required: true
       selector:
         entity:
           integration: siegenia
@@ -116,6 +124,7 @@ timer_stop:
   description: Stop/disable the device timer.
   fields:
     entity_id:
+      required: true
       selector:
         entity:
           integration: siegenia
@@ -126,6 +135,7 @@ timer_set_duration:
   description: Set the device timer duration without changing enabled state.
   fields:
     entity_id:
+      required: true
       selector:
         entity:
           integration: siegenia
@@ -147,3 +157,33 @@ cleanup_devices:
       selector:
         entity:
           integration: siegenia
+
+
+repair_names:
+  name: Repair Entity Names
+  description: Review or repair entity names and optionally rename entity IDs.
+  fields:
+    dry_run:
+      name: Preview only
+      description: Report proposed changes without modifying the entity registry.
+      default: true
+      selector:
+        boolean:
+    rename_entity_ids:
+      name: Rename entity IDs
+      default: false
+      selector:
+        boolean:
+    only_suffix_none:
+      name: Limit renaming to IDs ending in none
+      default: true
+      selector:
+        boolean:
+    scheme:
+      name: Naming scheme
+      default: device_entity
+      selector:
+        select:
+          options:
+            - device_entity
+            - brand_type_place

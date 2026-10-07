@@ -1,24 +1,24 @@
 from __future__ import annotations
 
-from typing import Any
-
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    DOMAIN,
-    DEVICE_TYPE_MAP,
-    CONF_ENABLE_BUTTONS,
     CMD_CLOSE,
     CMD_CLOSE_WO_LOCK,
     CMD_STOP,
+    CONF_ENABLE_BUTTONS,
+    DEVICE_TYPE_MAP,
+    DOMAIN,
     STATE_GAP_VENT,
     STATE_OPEN,
     STATE_STOP_OVER,
 )
+from .coordinator import SiegeniaDataUpdateCoordinator
+from .models import SiegeniaConfigEntry
 
 _ACTIONS = [
     ("open", STATE_OPEN),
@@ -30,11 +30,15 @@ _ACTIONS = [
 ]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
+# The WebSocket client correlates concurrent requests by ID; do not delay actions.
+PARALLEL_UPDATES = 0
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     # Respect option: buttons disabled by default
     if not entry.options.get(CONF_ENABLE_BUTTONS, False):
         return
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     serial = coordinator.device_serial()
     entities: list[ButtonEntity] = []
     for key, mode in _ACTIONS:
@@ -42,8 +46,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities)
 
 
-class SiegeniaModeButton(CoordinatorEntity, ButtonEntity):
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str, key: str, mode: str) -> None:
+class SiegeniaModeButton(CoordinatorEntity[SiegeniaDataUpdateCoordinator], ButtonEntity):
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str, key: str, mode: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial

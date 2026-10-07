@@ -1,25 +1,32 @@
 from __future__ import annotations
 
-from homeassistant.components.number import NumberEntity
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, resolve_model
+from .coordinator import SiegeniaDataUpdateCoordinator
+from .models import SiegeniaConfigEntry
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+# The WebSocket client correlates concurrent requests by ID; do not delay actions.
+PARALLEL_UPDATES = 0
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+    coordinator = entry.runtime_data
     async_add_entities([SiegeniaStopoverNumber(coordinator, entry)])
 
 
-class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
+class SiegeniaStopoverNumber(CoordinatorEntity[SiegeniaDataUpdateCoordinator], NumberEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "stopover_distance"
-    _attr_mode = "slider"
+    _attr_mode = NumberMode.SLIDER
     _attr_native_unit_of_measurement = "dm"
 
-    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry) -> None:
         super().__init__(coordinator)
         self._entry = entry
         serial = coordinator.device_serial()
@@ -55,12 +62,12 @@ class SiegeniaStopoverNumber(CoordinatorEntity, NumberEntity):
         await self.coordinator.async_request_refresh()
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo:
         info = (self.coordinator.device_info or {}).get("data", {})
         ident = self.coordinator.device_identifier()
         return {
             "identifiers": {(DOMAIN, ident)},
             "manufacturer": "Siegenia",
             "name": info.get("devicename") or "Siegenia Device",
-            "model": info.get("type"),
+            "model": resolve_model(info),
         }

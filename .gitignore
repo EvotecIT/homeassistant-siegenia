@@ -144,3 +144,5 @@ pip-wheel-metadata/
 
 # Generated brand assets (created by tools/gen_brand_icons.py)
 build/brand/
+
+.mypy_cache/

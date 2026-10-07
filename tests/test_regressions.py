@@ -22,7 +22,7 @@ from custom_components.siegenia.const import (
     CONF_VERIFY_SSL,
     DOMAIN,
 )
-from custom_components.siegenia.device_condition import CONDITION_TYPES, async_get_conditions
+from custom_components.siegenia.device_condition import CONDITION_TYPES, async_get_conditions, async_condition_from_config
 from custom_components.siegenia.device_trigger import TRIGGER_TYPES, async_get_triggers, async_attach_trigger
 
 
@@ -37,7 +37,7 @@ async def test_close_wo_lock_mapping(hass, setup_integration):
         {ATTR_ENTITY_ID: cover_eid, "position": 30},
         blocking=True,
     )
-    client = hass.data[entry.domain][entry.entry_id].client
+    client = entry.runtime_data.client
     client.open_close.assert_any_call(0, CMD_CLOSE_WO_LOCK)
 
     await hass.services.async_call(
@@ -52,7 +52,7 @@ async def test_close_wo_lock_mapping(hass, setup_integration):
 async def test_unknown_state_not_closed(hass, setup_integration):
     entry = setup_integration
     cover_eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     coordinator.async_set_updated_data({"data": {"states": {"0": "MOVING"}}})
     await hass.async_block_till_done()
 
@@ -102,7 +102,7 @@ async def test_options_override_intervals(hass, mock_client, config_entry_data, 
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    coordinator = hass.data[entry.domain][entry.entry_id]
+    coordinator = entry.runtime_data
     assert coordinator.update_interval == timedelta(seconds=12)
     assert coordinator.heartbeat_interval == 33
 
@@ -242,3 +242,22 @@ async def test_device_trigger_fires_on_state_change(hass, setup_integration):
     await hass.async_block_till_done()
     await asyncio.wait_for(fired.wait(), timeout=2.0)
     unsub()
+
+
+async def test_device_condition_tracks_state(hass, setup_integration):
+    """Device conditions evaluate the selected entity through HA's state helper."""
+    registry = er.async_get(hass)
+    state_eid = next(
+        state.entity_id for state in hass.states.async_all("sensor")
+        if state.entity_id.endswith("_window_state")
+    )
+    entry = registry.async_get(state_eid)
+    checker = await async_condition_from_config(hass, {
+        "condition": "device", CONF_DOMAIN: DOMAIN,
+        CONF_DEVICE_ID: entry.device_id, CONF_ENTITY_ID: state_eid,
+        CONF_TYPE: "is_open",
+    })
+    hass.states.async_set(state_eid, "closed")
+    assert checker(hass, {}) is False
+    hass.states.async_set(state_eid, "open")
+    assert checker(hass, {}) is True

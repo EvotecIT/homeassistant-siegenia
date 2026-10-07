@@ -14,11 +14,28 @@
           "poll_interval": "Poll interval (s)",
           "heartbeat_interval": "Heartbeat interval (s)"
         }
+      },
+      "reconfigure": {
+        "title": "Siegenia Connection",
+        "data": {
+          "host": "Host/IP",
+          "port": "Port",
+          "ws_protocol": "WS Protocol",
+          "verify_ssl": "Verify TLS certificate",
+          "username": "Username",
+          "password": "Password",
+          "auto_discover": "Auto-detect IP changes on your network",
+          "extended_discovery": "Scan common home subnets (broader, slower; may trigger security alerts on corporate networks)"
+        }
       }
     },
     "error": {
       "auth": "Authentication failed. Check username/password.",
-      "cannot_connect": "Failed to connect to the device."
+      "cannot_connect": "Failed to connect to the device.",
+      "wrong_device": "The connection belongs to a different device or its serial number could not be verified."
+    },
+    "abort": {
+      "reconfigured": "Connection settings have been updated."
     }
   },
   "issues": {
@@ -29,7 +46,10 @@
   },
   "options": {
     "error": {
-      "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100."
+      "invalid_thresholds": "Invalid thresholds: ensure Gap max < Close w/o lock max < 100.",
+      "auth": "Authentication failed. Check username/password.",
+      "cannot_connect": "Failed to connect to the device.",
+      "wrong_device": "The connection belongs to a different device or its serial number could not be verified."
     },
     "step": {
       "general": {
@@ -159,6 +179,41 @@
         "entity_id": {"name": "Entity", "description": "Any entity from the device."},
         "duration": {"name": "Duration", "description": "Minutes (e.g. 30) or HH:MM (e.g. 1:15)."}
       }
+    }
+  },
+  "exceptions": {
+    "opening_disabled": {
+      "message": "Opening commands are disabled in Siegenia options."
+    },
+    "authentication_failed": {
+      "message": "Siegenia authentication failed. Reauthenticate the integration."
+    },
+    "device_action_failed": {
+      "message": "Unable to complete the action; the Siegenia device may be offline."
+    },
+    "loaded_cover_required": {
+      "message": "Select a loaded Siegenia cover entity."
+    },
+    "invalid_mode": {
+      "message": "Invalid mode {mode} for siegenia.set_mode"
+    },
+    "entry_unavailable": {
+      "message": "Coordinator missing on entity for siegenia.set_connection"
+    },
+    "credentials_in_options": {
+      "message": "Credentials must be updated via the UI options. siegenia.set_connection does not accept username/password."
+    },
+    "cleanup_target_required": {
+      "message": "Select a Siegenia entity for cleanup."
+    },
+    "cleanup_no_entries": {
+      "message": "No Siegenia entries found for cleanup"
+    },
+    "cleanup_entry_unavailable": {
+      "message": "The Siegenia entry is unavailable for cleanup."
+    },
+    "invalid_duration": {
+      "message": "Duration must be nonnegative whole minutes or HH:MM with minutes from 00 to 59."
     }
   }
 }

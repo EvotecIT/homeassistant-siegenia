@@ -1,47 +1,56 @@
 from __future__ import annotations
 
-from datetime import timedelta
-import logging
-import time
 import asyncio
 import ipaddress
-from collections.abc import Awaitable
+import logging
+import time
+from collections.abc import Awaitable, Callable
+from datetime import datetime, timedelta
 from typing import Any
 
-from aiohttp import ClientSession, ClientConnectorError, WSServerHandshakeError
+from aiohttp import ClientConnectorError, ClientSession, WSServerHandshakeError
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, Context
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers.event import async_call_later
+from homeassistant.core import Context, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import AuthenticationError, SiegeniaClient, SiegeniaError
 from .const import (
+    CONF_AUTO_DISCOVER,
+    CONF_HOST,
+    CONF_PASSWORD,
+    CONF_PORT,
+    CONF_SERIAL,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
+    CONF_WS_PROTOCOL,
+    DEFAULT_AUTO_DISCOVER,
     DEFAULT_HEARTBEAT_INTERVAL,
     DEFAULT_POLL_INTERVAL,
-    DOMAIN,
-    DEFAULT_WS_PROTOCOL,
     DEFAULT_VERIFY_SSL,
-    CONF_HOST,
-    CONF_PORT,
-    CONF_USERNAME,
-    CONF_PASSWORD,
-    CONF_WS_PROTOCOL,
-    CONF_VERIFY_SSL,
-    CONF_AUTO_DISCOVER,
-    CONF_SERIAL,
-    DEFAULT_AUTO_DISCOVER,
-    is_opening_command,
+    DEFAULT_WS_PROTOCOL,
+    DOMAIN,
     ISSUE_UNREACHABLE,
-    REDISCOVER_COOLDOWN_SECONDS,
-    REDISCOVER_BACKOFF_MAX,
-    REDISCOVER_MAX_SUBNETS,
-    REDISCOVER_MAX_PER_SUBNET,
-    REDISCOVER_MAX_HOSTS,
-    REDISCOVER_CONCURRENCY,
     PROBE_TIMEOUT,
+    REDISCOVER_BACKOFF_MAX,
+    REDISCOVER_CONCURRENCY,
+    REDISCOVER_COOLDOWN_SECONDS,
+    REDISCOVER_MAX_HOSTS,
+    REDISCOVER_MAX_PER_SUBNET,
+    REDISCOVER_MAX_SUBNETS,
+    is_opening_command,
 )
+
+
+@callback
+def async_clear_connection_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Clear only this entry's current or legacy connection warning."""
+    ir.async_delete_issue(hass, DOMAIN, f"{ISSUE_UNREACHABLE}_{entry_id}")
+    legacy = ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_UNREACHABLE)
+    if legacy is not None and legacy.data == {"entry_id": entry_id}:
+        ir.async_delete_issue(hass, DOMAIN, ISSUE_UNREACHABLE)
 
 
 class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -106,7 +115,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._motion_interval = timedelta(seconds=max(1, min(2, poll_interval)))
         self._push_idle_timeout = 60
         self._last_push_monotonic: float | None = None
-        self._revert_handle = None
+        self._revert_handle: Callable[[], None] | None = None
         # Warnings tracking
         self._last_warnings: str | None = None
         # Optional logging toggles
@@ -116,7 +125,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Options toggles (set from setup_entry)
         self.warning_notifications: bool = True
         self.warning_events: bool = True
-        self._motion_revert_handle = None
+        self._motion_revert_handle: Callable[[], None] | None = None
         self.prevent_opening: bool = False
         # Last command per sash (shared across entities for better UX during motion)
         self._last_cmd_by_sash: dict[int, str | None] = {}
@@ -238,7 +247,11 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 origin=origin,
             )
             self._log_command(cmd, sash, source, entity_id, blocked=True, user_name=user_name)
-            raise HomeAssistantError("Opening commands are disabled in Siegenia options.")
+            raise HomeAssistantError(
+                "Opening commands are disabled in Siegenia options.",
+                translation_domain=DOMAIN,
+                translation_key="opening_disabled",
+            )
         action = self.client.stop(sash) if cmd == "STOP" else self.client.open_close(sash, cmd)
         await self.async_run_device_action(action, action_name=f"send {cmd}")
         self.set_last_cmd(sash, cmd)
@@ -254,18 +267,20 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._log_command(cmd, sash, source, entity_id, blocked=False, user_name=user_name)
 
-    async def async_run_device_action(
+    async def async_run_device_action[T](
         self,
-        action: Awaitable[Any],
+        action: Awaitable[T],
         *,
         action_name: str,
-    ) -> Any:
+    ) -> T:
         """Run a device action with a consistent Home Assistant error surface."""
         try:
             return await action
         except AuthenticationError as err:
             raise HomeAssistantError(
-                "Siegenia authentication failed. Reauthenticate the integration."
+                "Siegenia authentication failed. Reauthenticate the integration.",
+                translation_domain=DOMAIN,
+                translation_key="authentication_failed",
             ) from err
         except (
             SiegeniaError,
@@ -276,7 +291,9 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             OSError,
         ) as err:
             raise HomeAssistantError(
-                f"Unable to {action_name}; the Siegenia device may be offline."
+                f"Unable to {action_name}; the Siegenia device may be offline.",
+                translation_domain=DOMAIN,
+                translation_key="device_action_failed",
             ) from err
 
     async def async_set_device_params(
@@ -369,6 +386,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return
         try:
             await self._async_connect_client()
+        except asyncio.CancelledError:
+            if not self._stopping:
+                await self._disconnect_after_connection_failure()
+            raise
         except AuthenticationError as exc:
             await self._disconnect_after_connection_failure()
             raise ConfigEntryAuthFailed from exc
@@ -413,6 +434,12 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_shutdown(self) -> None:
         """Stop coordinator refreshes, connections, and rediscovery."""
         self._stopping = True
+        if self._revert_handle is not None:
+            self._revert_handle()
+            self._revert_handle = None
+        if self._motion_revert_handle is not None:
+            self._motion_revert_handle()
+            self._motion_revert_handle = None
         async with self._shutdown_lock:
             await super().async_shutdown()
             if self._shutdown_complete:
@@ -513,11 +540,12 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         async with self._issue_lock:
             if self._issue_set:
                 return
+            async_clear_connection_issue(self.hass, self.entry.entry_id)
             ir.async_create_issue(
                 self.hass,
                 DOMAIN,
-                ISSUE_UNREACHABLE,
-                is_fixable=True,
+                f"{ISSUE_UNREACHABLE}_{self.entry.entry_id}",
+                is_fixable=False,
                 breaks_in_ha_version=None,
                 severity=ir.IssueSeverity.ERROR,
                 translation_key=ISSUE_UNREACHABLE,
@@ -528,12 +556,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _clear_issue(self) -> None:
         async with self._issue_lock:
-            if not self._issue_set:
-                return
-            try:
-                ir.async_delete_issue(self.hass, DOMAIN, ISSUE_UNREACHABLE)
-            except Exception:
-                pass
+            async_clear_connection_issue(self.hass, self.entry.entry_id)
             self._issue_set = False
 
     async def _rediscover_host(self) -> str | None:
@@ -554,18 +577,18 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return None
 
         # Build subnets to probe: previous /24 plus optional common home nets if extended
-        nets: list[ipaddress.IPv4Network] = [ipaddress.ip_network(f"{self.host}/24", strict=False)]
+        nets: list[ipaddress.IPv4Network] = [ipaddress.IPv4Network(f"{self.host}/24", strict=False)]
         if self.extended_discovery:
             common = ["192.168.0.0/24", "192.168.1.0/24", "10.0.0.0/24", "172.16.0.0/24"]
             for n in common[: REDISCOVER_MAX_SUBNETS - 1]:
-                net = ipaddress.ip_network(n)
+                net = ipaddress.IPv4Network(n)
                 if net not in nets:
                     nets.append(net)
 
         candidates: list[ipaddress.IPv4Address] = []
         for net in nets:
             hosts = list(net.hosts())
-            if net.supernet_of(ipaddress.ip_network(f"{self.host}/32")):
+            if net.supernet_of(ipaddress.IPv4Network(f"{self.host}/32")):
                 center = int(current_ip)
                 hosts = sorted(hosts, key=lambda ip: abs(int(ip) - center))
             candidates.extend(hosts[:REDISCOVER_MAX_PER_SUBNET])
@@ -580,7 +603,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         semaphore = asyncio.Semaphore(REDISCOVER_CONCURRENCY)
 
-        async def _runner(ip_obj: ipaddress.IPv4Address):
+        async def _runner(ip_obj: ipaddress.IPv4Address) -> str | None:
             async with semaphore:
                 return await self._probe_host(str(ip_obj))
 
@@ -665,11 +688,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             logger=self.logger.debug,
             verify_ssl=self.verify_ssl,
         )
-        if self._push_callback:
-            try:
-                self.client.set_push_callback(self._push_callback)
-            except Exception:
-                self.logger.debug("Failed to rebind push callback after host switch")
+        self.client.set_push_callback(self._push_callback)
         # Ensure we still have a serial cached
         if self.serial:
             self._update_serial(self.serial)
@@ -739,6 +758,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         raise UpdateFailed("Failed after retry")
 
     def _handle_push_update(self, msg: dict[str, Any]) -> None:
+        if self._stopping:
+            return
         # Mark push as active; slow down poller while push is flowing
         self._last_push_monotonic = time.monotonic()
         # Prefer motion interval if moving; else push interval
@@ -755,7 +776,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._revert_handle()  # cancel
             self._revert_handle = None
 
-        def _revert(_now):  # noqa: ANN001
+        @callback
+        def _revert(_now: datetime) -> None:
+            if self._stopping:
+                return
             if self._last_push_monotonic and (time.monotonic() - self._last_push_monotonic) >= self._push_idle_timeout:
                 self.update_interval = self._default_interval
                 self._revert_handle = None
@@ -833,6 +857,8 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             pass
 
     def _adjust_interval(self, payload: dict[str, Any]) -> None:
+        if self._stopping:
+            return
         data = (payload or {}).get("data") or {}
         states = (data.get("states") or {}).values()
         if any(s == "MOVING" for s in states):
@@ -843,7 +869,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._motion_revert_handle()
                 self._motion_revert_handle = None
 
-            def _revert(_now):  # noqa: ANN001
+            @callback
+            def _revert(_now: datetime) -> None:
+                if self._stopping:
+                    return
                 # If not moving anymore, go to idle interval
                 self.update_interval = self._idle_interval
                 self._motion_revert_handle = None

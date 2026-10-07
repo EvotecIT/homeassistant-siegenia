@@ -77,7 +77,7 @@ class SiegeniaClient:
             connect_kwargs["ssl"] = ssl_ctx
         try:
             self._ws = await self._session.ws_connect(url, **connect_kwargs)
-        except Exception:
+        except (Exception, asyncio.CancelledError):
             if self._own_session:
                 await self._session.close()
                 self._session = None
@@ -123,9 +123,17 @@ class SiegeniaClient:
                     except Exception as exc:  # noqa: BLE001
                         self._logger(f"Failed to parse message: {exc}")
                         continue
+                    if not isinstance(data, dict):
+                        self._logger("Ignoring message that is not an object")
+                        continue
                     req_id = data.get("id")
+                    try:
+                        response_id = int(req_id) if req_id is not None else None
+                    except (TypeError, ValueError, OverflowError):
+                        self._logger("Ignoring message with invalid request ID")
+                        continue
                     # Route to waiter if matching id
-                    fut = self._awaiting.pop(int(req_id), None) if req_id is not None else None
+                    fut = self._awaiting.pop(response_id, None) if response_id is not None else None
                     if fut and not fut.done():
                         fut.set_result(data)
                     elif self._on_push is not None:

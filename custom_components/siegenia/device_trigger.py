@@ -3,30 +3,24 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-try:
-    from homeassistant.components.automation import AutomationActionType
-except (ImportError, ModuleNotFoundError):
-    from typing import Any, Callable
-    AutomationActionType = Callable[..., Any]  # type: ignore[misc]
-try:
-    from homeassistant.components.device_automation import DEVICE_TRIGGER_BASE_SCHEMA as TRIGGER_BASE_SCHEMA
-except (ImportError, ModuleNotFoundError):
-    from homeassistant.helpers import config_validation as cv
-    TRIGGER_BASE_SCHEMA = cv.TRIGGER_BASE_SCHEMA
-try:
-    from homeassistant.components.homeassistant.triggers import state as _state_trigger
-    _state_validate = _state_trigger.async_validate_trigger_config
-    _state_attach = _state_trigger.async_attach_trigger
-except (ImportError, ModuleNotFoundError):
-    from homeassistant.components.homeassistant.triggers.state import StateTrigger as _StateTrigger  # type: ignore
-    _state_validate = _StateTrigger.async_validate_trigger_config
-    _state_attach = _StateTrigger.async_attach_trigger
-from homeassistant.const import CONF_DEVICE_ID, CONF_DOMAIN, CONF_ENTITY_ID, CONF_FOR, CONF_PLATFORM, CONF_TYPE
+from homeassistant.components.device_automation import (
+    DEVICE_TRIGGER_BASE_SCHEMA as TRIGGER_BASE_SCHEMA,
+)
+from homeassistant.components.homeassistant.triggers import state as _state_trigger
+from homeassistant.const import (
+    CONF_DEVICE_ID,
+    CONF_DOMAIN,
+    CONF_ENTITY_ID,
+    CONF_FOR,
+    CONF_PLATFORM,
+    CONF_TYPE,
+)
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant
-from homeassistant.helpers import config_validation as cv, entity_registry as er
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.trigger import TriggerActionType, TriggerInfo
 
 from .const import DOMAIN
-
 
 TRIGGER_TYPES = {
     "opened": {"entity_suffix": "_window_state", "to": "open"},
@@ -74,9 +68,9 @@ TRIGGER_SCHEMA = TRIGGER_BASE_SCHEMA.extend(
 
 async def async_attach_trigger(
     hass: HomeAssistant,
-    config: dict,
-    action: AutomationActionType,
-    trigger_info: dict,
+    config: dict[str, Any],
+    action: TriggerActionType,
+    trigger_info: TriggerInfo,
 ) -> CALLBACK_TYPE:
     config = TRIGGER_SCHEMA(config)
     meta = TRIGGER_TYPES[config[CONF_TYPE]]
@@ -87,5 +81,5 @@ async def async_attach_trigger(
     }
     if CONF_FOR in config:
         state_config[CONF_FOR] = config[CONF_FOR]
-    state_config = await _state_validate(hass, state_config)
-    return await _state_attach(hass, state_config, action, trigger_info, platform_type="device")
+    state_config = await _state_trigger.async_validate_trigger_config(hass, state_config)
+    return await _state_trigger.async_attach_trigger(hass, state_config, action, trigger_info, platform_type="device")

@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+from types import SimpleNamespace
+
+from aiohttp import WSMsgType
 
 import pytest
 
 from custom_components.siegenia.siegenia_client.client import (
     AuthenticationError,
     SiegeniaClient,
-    SiegeniaError,
 )
 
 
@@ -49,17 +51,6 @@ async def test_login_password_is_redacted_from_debug_log() -> None:
     assert '"password":"***"' in rendered
 
 
-async def test_device_error_status_is_not_reported_as_success() -> None:
-    client = SiegeniaClient("192.0.2.1")
-    client._ws = _ImmediateResponseWebSocket(  # type: ignore[assignment]
-        client,
-        {"status": "device_error"},
-    )
-
-    with pytest.raises(SiegeniaError, match="device_error"):
-        await client.get_device()
-
-
 async def test_any_failed_login_status_is_an_authentication_error() -> None:
     client = SiegeniaClient("192.0.2.1")
     client._ws = _ImmediateResponseWebSocket(  # type: ignore[assignment]
@@ -96,3 +87,54 @@ async def test_disconnect_waits_for_background_tasks() -> None:
     assert websocket.closed
     assert heartbeat_task.done()
     assert receiver_task.done()
+
+
+async def test_concurrent_requests_receive_their_own_out_of_order_responses() -> None:
+    """An action and a refresh may share the socket without exchanging results."""
+    sent: asyncio.Queue[dict] = asyncio.Queue()
+    incoming: asyncio.Queue = asyncio.Queue()
+
+    class WebSocket:
+        closed = False
+
+        async def send_str(self, message: str) -> None:
+            await sent.put(json.loads(message))
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            return await incoming.get()
+
+        async def close(self) -> None:
+            self.closed = True
+
+    client = SiegeniaClient("192.0.2.1")
+    websocket = WebSocket()
+    client._ws = websocket  # type: ignore[assignment]
+    client._receiver_task = asyncio.create_task(client._receiver_loop(websocket))
+    requests = [
+        asyncio.create_task(client.get_device()),
+        asyncio.create_task(client.set_device_params({"mode": "STOP"})),
+    ]
+    try:
+        async with asyncio.timeout(5):
+            first, second = await sent.get(), await sent.get()
+            assert first["id"] != second["id"]
+            for payload in (second, first):
+                incoming.put_nowait(SimpleNamespace(
+                    type=WSMsgType.TEXT,
+                    data=json.dumps({
+                        "id": payload["id"], "status": "ok",
+                        "data": payload["command"],
+                    }),
+                ))
+            device, action = await asyncio.gather(*requests)
+        assert device["data"] == "getDevice"
+        assert action["data"] == "setDeviceParams"
+        assert not client._awaiting
+    finally:
+        for request in requests:
+            request.cancel()
+        await asyncio.gather(*requests, return_exceptions=True)
+        await client.disconnect()

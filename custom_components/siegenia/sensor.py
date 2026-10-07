@@ -1,22 +1,28 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, resolve_model, STATE_TO_LOWER
+from .const import DOMAIN, STATE_TO_LOWER, resolve_model
+from .coordinator import SiegeniaDataUpdateCoordinator
+from .models import SiegeniaConfigEntry
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+# State updates are centralized by the coordinator.
+PARALLEL_UPDATES = 0
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+    coordinator = entry.runtime_data
     serial = coordinator.device_serial()
-    entities = []
+    entities: list[SensorEntity] = []
     if entry.options.get("enable_state_sensor", True):
         entities.append(SiegeniaStateSensor(coordinator, entry, serial))
     if entry.options.get("enable_open_count", True):
@@ -34,14 +40,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         async_add_entities(entities)
 
 
-class _BaseSiegeniaEntity(CoordinatorEntity):
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
+class _BaseSiegeniaEntity(CoordinatorEntity[SiegeniaDataUpdateCoordinator]):
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial
 
     @property
-    def device_info(self):  # noqa: D401 - Home Assistant style
+    def device_info(self) -> DeviceInfo:  # noqa: D401 - Home Assistant style
         info = (self.coordinator.device_info or {}).get("data", {})
         ident = self.coordinator.device_identifier()
         return {
@@ -55,7 +61,6 @@ class _BaseSiegeniaEntity(CoordinatorEntity):
 
 class SiegeniaStateSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
-    _attr_icon = "mdi:window-closed-variant"
     _attr_translation_key = "window_state"
 
     @property
@@ -68,13 +73,12 @@ class SiegeniaStateSensor(_BaseSiegeniaEntity, SensorEntity):
         data = params.get("data") or {}
         states = data.get("states") or {}
         raw = states.get("0")
-        return STATE_TO_LOWER.get(raw, None)
+        return STATE_TO_LOWER.get(raw) if isinstance(raw, str) else None
 
 
 class SiegeniaWarningsCountSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "warnings_count"
-    _attr_icon = "mdi:alert"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -92,7 +96,6 @@ class SiegeniaWarningsCountSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaWarningsTextSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "warnings"
-    _attr_icon = "mdi:alert-octagon"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -113,7 +116,6 @@ class SiegeniaWarningsTextSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaFirmwareUpdateSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "firmware_update"
-    _attr_icon = "mdi:update"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -137,7 +139,6 @@ class SiegeniaFirmwareUpdateSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaTimerEnabledSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "timer_enabled"
-    _attr_icon = "mdi:timer"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -157,7 +158,6 @@ class SiegeniaTimerEnabledSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaTimerRemainingSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "timer_remaining"
-    _attr_icon = "mdi:timer-sand"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -179,7 +179,6 @@ class SiegeniaTimerRemainingSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaOperationSourceSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "operation_source"
-    _attr_icon = "mdi:account-arrow-right"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -203,7 +202,7 @@ class SiegeniaOperationSourceSensor(_BaseSiegeniaEntity, SensorEntity):
         return "idle"
 
     @property
-    def extra_state_attributes(self) -> dict | None:
+    def extra_state_attributes(self) -> dict[str, Any] | None:
         try:
             return {
                 "last_command": self.coordinator.get_last_cmd(0),
@@ -216,11 +215,10 @@ class SiegeniaOperationSourceSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaOpenCountSensor(_BaseSiegeniaEntity, RestoreEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "open_count"
-    _attr_icon = "mdi:counter"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     # Keep unit None for LTS compatibility
 
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator, entry, serial)
         self._count: int = 0
         self._last_was_open = False

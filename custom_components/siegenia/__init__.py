@@ -1,63 +1,70 @@
 from __future__ import annotations
 
-from pathlib import Path
+import asyncio
 from datetime import timedelta
+from pathlib import Path
 
-from typing import TYPE_CHECKING
-from homeassistant.config_entries import ConfigEntry
+# Public import works on minimum and current HA; current HA omits a typed re-export.
+from homeassistant.components.http import StaticPathConfig  # type: ignore[attr-defined]
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-import asyncio
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 
+from .__init_services__ import async_setup_services
 from .const import (
-    DOMAIN,
+    CONF_AUTO_DISCOVER,
+    CONF_DEBUG,
+    CONF_EXTENDED_DISCOVERY,
     CONF_HEARTBEAT_INTERVAL,
+    CONF_HOST,
+    CONF_IDLE_INTERVAL,
+    CONF_INFORMATIONAL,
+    CONF_MOTION_INTERVAL,
     CONF_PASSWORD,
     CONF_POLL_INTERVAL,
     CONF_PORT,
+    CONF_PREVENT_OPENING,
+    CONF_SERIAL,
     CONF_USERNAME,
-    CONF_HOST,
-    CONF_AUTO_DISCOVER,
-    CONF_EXTENDED_DISCOVERY,
-    CONF_WS_PROTOCOL,
-    DEFAULT_WS_PROTOCOL,
     CONF_VERIFY_SSL,
-    DEFAULT_VERIFY_SSL,
+    CONF_WARNING_EVENTS,
+    CONF_WARNING_NOTIFICATIONS,
+    CONF_WS_PROTOCOL,
     DEFAULT_AUTO_DISCOVER,
     DEFAULT_EXTENDED_DISCOVERY,
-    CONF_SERIAL,
+    DEFAULT_IDLE_INTERVAL,
+    DEFAULT_MOTION_INTERVAL,
+    DEFAULT_PREVENT_OPENING,
+    DEFAULT_VERIFY_SSL,
+    DEFAULT_WS_PROTOCOL,
+    DOMAIN,
     MIGRATION_DEVICES_V2,
     PLATFORMS,
-    CONF_WARNING_NOTIFICATIONS,
-    CONF_WARNING_EVENTS,
-    CONF_DEBUG,
-    CONF_INFORMATIONAL,
-    CONF_MOTION_INTERVAL,
-    CONF_IDLE_INTERVAL,
-    DEFAULT_MOTION_INTERVAL,
-    DEFAULT_IDLE_INTERVAL,
-    CONF_PREVENT_OPENING,
-    DEFAULT_PREVENT_OPENING,
 )
-from .coordinator import SiegeniaDataUpdateCoordinator
+from .coordinator import SiegeniaDataUpdateCoordinator, async_clear_connection_issue
 from .device_registry import async_merge_devices
-from .__init_services__ import async_setup_services
+from .models import SiegeniaConfigEntry
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
-# Compatible type alias across HA versions (ConfigEntry may be non-generic)
-if TYPE_CHECKING:
-    # During type checking use the generic form
-    from homeassistant.config_entries import ConfigEntry as _Cfg
-    SiegeniaConfigEntry = _Cfg[SiegeniaDataUpdateCoordinator]  # type: ignore[misc]
-else:  # runtime: fall back to non-parameterized
-    SiegeniaConfigEntry = ConfigEntry  # type: ignore[assignment]
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register integration actions and installed dashboard icons once."""
+    await async_setup_services(hass)
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(
+            "/siegenia-static/icons", str(Path(__file__).parent / "icons"), True,
+        ),
+    ])
+    return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> bool:
     data = entry.data
-    from .const import DEFAULT_POLL_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL
+    from .const import DEFAULT_HEARTBEAT_INTERVAL, DEFAULT_POLL_INTERVAL
 
     poll_interval = entry.options.get(CONF_POLL_INTERVAL, data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL))
     heartbeat_interval = entry.options.get(CONF_HEARTBEAT_INTERVAL, data.get(CONF_HEARTBEAT_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL))
@@ -86,8 +93,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Advanced intervals
     motion_s = entry.options.get(CONF_MOTION_INTERVAL, DEFAULT_MOTION_INTERVAL)
     idle_s = entry.options.get(CONF_IDLE_INTERVAL, DEFAULT_IDLE_INTERVAL)
-    coordinator._motion_interval = timedelta(seconds=motion_s)  # type: ignore[attr-defined]
-    coordinator._idle_interval = timedelta(seconds=idle_s)      # type: ignore[attr-defined]
+    coordinator._motion_interval = timedelta(seconds=motion_s)
+    coordinator._idle_interval = timedelta(seconds=idle_s)
 
     async def _async_shutdown_coordinator() -> None:
         """Stop connections and background tasks owned by the coordinator."""
@@ -116,12 +123,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise
 
     entry.async_on_unload(remove_stop_listener)
+    configured_options = dict(entry.options)
+
+    async def _async_options_updated(
+        hass: HomeAssistant, updated_entry: SiegeniaConfigEntry
+    ) -> None:
+        """Apply changed options without reloading on discovery data updates."""
+        nonlocal configured_options
+        new_options = dict(updated_entry.options)
+        if new_options == configured_options:
+            return
+        # The opening-lock switch applies immediately without interrupting devices.
+        coordinator.prevent_opening = new_options.get(
+            CONF_PREVENT_OPENING, DEFAULT_PREVENT_OPENING
+        )
+        requires_reload = (
+            {key: value for key, value in new_options.items() if key != CONF_PREVENT_OPENING}
+            != {key: value for key, value in configured_options.items() if key != CONF_PREVENT_OPENING}
+        )
+        configured_options = new_options
+        if requires_reload:
+            await hass.config_entries.async_reload(updated_entry.entry_id)
+        else:
+            coordinator.async_update_listeners()
+
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
 
 
 async def _async_finish_setup(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: SiegeniaConfigEntry,
     coordinator: SiegeniaDataUpdateCoordinator,
 ) -> None:
     """Finish setup after early shutdown ownership has been registered."""
@@ -156,40 +188,21 @@ async def _async_finish_setup(
             except Exception as exc:  # noqa: BLE001
                 coordinator.logger.debug("Device migration skipped: %s", exc)
 
-    hass.data.setdefault(entry.domain, {})[entry.entry_id] = coordinator
-
-    # Register services once per HA instance using a marker
-    marker = f"{DOMAIN}_services_registered"
-    if not hass.data.get(marker):
-        await async_setup_services(hass)
-        hass.data[marker] = True
-
-    # Serve bundled dashboard icons so users can reference them without copying to /local.
-    # Integration branding is provided natively via custom_components/siegenia/brand/.
-    static_marker = f"{DOMAIN}_static_paths"
-    if not hass.data.get(static_marker):
-        try:
-            import os
-            testing = os.environ.get("PYTEST_CURRENT_TEST") is not None
-            icons_path = Path(__file__).resolve().parents[2] / "assets" / "icons"
-            if icons_path.exists() and not testing:
-                hass.http.register_static_path("/siegenia-static/icons", str(icons_path), cache_headers=True)  # type: ignore[attr-defined]
-                hass.data[static_marker] = True
-        except Exception:  # noqa: BLE001
-            # If HTTP component is not ready or API changed, skip silently; HA branding still works natively.
-            pass
+    entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok:
-        hass.data[entry.domain].pop(entry.entry_id)
-    return unload_ok
+async def async_unload_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> bool:
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def _async_migrate_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def _async_migrate_devices(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> None:
     serial = entry.data.get(CONF_SERIAL) or entry.unique_id
     host = entry.data.get(CONF_HOST)
     await async_merge_devices(hass, entry.entry_id, serial=serial, host=host)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> None:
+    """Remove the deleted controller's connection warning."""
+    async_clear_connection_issue(hass, entry.entry_id)

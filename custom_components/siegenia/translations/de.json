@@ -14,16 +14,36 @@
           "poll_interval": "Abfrageintervall (s)",
           "heartbeat_interval": "Heartbeat-Intervall (s)"
         }
+      },
+      "reconfigure": {
+        "title": "Siegenia-Verbindung",
+        "data": {
+          "host": "Host/IP-Adresse",
+          "port": "Port",
+          "ws_protocol": "WebSocket-Protokoll",
+          "verify_ssl": "TLS-Zertifikat prüfen",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "auto_discover": "IP-Änderungen automatisch erkennen",
+          "extended_discovery": "Übliche Heimnetz-Subnetze durchsuchen (langsamer; kann Sicherheitswarnungen auslösen)"
+        }
       }
     },
     "error": {
       "auth": "Authentifizierung fehlgeschlagen. Prüfen Sie Benutzer/Passwort.",
-      "cannot_connect": "Verbindung zum Gerät fehlgeschlagen."
+      "cannot_connect": "Verbindung zum Gerät fehlgeschlagen.",
+      "wrong_device": "Die Verbindung gehört zu einem anderen Gerät oder seine Seriennummer konnte nicht überprüft werden."
+    },
+    "abort": {
+      "reconfigured": "Die Verbindungseinstellungen wurden aktualisiert."
     }
   },
   "options": {
     "error": {
-      "invalid_thresholds": "Ungültige Schwellenwerte: Gap max < Close w/o lock max < 100."
+      "invalid_thresholds": "Ungültige Schwellenwerte: Gap max < Close w/o lock max < 100.",
+      "auth": "Authentifizierung fehlgeschlagen. Prüfen Sie Benutzer/Passwort.",
+      "cannot_connect": "Verbindung zum Gerät fehlgeschlagen.",
+      "wrong_device": "Die Verbindung gehört zu einem anderen Gerät oder seine Seriennummer konnte nicht überprüft werden."
     },
     "step": {
       "init": {
@@ -229,6 +249,41 @@
       "stop": {
         "name": "Stopp"
       }
+    }
+  },
+  "exceptions": {
+    "opening_disabled": {
+      "message": "Öffnungsbefehle sind in den Siegenia-Optionen deaktiviert."
+    },
+    "authentication_failed": {
+      "message": "Die Siegenia-Authentifizierung ist fehlgeschlagen. Authentifiziere die Integration erneut."
+    },
+    "device_action_failed": {
+      "message": "Die Aktion kann nicht ausgeführt werden. Das Siegenia-Gerät ist möglicherweise offline."
+    },
+    "loaded_cover_required": {
+      "message": "Wähle eine geladene Siegenia-Fensterentität aus."
+    },
+    "invalid_mode": {
+      "message": "Ungültiger Modus {mode} für siegenia.set_mode"
+    },
+    "entry_unavailable": {
+      "message": "Der Siegenia-Konfigurationseintrag ist für diese Entität nicht verfügbar."
+    },
+    "credentials_in_options": {
+      "message": "Zugangsdaten müssen über die Optionen in der Benutzeroberfläche geändert werden. siegenia.set_connection akzeptiert keinen Benutzernamen und kein Passwort."
+    },
+    "cleanup_target_required": {
+      "message": "Wähle eine Siegenia-Entität für die Gerätebereinigung aus."
+    },
+    "cleanup_no_entries": {
+      "message": "Keine Siegenia-Konfigurationseinträge für die Gerätebereinigung gefunden."
+    },
+    "cleanup_entry_unavailable": {
+      "message": "Der Siegenia-Konfigurationseintrag ist für die Gerätebereinigung nicht verfügbar."
+    },
+    "invalid_duration": {
+      "message": "Die Dauer muss in nichtnegativen ganzen Minuten oder als HH:MM mit Minuten von 00 bis 59 angegeben werden."
     }
   }
 }

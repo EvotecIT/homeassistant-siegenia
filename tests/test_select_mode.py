@@ -7,7 +7,7 @@ async def test_mode_select_entity(hass, setup_integration):
 
     # Select GAP_VENT
     await hass.services.async_call("select", "select_option", {ATTR_ENTITY_ID: eid, "option": "gap_vent"}, blocking=True)
-    client = hass.data[setup_integration.domain][setup_integration.entry_id].client
+    client = setup_integration.runtime_data.client
     client.open_close.assert_any_call(0, "GAP_VENT")
 
     # Select STOP

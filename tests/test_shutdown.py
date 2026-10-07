@@ -87,12 +87,29 @@ async def test_home_assistant_stop_disconnects_client(
     await hass.async_block_till_done()
 
     assert len(stop_listeners) == 1
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     coordinator.client.disconnect.reset_mock()
 
     await stop_listeners[0](Mock())
 
     coordinator.client.disconnect.assert_awaited_once_with()
+
+
+async def test_failed_platform_unload_preserves_running_coordinator(
+    hass, setup_integration, monkeypatch
+) -> None:
+    entry = setup_integration
+    coordinator = entry.runtime_data
+    coordinator.client.disconnect.reset_mock()
+    monkeypatch.setattr(
+        hass.config_entries, "async_unload_platforms", AsyncMock(return_value=False)
+    )
+
+    assert not await hass.config_entries.async_unload(entry.entry_id)
+
+    assert entry.runtime_data is coordinator
+    assert not coordinator._stopping
+    coordinator.client.disconnect.assert_not_awaited()
 
 
 async def test_failed_setup_disconnects_client(
@@ -102,8 +119,8 @@ async def test_failed_setup_disconnects_client(
     config_entry_data,
 ) -> None:
     monkeypatch.setattr(
-        "custom_components.siegenia.async_setup_services",
-        AsyncMock(side_effect=RuntimeError("service setup failed")),
+        hass.config_entries, "async_forward_entry_setups",
+        AsyncMock(side_effect=RuntimeError("platform setup failed")),
     )
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -115,7 +132,7 @@ async def test_failed_setup_disconnects_client(
     assert not await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     coordinator.client.disconnect.assert_awaited_once_with()
 
 
@@ -126,7 +143,7 @@ async def test_cancelled_setup_disconnects_client(
     config_entry_data,
 ) -> None:
     monkeypatch.setattr(
-        "custom_components.siegenia.async_setup_services",
+        hass.config_entries, "async_forward_entry_setups",
         AsyncMock(side_effect=asyncio.CancelledError()),
     )
     entry = MockConfigEntry(
@@ -139,7 +156,7 @@ async def test_cancelled_setup_disconnects_client(
     with pytest.raises(asyncio.CancelledError):
         await async_setup_entry(hass, entry)
 
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     coordinator.client.disconnect.assert_awaited_once_with()
 
 
@@ -282,3 +299,34 @@ async def test_shutdown_preserves_base_coordinator_cleanup_and_is_idempotent(
 
     assert coordinator._shutdown_requested is True
     coordinator.client.disconnect.assert_awaited_once_with()
+
+
+@pytest.mark.parametrize("update_kind", ["push", "motion"])
+async def test_unload_cancels_interval_timers_and_ignores_late_updates(
+    hass, setup_integration, update_kind
+) -> None:
+    entry = setup_integration
+    coordinator = entry.runtime_data
+    payload = {"command": "getDeviceParams", "data": {"states": {"0": "MOVING"}}}
+    if update_kind == "push":
+        coordinator._handle_push_update(payload)
+        assert coordinator._revert_handle is not None
+    else:
+        coordinator._adjust_interval(payload)
+        assert coordinator._motion_revert_handle is not None
+    await hass.async_block_till_done()
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert coordinator._revert_handle is None
+    assert coordinator._motion_revert_handle is None
+
+    # A client callback already queued when unloading must not revive the entry.
+    previous_data = coordinator.data
+    previous_interval = coordinator.update_interval
+    coordinator._handle_push_update({"data": {"states": {"0": "CLOSED"}}})
+    coordinator._adjust_interval(payload)
+    assert coordinator.data is previous_data
+    assert coordinator.update_interval == previous_interval
+    assert coordinator._revert_handle is None
+    assert coordinator._motion_revert_handle is None

@@ -21,11 +21,7 @@ async def async_merge_devices(
     dev_reg = dr.async_get(hass)
     ent_reg = er.async_get(hass)
 
-    devices = (
-        dev_reg.async_entries_for_config_entry(entry_id)
-        if hasattr(dev_reg, "async_entries_for_config_entry")
-        else [d for d in dev_reg.devices.values() if entry_id in d.config_entries]
-    )
+    devices = dr.async_entries_for_config_entry(dev_reg, entry_id)
     if not devices:
         return
 
@@ -44,11 +40,7 @@ async def async_merge_devices(
     for dev in devices:
         if dev.id == primary.id:
             continue
-        ents = (
-            ent_reg.async_entries_for_device(dev.id)
-            if hasattr(ent_reg, "async_entries_for_device")
-            else [e for e in ent_reg.entities.values() if e.device_id == dev.id]
-        )
+        ents = er.async_entries_for_device(ent_reg, dev.id)
         for ent in ents:
             ent_reg.async_update_entity(ent.entity_id, device_id=primary.id)
         try:

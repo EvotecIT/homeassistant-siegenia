@@ -13,5 +13,5 @@ async def test_sync_clock_service(hass, setup_integration):
     eid = next(s.entity_id for s in hass.states.async_all("cover") if s.entity_id.endswith("_window"))
     await hass.services.async_call("siegenia", "sync_clock", {ATTR_ENTITY_ID: eid}, blocking=True)
     entry = setup_integration
-    client = hass.data[entry.domain][entry.entry_id].client
+    client = entry.runtime_data.client
     client.set_device_params.assert_called()

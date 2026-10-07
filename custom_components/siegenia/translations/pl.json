@@ -14,16 +14,36 @@
           "poll_interval": "Interwał odświeżania (s)",
           "heartbeat_interval": "Interwał podtrzymania (s)"
         }
+      },
+      "reconfigure": {
+        "title": "Połączenie Siegenia",
+        "data": {
+          "host": "Host / adres IP",
+          "port": "Port",
+          "ws_protocol": "Protokół WebSocket",
+          "verify_ssl": "Weryfikuj certyfikat TLS",
+          "username": "Nazwa użytkownika",
+          "password": "Hasło",
+          "auto_discover": "Automatycznie wykrywaj zmiany adresu IP",
+          "extended_discovery": "Skanuj typowe podsieci domowe (wolniejsze; może wywołać alerty bezpieczeństwa)"
+        }
       }
     },
     "error": {
       "auth": "Błąd uwierzytelnienia. Sprawdź nazwę użytkownika/hasło.",
-      "cannot_connect": "Nie udało się połączyć z urządzeniem."
+      "cannot_connect": "Nie udało się połączyć z urządzeniem.",
+      "wrong_device": "Połączenie prowadzi do innego urządzenia lub nie można zweryfikować jego numeru seryjnego."
+    },
+    "abort": {
+      "reconfigured": "Ustawienia połączenia zostały zaktualizowane."
     }
   },
   "options": {
     "error": {
-      "invalid_thresholds": "Nieprawidłowe progi: upewnij się, że Maks. szczelina < Maks. zamknięcie bez blokady < 100."
+      "invalid_thresholds": "Nieprawidłowe progi: upewnij się, że Maks. szczelina < Maks. zamknięcie bez blokady < 100.",
+      "auth": "Błąd uwierzytelnienia. Sprawdź nazwę użytkownika/hasło.",
+      "cannot_connect": "Nie udało się połączyć z urządzeniem.",
+      "wrong_device": "Połączenie prowadzi do innego urządzenia lub nie można zweryfikować jego numeru seryjnego."
     },
     "step": {
       "init": {
@@ -261,6 +281,41 @@
       "firmware": {
         "name": "Oprogramowanie"
       }
+    }
+  },
+  "exceptions": {
+    "opening_disabled": {
+      "message": "Polecenia otwierania są wyłączone w opcjach Siegenia."
+    },
+    "authentication_failed": {
+      "message": "Uwierzytelnianie Siegenia nie powiodło się. Uwierzytelnij integrację ponownie."
+    },
+    "device_action_failed": {
+      "message": "Nie można wykonać działania. Urządzenie Siegenia może być offline."
+    },
+    "loaded_cover_required": {
+      "message": "Wybierz załadowaną encję osłony Siegenia."
+    },
+    "invalid_mode": {
+      "message": "Nieprawidłowy tryb {mode} dla siegenia.set_mode"
+    },
+    "entry_unavailable": {
+      "message": "Konfiguracja Siegenia jest niedostępna dla tej encji."
+    },
+    "credentials_in_options": {
+      "message": "Dane logowania należy zmienić w opcjach interfejsu. siegenia.set_connection nie przyjmuje nazwy użytkownika ani hasła."
+    },
+    "cleanup_target_required": {
+      "message": "Wybierz encję Siegenia do porządkowania urządzeń."
+    },
+    "cleanup_no_entries": {
+      "message": "Nie znaleziono konfiguracji Siegenia do porządkowania urządzeń."
+    },
+    "cleanup_entry_unavailable": {
+      "message": "Konfiguracja Siegenia jest niedostępna do porządkowania urządzeń."
+    },
+    "invalid_duration": {
+      "message": "Czas musi być nieujemną liczbą całkowitą minut lub mieć format HH:MM z minutami od 00 do 59."
     }
   }
 }

@@ -20,9 +20,20 @@ Enable certificate verification when the controller certificate and hostname
 are trusted. Without verification, keep the controller and Home Assistant on
 a trusted local network. Do not expose the controller API to the internet.
 
-If credentials change, use Home Assistant's reauthentication flow. The
-`siegenia.set_connection` action can update the host, port, or protocol;
-it does not replace the credential flow.
+Use **Reconfigure** on the integration entry to change the controller address,
+port, protocol, or credentials. The **Connection** options use the same checks:
+the integration connects and authenticates before saving, and verifies the
+controller's serial number when the entry has a known serial. Failed validation
+preserves the saved settings. Entries created with only a host-based identity
+cannot verify that a new address belongs to the same physical controller.
+An older hostname-based entry whose address was changed before this identity
+metadata was recorded may report a device mismatch; its saved identity needs
+to be checked before another validated change.
+
+Home Assistant's reauthentication flow is also available after an authentication
+failure. The `siegenia.set_connection` action can update the host, port, or
+protocol without a connection probe; use Reconfigure for validated changes.
+The action does not accept credentials.
 
 ## Window controls
 
@@ -57,3 +68,25 @@ stable state while the operation-source sensor reports manual control.
 Use [automations and dashboards](automations.md) for normal cover actions,
 explicit mode commands, and timers. Keep the window area clear and test any
 automation under supervision before enabling it.
+
+
+## Remove the integration
+
+1. Disable or update automations and dashboard controls that target the controller.
+2. Open **Settings → Devices & services → Siegenia** and choose **Delete** from
+   the controller entry's menu. Repeat for each controller you want to remove.
+3. To uninstall completely, remove **Siegenia** from HACS after deleting its
+   entries, then restart Home Assistant. For a manual installation, remove
+   `config/custom_components/siegenia` and restart Home Assistant.
+
+Successful entry unloading stops Home Assistant polling, reconnect and rediscovery
+work, and closes the controller connection. It does not send a stop, open, close,
+or reset command. Controller-side timers and settings are unchanged; removing
+Home Assistant access does not cancel a movement already in progress.
+
+The integration does not maintain a separate on-disk controller cache. Home
+Assistant history, exported diagnostics, recordings, backups, dashboard cards,
+and automation or blueprint instances are separate and are not deleted by the
+integration. Existing warning notifications may remain until dismissed. Review
+any remaining repair warning against the controllers still configured before
+acting on it.

@@ -5,6 +5,7 @@ from custom_components.siegenia.const import CONF_PREVENT_OPENING
 
 async def test_opening_lock_switch_updates_option(hass, setup_integration):
     entry = setup_integration
+    coordinator = entry.runtime_data
     switch_eid = next(s.entity_id for s in hass.states.async_all("switch"))
     assert hass.states.get(switch_eid).state == "off"
 
@@ -17,3 +18,6 @@ async def test_opening_lock_switch_updates_option(hass, setup_integration):
     updated = hass.config_entries.async_get_entry(entry.entry_id)
     assert updated.options.get(CONF_PREVENT_OPENING) is False
     assert hass.states.get(switch_eid).state == "off"
+
+    await hass.async_block_till_done()
+    assert entry.runtime_data is coordinator

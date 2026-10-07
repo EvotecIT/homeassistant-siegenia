@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, STATE_MOVING, device_configuration_url, resolve_model
+from .coordinator import SiegeniaDataUpdateCoordinator
+from .models import SiegeniaConfigEntry
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:  # type: ignore[no-untyped-def]
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+# State updates are centralized by the coordinator.
+PARALLEL_UPDATES = 0
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+    coordinator = entry.runtime_data
     serial = coordinator.device_serial()
     entities = [
         SiegeniaOnlineBinary(coordinator, entry, serial),
@@ -20,12 +27,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities)
 
 
-class SiegeniaOnlineBinary(CoordinatorEntity, BinarySensorEntity):
+class SiegeniaOnlineBinary(CoordinatorEntity[SiegeniaDataUpdateCoordinator], BinarySensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "online"
-    _attr_icon = "mdi:lan-connect"
 
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial
@@ -43,7 +49,7 @@ class SiegeniaOnlineBinary(CoordinatorEntity, BinarySensorEntity):
         return bool(active)
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo:
         info = (self.coordinator.device_info or {}).get("data", {})
         ident = self.coordinator.device_identifier()
         return {
@@ -59,12 +65,11 @@ class SiegeniaOnlineBinary(CoordinatorEntity, BinarySensorEntity):
         }
 
 
-class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
+class SiegeniaMovingBinary(CoordinatorEntity[SiegeniaDataUpdateCoordinator], BinarySensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "moving"
-    _attr_icon = "mdi:motion"
 
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial
@@ -80,7 +85,7 @@ class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
         return any(state == STATE_MOVING for state in states.values())
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo:
         info = (self.coordinator.device_info or {}).get("data", {})
         ident = self.coordinator.device_identifier()
         return {
@@ -96,13 +101,12 @@ class SiegeniaMovingBinary(CoordinatorEntity, BinarySensorEntity):
         }
 
 
-class SiegeniaWarningBinary(CoordinatorEntity, BinarySensorEntity):
+class SiegeniaWarningBinary(CoordinatorEntity[SiegeniaDataUpdateCoordinator], BinarySensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "warning_active"
-    _attr_icon = "mdi:alert"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator, entry: ConfigEntry, serial: str) -> None:
+    def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._serial = serial
@@ -116,7 +120,7 @@ class SiegeniaWarningBinary(CoordinatorEntity, BinarySensorEntity):
         return len(warnings) > 0
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo:
         info = (self.coordinator.device_info or {}).get("data", {})
         ident = self.coordinator.device_identifier()
         return {

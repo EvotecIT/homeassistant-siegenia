@@ -1,25 +1,17 @@
 from __future__ import annotations
 
 from typing import Any
-from collections.abc import Callable
 
 import voluptuous as vol
-try:
-    from homeassistant.helpers.config_validation import DEVICE_CONDITION_BASE_SCHEMA
-except (ImportError, ModuleNotFoundError):
-    from homeassistant.components.device_automation import DEVICE_CONDITION_BASE_SCHEMA  # type: ignore
-try:
-    # Older HA versions provided a StateCondition class
-    from homeassistant.components.homeassistant.condition import state as _StateCondition  # type: ignore
-except (ImportError, ModuleNotFoundError):
-    _StateCondition = None
-from homeassistant.helpers import condition as cond_helper
 from homeassistant.const import CONF_DEVICE_ID, CONF_DOMAIN, CONF_ENTITY_ID, CONF_TYPE
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv, entity_registry as er
+from homeassistant.helpers import condition as cond_helper
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.condition import ConditionCheckerType
+from homeassistant.helpers.config_validation import DEVICE_CONDITION_BASE_SCHEMA
 
 from .const import DOMAIN
-
 
 CONDITION_TYPES = {
     "is_open": {"entity_suffix": "_window_state", "state": "open"},
@@ -61,16 +53,12 @@ CONDITION_SCHEMA = DEVICE_CONDITION_BASE_SCHEMA.extend(
 )
 
 
-ConditionCheckerType = Callable[[HomeAssistant, dict | None], bool | None]
-
-
-def _build_state_condition(hass: HomeAssistant, config: dict) -> ConditionCheckerType:
-    if _StateCondition is not None:
-        return _StateCondition(hass, config)  # type: ignore[call-arg]
-    return cond_helper.state_from_config(config)
-
-
-async def async_condition_from_config(hass: HomeAssistant, config: dict) -> ConditionCheckerType:
+async def async_condition_from_config(hass: HomeAssistant, config: dict[str, Any]) -> ConditionCheckerType:
     config = CONDITION_SCHEMA(config)
     meta = CONDITION_TYPES[config[CONF_TYPE]]
-    return _build_state_condition(hass, {CONF_ENTITY_ID: config[CONF_ENTITY_ID], "state": meta["state"]})
+    state_config = cv.STATE_CONDITION_SCHEMA({
+        "condition": "state",
+        CONF_ENTITY_ID: config[CONF_ENTITY_ID],
+        "state": meta["state"],
+    })
+    return cond_helper.state_from_config(state_config)
