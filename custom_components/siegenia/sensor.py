@@ -61,7 +61,6 @@ class _BaseSiegeniaEntity(CoordinatorEntity[SiegeniaDataUpdateCoordinator]):
 
 class SiegeniaStateSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
-    _attr_icon = "mdi:window-closed-variant"
     _attr_translation_key = "window_state"
 
     @property
@@ -80,7 +79,6 @@ class SiegeniaStateSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaWarningsCountSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "warnings_count"
-    _attr_icon = "mdi:alert"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -98,7 +96,6 @@ class SiegeniaWarningsCountSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaWarningsTextSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "warnings"
-    _attr_icon = "mdi:alert-octagon"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -119,7 +116,6 @@ class SiegeniaWarningsTextSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaFirmwareUpdateSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "firmware_update"
-    _attr_icon = "mdi:update"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -143,7 +139,6 @@ class SiegeniaFirmwareUpdateSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaTimerEnabledSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "timer_enabled"
-    _attr_icon = "mdi:timer"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -163,7 +158,6 @@ class SiegeniaTimerEnabledSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaTimerRemainingSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "timer_remaining"
-    _attr_icon = "mdi:timer-sand"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -185,7 +179,6 @@ class SiegeniaTimerRemainingSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaOperationSourceSensor(_BaseSiegeniaEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "operation_source"
-    _attr_icon = "mdi:account-arrow-right"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -222,7 +215,6 @@ class SiegeniaOperationSourceSensor(_BaseSiegeniaEntity, SensorEntity):
 class SiegeniaOpenCountSensor(_BaseSiegeniaEntity, RestoreEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "open_count"
-    _attr_icon = "mdi:counter"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     # Keep unit None for LTS compatibility
 

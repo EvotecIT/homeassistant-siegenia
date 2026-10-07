@@ -30,7 +30,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry, asy
 class SiegeniaOnlineBinary(CoordinatorEntity[SiegeniaDataUpdateCoordinator], BinarySensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "online"
-    _attr_icon = "mdi:lan-connect"
 
     def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
@@ -69,7 +68,6 @@ class SiegeniaOnlineBinary(CoordinatorEntity[SiegeniaDataUpdateCoordinator], Bin
 class SiegeniaMovingBinary(CoordinatorEntity[SiegeniaDataUpdateCoordinator], BinarySensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "moving"
-    _attr_icon = "mdi:motion"
 
     def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
@@ -106,7 +104,6 @@ class SiegeniaMovingBinary(CoordinatorEntity[SiegeniaDataUpdateCoordinator], Bin
 class SiegeniaWarningBinary(CoordinatorEntity[SiegeniaDataUpdateCoordinator], BinarySensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "warning_active"
-    _attr_icon = "mdi:alert"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:

@@ -1,0 +1,22 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "online": {"default": "mdi:lan-connect"},
+      "moving": {"default": "mdi:motion"},
+      "warning_active": {"default": "mdi:alert"}
+    },
+    "sensor": {
+      "window_state": {"default": "mdi:window-closed-variant"},
+      "warnings_count": {"default": "mdi:alert"},
+      "warnings": {"default": "mdi:alert-octagon"},
+      "firmware_update": {"default": "mdi:update"},
+      "timer_enabled": {"default": "mdi:timer"},
+      "timer_remaining": {"default": "mdi:timer-sand"},
+      "operation_source": {"default": "mdi:account-arrow-right"},
+      "open_count": {"default": "mdi:counter"}
+    },
+    "switch": {
+      "opening_lock": {"default": "mdi:lock"}
+    }
+  }
+}

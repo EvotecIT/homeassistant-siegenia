@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.icon import async_get_icons
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -23,6 +24,30 @@ async def test_setup_serves_installed_icons_without_device(hass, hass_client):
         assert response.status == 200
         assert response.content_type == "image/svg+xml"
         assert await response.read() == icon.read_bytes()
+
+
+async def test_entity_icons_load_through_home_assistant(hass):
+    """The frontend receives the existing custom icons without a device login."""
+    assert await async_setup_component(hass, DOMAIN, {})
+    icons = (await async_get_icons(hass, "entity", {DOMAIN}))[DOMAIN]
+    assert icons == {
+        "binary_sensor": {
+            "online": {"default": "mdi:lan-connect"},
+            "moving": {"default": "mdi:motion"},
+            "warning_active": {"default": "mdi:alert"},
+        },
+        "sensor": {
+            "window_state": {"default": "mdi:window-closed-variant"},
+            "warnings_count": {"default": "mdi:alert"},
+            "warnings": {"default": "mdi:alert-octagon"},
+            "firmware_update": {"default": "mdi:update"},
+            "timer_enabled": {"default": "mdi:timer"},
+            "timer_remaining": {"default": "mdi:timer-sand"},
+            "operation_source": {"default": "mdi:account-arrow-right"},
+            "open_count": {"default": "mdi:counter"},
+        },
+        "switch": {"opening_lock": {"default": "mdi:lock"}},
+    }
 
 
 @pytest.mark.parametrize("service,data", [

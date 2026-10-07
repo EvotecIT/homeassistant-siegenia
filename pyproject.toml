@@ -27,7 +27,7 @@ exclude = ["tests*"]
 
 [tool.setuptools.package-data]
 "siegenia_client" = ["*.pyi", "py.typed"]
-"custom_components.siegenia" = ["py.typed", "manifest.json", "translations/*.json", "services.yaml", "brand/*.png", "icons/*.svg"]
+"custom_components.siegenia" = ["py.typed", "manifest.json", "icons.json", "translations/*.json", "services.yaml", "brand/*.png", "icons/*.svg"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

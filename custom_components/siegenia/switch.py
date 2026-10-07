@@ -34,7 +34,6 @@ class SiegeniaOpeningLockSwitch(CoordinatorEntity[SiegeniaDataUpdateCoordinator]
     _attr_has_entity_name = True
     _attr_translation_key = "opening_lock"
     _attr_entity_category = EntityCategory.CONFIG
-    _attr_icon = "mdi:lock"
 
     def __init__(self, coordinator: SiegeniaDataUpdateCoordinator, entry: SiegeniaConfigEntry, serial: str) -> None:
         super().__init__(coordinator)
