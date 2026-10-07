@@ -72,7 +72,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | exception-translations | Implemented | All 11 integration-owned action exceptions carry HA translation metadata, with English, Polish, German, and French messages. Real HA translation-loader tests cover every key; WebSocket action tests verify invalid-mode placeholders and duration error metadata before device writes. Installed frontend rendering remains part of runtime qualification. |
 | icon-translations | Review | Audit state-aware icons and current HA translation metadata. |
 | reconfiguration-flow | Partial | Dedicated Reconfigure and Connection options share connection/authentication and known-serial validation. Failure/retry tests preserve data and reload once; repeated edits preserve host-fallback identity. Historical hostname-fallback entries moved before identity metadata existed remain ambiguous. Installed UI and physical-device proof remain open. |
-| repair-issues | Partial | Coordinator uses HA repair issues; verify create, recover, dismiss, and user guidance. |
+| repair-issues | Partial | Connection warnings use entry-scoped IDs. Real HA registry tests verify two-controller isolation, recovery after reload, and removal without clearing another entry's current or legacy warning. Warnings provide recovery instructions without advertising an unimplemented repair flow. Installed frontend guidance remains unverified. |
 | stale-devices | Partial | Device migration and cleanup services exist. Name-repair preview preserves registry state; conflicting target IDs preserve both the original Siegenia identity and the foreign entity. Complete device-merge scope and removal-rule qualification. |
 
 ## Platinum
@@ -85,7 +85,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 ## Qualification beyond the rule ledger
 
-- [x] 137 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 140 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
 - [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.

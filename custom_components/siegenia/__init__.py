@@ -44,7 +44,7 @@ from .const import (
     MIGRATION_DEVICES_V2,
     PLATFORMS,
 )
-from .coordinator import SiegeniaDataUpdateCoordinator
+from .coordinator import SiegeniaDataUpdateCoordinator, async_clear_connection_issue
 from .device_registry import async_merge_devices
 from .models import SiegeniaConfigEntry
 
@@ -201,3 +201,8 @@ async def _async_migrate_devices(hass: HomeAssistant, entry: SiegeniaConfigEntry
     serial = entry.data.get(CONF_SERIAL) or entry.unique_id
     host = entry.data.get(CONF_HOST)
     await async_merge_devices(hass, entry.entry_id, serial=serial, host=host)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: SiegeniaConfigEntry) -> None:
+    """Remove the deleted controller's connection warning."""
+    async_clear_connection_issue(hass, entry.entry_id)

@@ -44,6 +44,15 @@ from .const import (
 )
 
 
+@callback
+def async_clear_connection_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Clear only this entry's current or legacy connection warning."""
+    ir.async_delete_issue(hass, DOMAIN, f"{ISSUE_UNREACHABLE}_{entry_id}")
+    legacy = ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_UNREACHABLE)
+    if legacy is not None and legacy.data == {"entry_id": entry_id}:
+        ir.async_delete_issue(hass, DOMAIN, ISSUE_UNREACHABLE)
+
+
 class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def __init__(
         self,
@@ -531,11 +540,12 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         async with self._issue_lock:
             if self._issue_set:
                 return
+            async_clear_connection_issue(self.hass, self.entry.entry_id)
             ir.async_create_issue(
                 self.hass,
                 DOMAIN,
-                ISSUE_UNREACHABLE,
-                is_fixable=True,
+                f"{ISSUE_UNREACHABLE}_{self.entry.entry_id}",
+                is_fixable=False,
                 breaks_in_ha_version=None,
                 severity=ir.IssueSeverity.ERROR,
                 translation_key=ISSUE_UNREACHABLE,
@@ -546,12 +556,7 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _clear_issue(self) -> None:
         async with self._issue_lock:
-            if not self._issue_set:
-                return
-            try:
-                ir.async_delete_issue(self.hass, DOMAIN, ISSUE_UNREACHABLE)
-            except Exception:
-                pass
+            async_clear_connection_issue(self.hass, self.entry.entry_id)
             self._issue_set = False
 
     async def _rediscover_host(self) -> str | None:
