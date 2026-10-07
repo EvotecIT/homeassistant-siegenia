@@ -60,6 +60,28 @@ async def local_server(handler):
         await runner.cleanup()
 
 
+@pytest.mark.parametrize("malformed", ["not-json", "[]", '{"id":"invalid"}'])
+async def test_malformed_message_does_not_drop_valid_response(malformed):
+    async def handler(request):
+        websocket = web.WebSocketResponse()
+        await websocket.prepare(request)
+        async for message in websocket:
+            payload = message.json()
+            await websocket.send_str(malformed)
+            await websocket.send_json({"id": payload["id"], "status": "ok"})
+        return websocket
+
+    async with local_server(handler) as port:
+        client = SiegeniaClient("127.0.0.1", port=port, ws_protocol="ws", response_timeout=1)
+        try:
+            await client.connect()
+            assert (await client.get_device())["status"] == "ok"
+            assert client.connected
+            assert not client._awaiting
+        finally:
+            await client.disconnect()
+
+
 @pytest.mark.parametrize("borrowed", [False, True])
 async def test_disconnect_fails_pending_request_and_respects_session_owner(borrowed):
     pending_received = asyncio.Event()
