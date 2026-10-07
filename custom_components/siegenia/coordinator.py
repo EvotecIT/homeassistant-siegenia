@@ -377,6 +377,10 @@ class SiegeniaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return
         try:
             await self._async_connect_client()
+        except asyncio.CancelledError:
+            if not self._stopping:
+                await self._disconnect_after_connection_failure()
+            raise
         except AuthenticationError as exc:
             await self._disconnect_after_connection_failure()
             raise ConfigEntryAuthFailed from exc

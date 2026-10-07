@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
@@ -49,9 +50,11 @@ async def test_setup_stays_loaded_and_unavailable_while_device_is_offline(
     assert cover.state == "unavailable"
 
 
+@pytest.mark.parametrize("cancelled", [False, True])
 async def test_transient_reconnect_login_failure_closes_socket_before_retry(
     hass,
     config_entry_data,
+    cancelled,
 ) -> None:
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -82,6 +85,8 @@ async def test_transient_reconnect_login_failure_closes_socket_before_retry(
         async def login(self, username: str, password: str) -> None:
             self.login_attempts += 1
             if self.login_attempts == 1:
+                if cancelled:
+                    raise asyncio.CancelledError
                 raise OSError("transient login timeout")
 
         async def start_heartbeat(self, interval: int) -> None:
@@ -94,7 +99,7 @@ async def test_transient_reconnect_login_failure_closes_socket_before_retry(
     client = _RecoveringClient()
     coordinator.client = client  # type: ignore[assignment]
 
-    with pytest.raises(UpdateFailed):
+    with pytest.raises(asyncio.CancelledError if cancelled else UpdateFailed):
         await coordinator._ensure_connected()
 
     assert client.connected is False
