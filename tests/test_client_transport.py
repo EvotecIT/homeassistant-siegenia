@@ -251,6 +251,40 @@ async def test_heartbeat_survives_device_error_and_stops_on_disconnect():
             await client.disconnect()
 
 
+async def test_push_callback_failure_preserves_later_push_and_response():
+    pushes = []
+    logs = []
+
+    def on_push(payload):
+        pushes.append(payload)
+        if len(pushes) == 1:
+            raise ValueError("consumer rejected update")
+
+    async def handler(request):
+        websocket = web.WebSocketResponse()
+        await websocket.prepare(request)
+        async for message in websocket:
+            payload = message.json()
+            await websocket.send_json({"data": {"states": {"0": "MOVING"}}})
+            await websocket.send_json({"data": {"states": {"0": "CLOSED"}}})
+            await websocket.send_json({"id": payload["id"], "status": "ok"})
+        return websocket
+
+    async with local_server(handler) as port:
+        client = SiegeniaClient("127.0.0.1", port=port, ws_protocol="ws", logger=logs.append)
+        client.set_push_callback(on_push)
+        try:
+            await client.connect()
+            async with asyncio.timeout(5):
+                assert (await client.get_device())["status"] == "ok"
+            assert [item["data"]["states"]["0"] for item in pushes] == ["MOVING", "CLOSED"]
+            assert any("Push handler error:" in message for message in logs)
+            assert client.connected
+            assert not client._awaiting
+        finally:
+            await client.disconnect()
+
+
 @pytest.mark.parametrize("borrowed", [False, True])
 async def test_failed_handshake_can_retry_with_correct_session_ownership(borrowed):
     accepting = False
