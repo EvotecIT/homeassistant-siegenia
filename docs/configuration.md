@@ -68,3 +68,25 @@ stable state while the operation-source sensor reports manual control.
 Use [automations and dashboards](automations.md) for normal cover actions,
 explicit mode commands, and timers. Keep the window area clear and test any
 automation under supervision before enabling it.
+
+
+## Remove the integration
+
+1. Disable or update automations and dashboard controls that target the controller.
+2. Open **Settings → Devices & services → Siegenia** and choose **Delete** from
+   the controller entry's menu. Repeat for each controller you want to remove.
+3. To uninstall completely, remove **Siegenia** from HACS after deleting its
+   entries, then restart Home Assistant. For a manual installation, remove
+   `config/custom_components/siegenia` and restart Home Assistant.
+
+Successful entry unloading stops Home Assistant polling, reconnect and rediscovery
+work, and closes the controller connection. It does not send a stop, open, close,
+or reset command. Controller-side timers and settings are unchanged; removing
+Home Assistant access does not cancel a movement already in progress.
+
+The integration does not maintain a separate on-disk controller cache. Home
+Assistant history, exported diagnostics, recordings, backups, dashboard cards,
+and automation or blueprint instances are separate and are not deleted by the
+integration. Existing warning notifications may remain until dismissed. Review
+any remaining repair warning against the controllers still configured before
+acting on it.

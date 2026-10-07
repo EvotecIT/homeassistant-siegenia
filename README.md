@@ -79,6 +79,7 @@ window area is clear.
 
 | I want to… | Guide |
 | --- | --- |
+| Remove a controller or uninstall | [Removal instructions](docs/configuration.md#remove-the-integration) |
 | Configure connection and window behavior | [Configuration](docs/configuration.md) |
 | Add a dashboard, timer, or automation | [Automations and dashboards](docs/automations.md) |
 | Diagnose a connection or command failure | [Support and troubleshooting](docs/SUPPORT.md) |

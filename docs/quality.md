@@ -25,7 +25,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | docs-conditions | Partial | State-condition regression evaluates true and false outcomes; verify each exposed condition and documentation. |
 | docs-high-level-description | Partial | README describes controller support; reconcile claims with tested models and firmware. |
 | docs-installation-instructions | Partial | README installation path exists; install the actual HACS artifact. |
-| docs-removal-instructions | Review | Verify entry removal and HACS uninstall guidance, including retained data. |
+| docs-removal-instructions | Implemented | [Removal guidance](configuration.md#remove-the-integration) covers entry deletion, HACS/manual uninstall, unchanged controller actions/settings, and retained HA history, exports, backups, automations and notifications. Source audit found no integration-owned disk cache; shutdown tests verify connection and task cleanup. Installed removal remains unverified. |
 | entity-event-setup | Partial | Push/motion timers are cancelled during unload; late-update tests run with real HA cleanup verification. |
 | entity-unique-id | Partial | Serial-based identities and registry migration exist; verify rename, reconnect, migration, and duplicate-entry stability. |
 | has-entity-name | Partial | Platforms declare entity naming; verify translated primary and child names in the actual HA host. |
