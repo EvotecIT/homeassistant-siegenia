@@ -11,7 +11,6 @@ import pytest
 from custom_components.siegenia.siegenia_client.client import (
     AuthenticationError,
     SiegeniaClient,
-    SiegeniaError,
 )
 
 
@@ -50,17 +49,6 @@ async def test_login_password_is_redacted_from_debug_log() -> None:
     rendered = "\n".join(messages)
     assert "super-secret-password" not in rendered
     assert '"password":"***"' in rendered
-
-
-async def test_device_error_status_is_not_reported_as_success() -> None:
-    client = SiegeniaClient("192.0.2.1")
-    client._ws = _ImmediateResponseWebSocket(  # type: ignore[assignment]
-        client,
-        {"status": "device_error"},
-    )
-
-    with pytest.raises(SiegeniaError, match="device_error"):
-        await client.get_device()
 
 
 async def test_any_failed_login_status_is_an_authentication_error() -> None:

@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import pytest
 from aiohttp import ClientSession, web
 
-from custom_components.siegenia.siegenia_client.client import SiegeniaClient, SiegeniaError
+from custom_components.siegenia.siegenia_client.client import AuthenticationError, SiegeniaClient, SiegeniaError
 
 pytestmark = pytest.mark.usefixtures("socket_enabled")
 
@@ -78,6 +78,33 @@ async def test_malformed_message_does_not_drop_valid_response(malformed):
             assert (await client.get_device())["status"] == "ok"
             assert client.connected
             assert not client._awaiting
+        finally:
+            await client.disconnect()
+
+
+@pytest.mark.parametrize("status", ["device_error", "not_authenticated", "authentication_error"])
+async def test_read_error_classification_preserves_connection_for_retry(status):
+    async def handler(request):
+        websocket = web.WebSocketResponse()
+        await websocket.prepare(request)
+        response_status = status
+        async for message in websocket:
+            payload = message.json()
+            await websocket.send_json({"id": payload["id"], "status": response_status})
+            response_status = "ok"
+        return websocket
+
+    async with local_server(handler) as port:
+        client = SiegeniaClient("127.0.0.1", port=port, ws_protocol="ws", response_timeout=1)
+        try:
+            await client.connect()
+            error_type = SiegeniaError if status == "device_error" else AuthenticationError
+            with pytest.raises(error_type, match=status) as caught:
+                await client.get_device()
+            assert type(caught.value) is error_type
+            assert not client._awaiting
+            assert client.connected
+            assert (await client.get_device())["status"] == "ok"
         finally:
             await client.disconnect()
 
