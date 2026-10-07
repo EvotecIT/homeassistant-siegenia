@@ -20,7 +20,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | config-flow-test-coverage | Implemented | 29 real HA flow tests cover all 149 executable statements and 32 branches in `config_flow.py`: setup, duplicate identity, authentication/connection failures, retry, reauthentication identity, both connection-change routes, legacy host identities, and discovery/options persistence. Unused YAML-import and menu-fallback paths were removed. Installed UI qualification remains separate. |
 | config-flow | Partial | Manual setup, options, and reauthentication exist; prove the installed UI path and discovery applicability. |
 | dependency-transparency | Review | Document bundled client ownership, transport, and requirements from the shipped manifest. |
-| docs-actions | Partial | services.yaml and automation documentation exist; exercise each action and explain failure behaviour. |
+| docs-actions | Partial | services.yaml and automation documentation exist. Timer tests verify exact start, duration-only, and stop payloads plus translated authentication/offline failures. Complete per-action and installed-device qualification. |
 | docs-triggers | Partial | State-change trigger regression exists; verify each exposed trigger and duration option. |
 | docs-conditions | Partial | State-condition regression evaluates true and false outcomes; verify each exposed condition and documentation. |
 | docs-high-level-description | Partial | README describes controller support; reconcile claims with tested models and firmware. |
@@ -73,7 +73,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 | icon-translations | Review | Audit state-aware icons and current HA translation metadata. |
 | reconfiguration-flow | Partial | Dedicated Reconfigure and Connection options share connection/authentication and known-serial validation. Failure/retry tests preserve data and reload once; repeated edits preserve host-fallback identity. Historical hostname-fallback entries moved before identity metadata existed remain ambiguous. Installed UI and physical-device proof remain open. |
 | repair-issues | Partial | Coordinator uses HA repair issues; verify create, recover, dismiss, and user guidance. |
-| stale-devices | Partial | Device migration and cleanup services exist; verify scope, entity preservation, and removal rules. |
+| stale-devices | Partial | Device migration and cleanup services exist. Name-repair preview preserves registry state; conflicting target IDs preserve both the original Siegenia identity and the foreign entity. Complete device-merge scope and removal-rule qualification. |
 
 ## Platinum
 
@@ -85,7 +85,7 @@ exemption needs the rule's permitted reason and product-specific evidence.
 
 ## Qualification beyond the rule ledger
 
-- [x] 134 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
+- [x] 137 tests pass on HA 2024.8.0/Python 3.12 and HA 2026.9.4/Python 3.14.
 - [ ] Install the published artifact and upgrade from the previous stable release.
 - [x] Bundle all eight dashboard icons inside the HACS component and Python wheel; HTTP tests verify byte-identical SVG delivery on minimum and current HA without a configured device. Published HACS installation remains unverified.
 - [ ] Verify real model/firmware behaviour, resource use, reconnection, and supported actions.
