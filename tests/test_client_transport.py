@@ -210,6 +210,47 @@ async def test_abandoned_request_releases_waiter_and_late_reply_does_not_replace
             await client.disconnect()
 
 
+async def test_heartbeat_survives_device_error_and_stops_on_disconnect():
+    recovered = asyncio.Event()
+    requests = []
+    logs = []
+
+    async def handler(request):
+        websocket = web.WebSocketResponse()
+        await websocket.prepare(request)
+        async for message in websocket:
+            payload = message.json()
+            requests.append(payload)
+            await websocket.send_json({
+                "id": payload["id"],
+                "status": "device_error" if len(requests) == 1 else "ok",
+            })
+            if len(requests) >= 2:
+                recovered.set()
+        return websocket
+
+    async with local_server(handler) as port:
+        client = SiegeniaClient("127.0.0.1", port=port, ws_protocol="ws", logger=logs.append)
+        try:
+            await client.connect()
+            await client.start_heartbeat(interval=0.01)
+            heartbeat = client._hb_task
+            await client.start_heartbeat(interval=0.01)
+            assert client._hb_task is heartbeat
+            async with asyncio.timeout(5):
+                await recovered.wait()
+            assert all(item["command"] == "keepAlive" for item in requests)
+            assert all(item["params"] == {"extend_session": True} for item in requests)
+            assert any("Heartbeat error:" in message for message in logs)
+            await client.disconnect()
+            assert heartbeat is not None and heartbeat.done()
+            assert client._hb_task is None
+            assert not client.connected
+            assert not client._awaiting
+        finally:
+            await client.disconnect()
+
+
 @pytest.mark.parametrize("borrowed", [False, True])
 async def test_failed_handshake_can_retry_with_correct_session_ownership(borrowed):
     accepting = False
