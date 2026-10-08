@@ -18,11 +18,16 @@ and a current Home Assistant stack. To reproduce the minimum lane, use Python
 `requirements_test_minimum.txt` instead of `requirements_test.txt`.
 The legacy test constraints keep the older HA stack compatible with its ACME
 and DNS dependencies; they do not change the integration's runtime requirements.
+Run this frozen compatibility lane in an isolated environment with synthetic
+fixtures. Use current stable HA for normal development and installations.
 
 Keep the test plugin's resource-cleanup verification enabled. Shutdown and unload
 tests exercise connection tasks, discovery tasks, push-idle and motion timers,
 and late updates after unload. Unit tests do not establish device-connected
 shutdown or full quality qualification.
+The test session closes an idle pycares channel before cleanup baselines are
+recorded, starting the patched library's single process-wide cleanup worker.
+Per-test thread, task and timer checks remain enabled.
 
 Each config entry owns its coordinator through typed `runtime_data`. Platforms
 and diagnostics use that same object; successful unload stops its background

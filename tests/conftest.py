@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import pycares
 from unittest.mock import AsyncMock
 
 # Ensure repository root is on sys.path so `custom_components` is importable in CI
@@ -19,6 +20,14 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNA
 from custom_components.siegenia.const import DOMAIN, DEFAULT_PORT  # noqa: E402
 
 # Ensure HA loads custom components from this repository during tests
+@pytest.fixture(scope="session", autouse=True)
+def initialize_dns_cleanup_worker():
+    """Start pycares' process-wide cleanup worker before leak-check baselines."""
+    # Closing an idle channel sends no DNS queries. The worker persists for the
+    # process lifetime; per-test thread, task and timer checks remain active.
+    pycares.Channel().close()
+
+
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):  # noqa: ANN001
     yield
