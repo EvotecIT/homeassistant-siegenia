@@ -12,14 +12,12 @@ python -m compileall siegenia_client custom_components tests examples
 pytest
 ```
 
-CI validates the supported Python lanes, the declared minimum HA 2024.8.0,
-and a current Home Assistant stack. To reproduce the minimum lane, use Python
-3.12 in a separate virtual environment and install
-`requirements_test_minimum.txt` instead of `requirements_test.txt`.
-The legacy test constraints keep the older HA stack compatible with its ACME
-and DNS dependencies; they do not change the integration's runtime requirements.
-Run this frozen compatibility lane in an isolated environment with synthetic
-fixtures. Use current stable HA for normal development and installations.
+CI validates the declared minimum HA 2026.7.2 and the fixed HA 2026.9.4 comparison on
+Python 3.14. To reproduce the minimum lane, install
+`requirements_test_minimum.txt` in a separate virtual environment. Normal local
+checks use `requirements_test.txt`, which selects the comparison stack. Newer releases need separate qualification.
+Home Assistant supplies compatible patched DNS dependencies; the old ACME and
+DNS version overrides are unnecessary.
 
 Keep the test plugin's resource-cleanup verification enabled. Shutdown and unload
 tests exercise connection tasks, discovery tasks, push-idle and motion timers,

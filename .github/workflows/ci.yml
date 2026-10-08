@@ -16,11 +16,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - python-version: "3.12"
+          - python-version: "3.14"
             requirements: requirements_test_minimum.txt
-          - python-version: "3.12"
-            requirements: requirements_test.txt
-          - python-version: "3.13"
+          - python-version: "3.14"
             requirements: requirements_test.txt
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -53,15 +51,15 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
-      - name: Install current stable Home Assistant test stack
+      - name: Install the HA 2026.9.4 comparison test stack
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements_test_latest.txt
-      - name: Run tests against current stable Home Assistant
+      - name: Run tests against the HA 2026.9.4 comparison target
         run: |
           pytest
 
-      - name: Strict typing against current stable HA
+      - name: Strict typing against the HA 2026.9.4 comparison target
         run: python -m mypy --strict custom_components/siegenia
 
       - name: Installed standalone type contract

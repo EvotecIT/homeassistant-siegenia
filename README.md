@@ -6,6 +6,9 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/EvotecIT/homeassistant-siegenia/ci.yml?branch=master&style=for-the-badge&label=CI)](https://github.com/EvotecIT/homeassistant-siegenia/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/EvotecIT/homeassistant-siegenia?style=for-the-badge)](LICENSE)
 
+Requires Home Assistant 2026.7.2 or later. Upgrade the Home Assistant host before
+installing this integration; the host owns its DNS dependencies.
+
 ## Overview
 
 Connect supported Siegenia window controllers to Home Assistant over your local
