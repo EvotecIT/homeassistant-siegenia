@@ -1,4 +1,4 @@
-# Reproducible current-stable qualification lane.
+# Reproducible HA 2026.9.4 comparison lane.
 homeassistant==2026.9.4
 pytest-homeassistant-custom-component==0.13.367
 pytest-cov>=4.1

@@ -12,10 +12,10 @@ python -m compileall siegenia_client custom_components tests examples
 pytest
 ```
 
-CI validates the declared minimum HA 2026.7.2 and current stable HA 2026.9.4 on
+CI validates the declared minimum HA 2026.7.2 and the fixed HA 2026.9.4 comparison on
 Python 3.14. To reproduce the minimum lane, install
 `requirements_test_minimum.txt` in a separate virtual environment. Normal local
-checks use `requirements_test.txt`, which selects the current stable stack.
+checks use `requirements_test.txt`, which selects the comparison stack. Newer releases need separate qualification.
 Home Assistant supplies compatible patched DNS dependencies; the old ACME and
 DNS version overrides are unnecessary.
 
