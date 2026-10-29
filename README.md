@@ -7,47 +7,25 @@
 [![License](https://img.shields.io/github/license/EvotecIT/homeassistant-siegenia?style=for-the-badge)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/EvotecIT/homeassistant-siegenia?style=for-the-badge)](https://github.com/EvotecIT/homeassistant-siegenia/stargazers)
 
-Requires **Home Assistant 2026.7.2 or newer**. Upgrade the Home Assistant host before
-installing this integration; the host owns its DNS dependencies.
+Open, close, and air your Siegenia motorized windows from Home Assistant, over
+your home network. Let the house ventilate itself on a schedule, close the
+windows when it starts to rain, or check from bed that everything is shut.
 
-## Overview
+## What you get
 
-Connect supported Siegenia window controllers to Home Assistant over your local
-network. The integration focuses on MHS-family controllers and exposes windows
-as `cover` entities.
+- **Window control:** open, close, stop, gap ventilation, and the other modes
+  your controller supports.
+- **Timers and opening lock,** plus the controller's own settings.
+- **Alerts** when the controller reports a warning, with ready-made
+  notifications, dashboard examples, and automation blueprints.
+- **Works with MHS-family controllers,** each window shown as a standard
+  Home Assistant cover.
 
-- Open, close, stop, gap ventilation, and other supported window modes.
-- Timers, opening-lock behavior, and device settings.
-- Warning events, notifications, dashboard examples, and automation blueprints.
+Available modes depend on your controller. Moving windows can trap fingers:
+keep them supervised and test automations with the opening clear.
 
-Available modes depend on the controller. Keep moving windows supervised and
-test any automation with the opening area clear.
-
-## Sponsor
-
-Support development and maintenance through
-[GitHub Sponsors](https://github.com/sponsors/PrzemyslawKlys).
-Sponsorship is optional; these projects remain open source.
-
-## More for your Home Assistant home
-
-Other integrations and dashboards we maintain:
-
-- [Dreame & MOVA mowers](https://github.com/EvotecIT/homeassistant-dreamelawnmower) — Mowing controls, maps, schedules, and supported cameras.
-- [Lawn Mower Card](https://github.com/EvotecIT/lovelace-lawn-mower-card) — A dashboard for mower state, maps, and controls.
-- [KEF](https://github.com/EvotecIT/homeassistant-kef) — Local control for modern and legacy speaker families.
-- [Devialet](https://github.com/EvotecIT/homeassistant-devialet) — Local speaker control, with Dione support.
-- [EasyControlX](https://github.com/EvotecIT/homeassistant-easycontrolx) — Connect supported Windows and macOS hosts.
-- [Waste Pickup Planner](https://github.com/EvotecIT/lovelace-waste-pickup-planner) — Waste collection dates, bin overviews, cards, and badges.
-
-For a native app connected to the same Home Assistant setup:
-
-- [CasaRay](https://casaray.dev/) — rooms, devices, cameras, and home activity on
-  iPhone, iPad, and Mac.
-- [Tactra Remote](https://tactra.dev/) — media players, speakers, and TV controls
-  on iPhone, iPad, Apple Watch, and Mac.
-
-Neither app is required to use this project.
+Requires **Home Assistant 2026.7.2 or newer**. Update Home Assistant itself
+before you install.
 
 ## Installation
 
@@ -119,3 +97,29 @@ window area is clear.
 with the controller model, firmware, number of sashes, integration version, and
 steps to reproduce. Attach diagnostics after reviewing them for personal
 information. Never post controller credentials.
+
+## Sponsor
+
+Support development and maintenance through
+[GitHub Sponsors](https://github.com/sponsors/PrzemyslawKlys).
+Sponsorship is optional; these projects remain open source.
+
+## More for your Home Assistant home
+
+Other integrations and dashboards we maintain:
+
+- [Dreame & MOVA mowers](https://github.com/EvotecIT/homeassistant-dreamelawnmower) — Mowing controls, maps, schedules, and supported cameras.
+- [Lawn Mower Card](https://github.com/EvotecIT/lovelace-lawn-mower-card) — A dashboard for mower state, maps, and controls.
+- [KEF](https://github.com/EvotecIT/homeassistant-kef) — Local control for modern and legacy speaker families.
+- [Devialet](https://github.com/EvotecIT/homeassistant-devialet) — Local speaker control, with Dione support.
+- [EasyControlX](https://github.com/EvotecIT/homeassistant-easycontrolx) — Connect supported Windows and macOS hosts.
+- [Waste Pickup Planner](https://github.com/EvotecIT/lovelace-waste-pickup-planner) — Waste collection dates, bin overviews, cards, and badges.
+
+For a native app connected to the same Home Assistant setup:
+
+- [CasaRay](https://casaray.dev/) — rooms, devices, cameras, and home activity on
+  iPhone, iPad, and Mac.
+- [Tactra Remote](https://tactra.dev/) — media players, speakers, and TV controls
+  on iPhone, iPad, Apple Watch, and Mac.
+
+Neither app is required to use this project.
