@@ -2,9 +2,10 @@
 
 ![Siegenia for Home Assistant](assets/homeassistant-siegenia-social.png)
 
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://hacs.xyz/)
+[![Marketplace Catalog](https://img.shields.io/badge/Marketplace-Catalog-41BDF5.svg?style=for-the-badge)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=EvotecIT&repository=homeassistant-siegenia&category=integration)
 [![CI](https://img.shields.io/github/actions/workflow/status/EvotecIT/homeassistant-siegenia/ci.yml?branch=master&style=for-the-badge&label=CI)](https://github.com/EvotecIT/homeassistant-siegenia/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/EvotecIT/homeassistant-siegenia?style=for-the-badge)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/EvotecIT/homeassistant-siegenia?style=for-the-badge)](https://github.com/EvotecIT/homeassistant-siegenia/stargazers)
 
 Requires Home Assistant 2026.7.2 or later. Upgrade the Home Assistant host before
 installing this integration; the host owns its DNS dependencies.
@@ -37,6 +38,7 @@ Other integrations and dashboards we maintain:
 - [KEF](https://github.com/EvotecIT/homeassistant-kef) — Local control for modern and legacy speaker families.
 - [Devialet](https://github.com/EvotecIT/homeassistant-devialet) — Local speaker control, with Dione support.
 - [EasyControlX](https://github.com/EvotecIT/homeassistant-easycontrolx) — Connect supported Windows and macOS hosts.
+- [Waste Pickup Planner](https://github.com/EvotecIT/lovelace-waste-pickup-planner) — Waste collection dates, bin overviews, cards, and badges.
 
 For a native app connected to the same Home Assistant setup:
 
@@ -49,7 +51,25 @@ Neither app is required to use this project.
 
 ## Installation
 
-### HACS
+### Home Assistant 2026.11 and newer
+
+[![Open this repository in the Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=EvotecIT&repository=homeassistant-siegenia&category=integration)
+
+1. Open **Settings → Marketplace** and search for **Siegenia**.
+2. Open the project and select **Install**.
+3. Continue into the **Siegenia** setup flow.
+
+If the project is missing from your catalog, choose **Add from link** and enter
+`https://github.com/EvotecIT/homeassistant-siegenia`. Adding a custom repository
+requires a GitHub connection.
+
+A first installation can open setup without a restart. For updates, follow the
+restart prompt shown by Home Assistant.
+
+Existing HACS installations migrate automatically when Home Assistant upgrades
+to 2026.11. The repository metadata remains in `hacs.json`.
+
+### Home Assistant 2026.10 and older: HACS
 
 [![Open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=EvotecIT&repository=homeassistant-siegenia&category=integration)
 
