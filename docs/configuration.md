@@ -75,8 +75,9 @@ automation under supervision before enabling it.
 1. Disable or update automations and dashboard controls that target the controller.
 2. Open **Settings → Devices & services → Siegenia** and choose **Delete** from
    the controller entry's menu. Repeat for each controller you want to remove.
-3. To uninstall completely, remove **Siegenia** from HACS after deleting its
-   entries, then restart Home Assistant. For a manual installation, remove
+3. After deleting its entries, uninstall **Siegenia** through
+   **Settings → Marketplace** on HA 2026.11 or newer, or through HACS on older HA
+   versions. Follow Home Assistant's restart prompt. For a manual installation, remove
    `config/custom_components/siegenia` and restart Home Assistant.
 
 Successful entry unloading stops Home Assistant polling, reconnect and rediscovery

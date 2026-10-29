@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/github/license/EvotecIT/homeassistant-siegenia?style=for-the-badge)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/EvotecIT/homeassistant-siegenia?style=for-the-badge)](https://github.com/EvotecIT/homeassistant-siegenia/stargazers)
 
-Requires Home Assistant 2026.7.2 or later. Upgrade the Home Assistant host before
+Requires **Home Assistant 2026.7.2 or newer**. Upgrade the Home Assistant host before
 installing this integration; the host owns its DNS dependencies.
 
 ## Overview
